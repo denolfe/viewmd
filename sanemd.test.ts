@@ -15,7 +15,7 @@ import {
   fixListInlineTokens,
   prepareImages,
   replaceMermaidBlocks,
-} from './sane-md'
+} from './sanemd'
 import { splitIntoLines } from './lib/lines'
 import { createPagerState, scroll, isAtEnd, formatInfo } from './lib/pager'
 

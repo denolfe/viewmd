@@ -18,7 +18,7 @@ export async function readInput(filePath?: string): Promise<string> {
   }
 
   if (chunks.length === 0) {
-    throw new Error('Usage: sane-md <file.md>\n       cat file.md | sane-md')
+    throw new Error('Usage: sanemd <file.md>\n       cat file.md | sanemd')
   }
 
   return Buffer.concat(chunks).toString('utf-8')

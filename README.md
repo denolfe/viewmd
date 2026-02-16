@@ -1,4 +1,4 @@
-# sane-md
+# sanemd
 
 Terminal markdown renderer with mermaid diagram support.
 
@@ -8,11 +8,11 @@ Terminal markdown renderer with mermaid diagram support.
 
 ```bash
 # From file
-sane-md README.md
+sanemd README.md
 
 # From stdin
-cat README.md | sane-md
-echo "# Hello **world**" | sane-md
+cat README.md | sanemd
+echo "# Hello **world**" | sanemd
 ```
 
 ## Features
@@ -101,7 +101,7 @@ Paragraphs and headings are indented for better readability.
 
 ## Pager Mode
 
-For long documents, sane-md automatically activates a `less`-like pager when:
+For long documents, sanemd automatically activates a `less`-like pager when:
 - Output is to a TTY (not piped)
 - Content exceeds terminal height
 
@@ -128,8 +128,8 @@ For long documents, sane-md automatically activates a `less`-like pager when:
 
 ```bash
 # Use --no-pager flag
-sane-md --no-pager README.md
+sanemd --no-pager README.md
 
 # Piping always bypasses pager
-sane-md README.md | head -50
+sanemd README.md | head -50
 ```

@@ -1,5 +1,5 @@
 {
-  "name": "sane-md",
+  "name": "sanemd",
   "module": "index.ts",
   "type": "module",
   "private": true,
