@@ -1,8 +1,11 @@
 {
   "name": "sanemd",
-  "module": "index.ts",
+  "module": "sanemd.ts",
   "type": "module",
   "private": true,
+  "bin": {
+    "sanemd": "./sanemd.ts"
+  },
   "scripts": {
     "start": "bun index.ts",
     "test": "FORCE_COLOR=3 bun test",
