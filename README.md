@@ -7,7 +7,7 @@ Terminal markdown renderer with mermaid diagram support.
 - Syntax-highlighted code blocks with box borders
 - Less-style pager with search and sticky headers
 
-![preview](preview.png)
+<img src="preview.png" alt="Preview of sanemd rendering a markdown document with various features" width="600"/>
 
 ## Usage
 
@@ -18,6 +18,9 @@ sanemd README.md
 # From stdin
 cat README.md | sanemd
 echo "# Hello **world**" | sanemd
+
+# Bypass pager
+sanemd --no-pager README.md
 ```
 
 ## Features
@@ -30,20 +33,11 @@ Converts mermaid code blocks to ASCII art using [beautiful-mermaid](https://gith
 
 Renders images directly in the terminal using [terminal-image](https://github.com/sindresorhus/terminal-image). Uses native terminal protocols (iTerm2, Kitty, Sixel) when available, falls back to ANSI block characters.
 
-```markdown
-![Screenshot](./preview.png)
-```
+### Sticky Headers
 
-- Local files: resolved relative to markdown file location
-- Remote URLs: fetched and rendered inline
-- Fallback: displays "alt → path (reason)" when rendering fails
+When scrolled past a heading, ancestor headers appear dimmed at the top of the viewport, showing your position in the document hierarchy. For example, when reading content under an H3, the parent H2 and H1 are displayed above with a separator line.
 
-````markdown
-```mermaid
-graph LR
-  A --> B --> C
-```
-````
+<img src="sticky-headers.png" alt="Screenshot showing sticky headers in sanemd, with H1 and H2 displayed at the top of the viewport while reading an H3 section" width="600"/>
 
 ### Syntax Highlighting
 
@@ -112,33 +106,19 @@ For long documents, sanemd automatically activates a `less`-like pager when:
 
 ### Keyboard Shortcuts
 
-| Key | Action |
-|-----|--------|
-| `j` / `↓` | Scroll down one line |
-| `k` / `↑` | Scroll up one line |
-| `Space` / `f` | Page down |
-| `b` | Page up |
-| `d` | Half page down |
-| `u` | Half page up |
-| `g` | Go to top |
-| `G` | Go to bottom |
-| `/` | Search forward |
-| `?` | Search backward |
-| `n` | Next header |
-| `N` | Previous header |
-| `=` | Show position info |
-| `q` | Quit |
-
-### Sticky Headers
-
-When scrolled past a heading, ancestor headers appear dimmed at the top of the viewport, showing your position in the document hierarchy. For example, when reading content under an H3, the parent H2 and H1 are displayed above with a separator line.
-
-### Bypassing the Pager
-
-```bash
-# Use --no-pager flag
-sanemd --no-pager README.md
-
-# Piping always bypasses pager
-sanemd README.md | head -50
-```
+| Key           | Action               |
+| ------------- | -------------------- |
+| `j` / `↓`     | Scroll down one line |
+| `k` / `↑`     | Scroll up one line   |
+| `Space` / `f` | Page down            |
+| `b`           | Page up              |
+| `d`           | Half page down       |
+| `u`           | Half page up         |
+| `g`           | Go to top            |
+| `G`           | Go to bottom         |
+| `/`           | Search forward       |
+| `?`           | Search backward      |
+| `n`           | Next header          |
+| `N`           | Previous header      |
+| `=`           | Show position info   |
+| `q`           | Quit                 |
