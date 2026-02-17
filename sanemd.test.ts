@@ -300,6 +300,15 @@ describe('addIndent', () => {
       if (line.trim()) expect(line).toMatch(/^\s{2}/)
     }
   })
+
+  test('tables are indented', () => {
+    const output = renderMarkdown('| A | B |\n|---|---|\n| 1 | 2 |')
+    const plain = stripAnsi(output)
+
+    for (const line of plain.split('\n')) {
+      if (line.trim()) expect(line).toMatch(/^\s{2}/)
+    }
+  })
 })
 
 describe('addBlockquotePipe', () => {

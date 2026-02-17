@@ -95,7 +95,7 @@ export function useCheckmark(ext: TerminalExtension): void {
   }
 }
 
-/** Adds left indent to paragraphs and headings. */
+/** Adds left indent to paragraphs, headings, and tables. */
 export function addIndent(ext: TerminalExtension): void {
   const origParagraph = getRenderer(ext, 'paragraph')
   ext.renderer.paragraph = function (token: Tokens.Paragraph) {
@@ -114,6 +114,16 @@ export function addIndent(ext: TerminalExtension): void {
     return result
       .split('\n')
       .map(line => (line.trim() ? HEADING_MARKER + TAB + line : line))
+      .join('\n')
+  }
+
+  const origTable = getRenderer(ext, 'table')
+  ext.renderer.table = function (token: Tokens.Table) {
+    const result = origTable.call(this, token)
+    if (!result) return result
+    return result
+      .split('\n')
+      .map(line => (line.trim() ? TAB + line : line))
       .join('\n')
   }
 }
