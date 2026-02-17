@@ -49,6 +49,7 @@ const KEY_MAP: Record<string, KeyAction> = {
   'd': KEY.HALF_DOWN,
   '\x04': KEY.HALF_DOWN, // Ctrl+D
   'u': KEY.HALF_UP,
+  'w': KEY.HALF_UP,
   '\x15': KEY.HALF_UP, // Ctrl+U
 
   // Jump
