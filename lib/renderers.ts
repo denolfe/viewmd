@@ -179,6 +179,7 @@ export function addCodeBlockBox(ext: TerminalExtension): void {
 
     const stripTab = (line: string) => line.replace(LEADING_TAB_REGEX, '')
     const lines = result.split('\n').filter(l => l.trim())
+    if (lines.length === 0) return result
     const width = Math.max(...lines.map(l => visibleLen(stripTab(l))))
     const pad = 2
     const sp = ' '.repeat(pad)
