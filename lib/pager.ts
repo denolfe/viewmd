@@ -75,7 +75,7 @@ export function renderViewport(state: PagerState): string {
       let content = line.content
       // Apply search highlighting
       if (state.searchMatches.length > 0) {
-        content = highlightLine(content, state.searchMatches, i)
+        content = highlightLine({ content, matches: state.searchMatches, lineIndex: i })
       }
       output += content + '\n'
     }
@@ -192,10 +192,10 @@ export async function runPager(
           goTo(state, state.lines.length)
           break
         case KEY.SEARCH:
-          await handleSearch(state, 'forward', handleKey)
+          await handleSearch({ state, direction: 'forward', keyHandler: handleKey })
           break
         case KEY.SEARCH_BACK:
-          await handleSearch(state, 'backward', handleKey)
+          await handleSearch({ state, direction: 'backward', keyHandler: handleKey })
           break
         case KEY.NEXT_HEADER:
           jumpToHeader(state, 1)
@@ -257,7 +257,7 @@ async function render(state: PagerState): Promise<void> {
     } else {
       let content = line.content
       if (state.searchMatches.length > 0) {
-        content = highlightLine(content, state.searchMatches, lineIndex)
+        content = highlightLine({ content, matches: state.searchMatches, lineIndex })
       }
       process.stdout.write(content + '\n')
       rowsUsed++
@@ -277,11 +277,12 @@ async function render(state: PagerState): Promise<void> {
 }
 
 /** Handle search input. */
-async function handleSearch(
-  state: PagerState,
-  direction: 'forward' | 'backward',
+async function handleSearch(params: {
+  state: PagerState
+  direction: 'forward' | 'backward'
   keyHandler: (data: Buffer) => void
-): Promise<void> {
+}): Promise<void> {
+  const { state, direction, keyHandler } = params
   const prompt = direction === 'forward' ? '/' : '?'
 
   // Show search prompt

@@ -1,5 +1,3 @@
-// lib/keys.ts
-
 export const KEY = {
   UP: 'up',
   DOWN: 'down',

@@ -49,10 +49,9 @@ type ImageData = {
 function shouldPaginate(
   content: string,
   images: Map<string, ImageData>,
-  noPager: boolean
+  skipPager: boolean
 ): boolean {
-  // Respect --no-pager flag
-  if (noPager) return false
+  if (skipPager) return false
 
   // Don't paginate if not a TTY (allows piping)
   if (!process.stdout.isTTY) return false
@@ -67,24 +66,24 @@ function shouldPaginate(
 }
 
 /** Parse CLI arguments. */
-function parseArgs(): { filePath?: string; noPager: boolean } {
+function parseArgs(): { filePath?: string; skipPager: boolean } {
   const args = process.argv.slice(2)
   let filePath: string | undefined
-  let noPager = false
+  let skipPager = false
 
   for (const arg of args) {
     if (arg === '--no-pager') {
-      noPager = true
+      skipPager = true
     } else if (!arg.startsWith('-')) {
       filePath = arg
     }
   }
 
-  return { filePath, noPager }
+  return { filePath, skipPager }
 }
 
 async function main(): Promise<void> {
-  const { filePath, noPager } = parseArgs()
+  const { filePath, skipPager } = parseArgs()
   const basePath = filePath ? path.dirname(path.resolve(filePath)) : undefined
 
   const markdown = await readInput(filePath)
@@ -108,7 +107,7 @@ async function main(): Promise<void> {
 
   const rendered = '\n\n' + (marked(withPlaceholders) as string)
 
-  if (shouldPaginate(rendered, images, noPager)) {
+  if (shouldPaginate(rendered, images, skipPager)) {
     await runPager(rendered, images)
   } else {
     await outputWithImages(stripHeadingMarkers(rendered), images)

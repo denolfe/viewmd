@@ -50,13 +50,13 @@ describe('buildPositionMap', () => {
 
 describe('injectHighlight', () => {
   test('wraps range in inverse video', () => {
-    const result = injectHighlight('hello world', 0, 5)
+    const result = injectHighlight({ str: 'hello world', start: 0, end: 5 })
     expect(result).toBe('\x1b[7mhello\x1b[27m world')
   })
 
   test('works with ANSI-colored text', () => {
     const input = '\x1b[31mhello\x1b[0m world'
-    const result = injectHighlight(input, 0, 5)
+    const result = injectHighlight({ str: input, start: 0, end: 5 })
     // Should highlight "hello" (visible positions 0-4)
     expect(result).toContain('\x1b[7m')
     expect(result).toContain('\x1b[27m')

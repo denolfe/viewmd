@@ -62,7 +62,11 @@ describe('findMatches', () => {
 
 describe('highlightLine', () => {
   test('highlights matches on line', () => {
-    const result = highlightLine('hello world', [{ lineIndex: 0, start: 0, end: 5 }], 0)
+    const result = highlightLine({
+      content: 'hello world',
+      matches: [{ lineIndex: 0, start: 0, end: 5 }],
+      lineIndex: 0,
+    })
     expect(result).toContain('\x1b[7m')
     expect(result).toContain('hello')
   })
@@ -72,13 +76,17 @@ describe('highlightLine', () => {
       { lineIndex: 0, start: 0, end: 3 },
       { lineIndex: 0, start: 8, end: 11 },
     ]
-    const result = highlightLine('foo bar foo', matches, 0)
+    const result = highlightLine({ content: 'foo bar foo', matches, lineIndex: 0 })
     // Both "foo" should be highlighted
     expect((result.match(/\x1b\[7m/g) || []).length).toBe(2)
   })
 
   test('returns original if no matches for this line', () => {
-    const result = highlightLine('hello', [{ lineIndex: 1, start: 0, end: 5 }], 0)
+    const result = highlightLine({
+      content: 'hello',
+      matches: [{ lineIndex: 1, start: 0, end: 5 }],
+      lineIndex: 0,
+    })
     expect(result).toBe('hello')
   })
 })

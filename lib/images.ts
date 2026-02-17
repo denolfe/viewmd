@@ -39,8 +39,8 @@ type PreparedImages = {
   images: Map<string, ImageData>
 }
 
-/** Check if we should use Kitty protocol (writes directly to stdout). */
-export function useKittyProtocol(): boolean {
+/** Check if terminal supports Kitty graphics protocol. */
+export function supportsKittyProtocol(): boolean {
   return process.stdout.isTTY === true && supportsTerminalGraphics.stdout.kitty
 }
 
@@ -94,7 +94,7 @@ export async function outputWithImages(
   rendered: string,
   images: Map<string, ImageData>
 ): Promise<void> {
-  const isKittySupported = useKittyProtocol()
+  const isKittySupported = supportsKittyProtocol()
 
   // Strip heading markers (used by pager for navigation)
   const content = rendered.replaceAll(HEADING_MARKER, '')

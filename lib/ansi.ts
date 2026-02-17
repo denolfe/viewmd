@@ -48,24 +48,27 @@ export function buildPositionMap(s: string): number[] {
   return map
 }
 
-/**
- * Inject highlight (inverse video) around visible character range.
- * @param s - String possibly containing ANSI codes
- * @param start - Start visible index (inclusive)
- * @param end - End visible index (exclusive)
- */
-export function injectHighlight(s: string, start: number, end: number): string {
-  const map = buildPositionMap(s)
-  if (start >= map.length || end > map.length) return s
+/** Inject highlight (inverse video) around visible character range. */
+export function injectHighlight(params: {
+  /** String possibly containing ANSI codes */
+  str: string
+  /** Start visible index (inclusive) */
+  start: number
+  /** End visible index (exclusive) */
+  end: number
+}): string {
+  const { str, start, end } = params
+  const map = buildPositionMap(str)
+  if (start >= map.length || end > map.length) return str
 
   const ansiStart = map[start]!
-  const ansiEnd = end < map.length ? map[end]! : s.length
+  const ansiEnd = end < map.length ? map[end]! : str.length
 
   return (
-    s.slice(0, ansiStart) +
+    str.slice(0, ansiStart) +
     ANSI.highlightStart +
-    s.slice(ansiStart, ansiEnd) +
+    str.slice(ansiStart, ansiEnd) +
     ANSI.highlightEnd +
-    s.slice(ansiEnd)
+    str.slice(ansiEnd)
   )
 }

@@ -36,17 +36,20 @@ export function findMatches(lines: Line[], pattern: string): Match[] {
   return matches
 }
 
-/**
- * Apply highlight to all matches on a specific line.
- */
-export function highlightLine(content: string, matches: Match[], lineIndex: number): string {
+/** Apply highlight to all matches on a specific line. */
+export function highlightLine(params: {
+  content: string
+  matches: Match[]
+  lineIndex: number
+}): string {
+  const { content, matches, lineIndex } = params
   const lineMatches = matches
     .filter((m) => m.lineIndex === lineIndex)
     .sort((a, b) => b.start - a.start) // Process from end to preserve indices
 
   let result = content
   for (const match of lineMatches) {
-    result = injectHighlight(result, match.start, match.end)
+    result = injectHighlight({ str: result, start: match.start, end: match.end })
   }
 
   return result
