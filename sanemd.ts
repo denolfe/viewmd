@@ -90,8 +90,10 @@ async function main(): Promise<void> {
   const withMermaid = replaceMermaidBlocks(markdown)
   const { markdown: withPlaceholders, images } = await prepareImages(withMermaid, basePath)
 
+  const termWidth = process.stdout.columns
   const ext = markedTerminal({
-    width: process.stdout.columns || 80,
+    width: termWidth ? Math.min(termWidth, 100) : undefined,
+    reflowText: !!termWidth,
     tab: INDENT,
     ...terminalColors,
   })

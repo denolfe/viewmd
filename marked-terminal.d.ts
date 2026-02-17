@@ -3,6 +3,7 @@ type MarkedExtension = import('marked').MarkedExtension
 
 type TerminalRendererOptions = {
   width?: number
+  reflowText?: boolean
   tab?: number
   firstHeading?: ChalkInstance
   heading?: ChalkInstance
