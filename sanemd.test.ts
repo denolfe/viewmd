@@ -385,12 +385,13 @@ describe('addCodeBlockBox', () => {
     expect(plain).toContain('│')
   })
 
-  test('text code blocks are not boxed', () => {
-    const output = renderMarkdown('```text\nplain text\n```')
+  test('text code blocks are boxed without language label', () => {
+    const output = renderMarkdown('```text\nplain content\n```')
     const plain = stripAnsi(output)
 
-    expect(plain).not.toContain('┌')
-    expect(plain).not.toContain('└')
+    expect(plain).toContain('┌')
+    expect(plain).toContain('└')
+    expect(plain).not.toContain('text') // no language label in border
   })
 
   test('box width matches longest line', () => {

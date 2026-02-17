@@ -186,12 +186,12 @@ export function replaceKbdTags(markdown: string): string {
   return markdown.replace(KBD_REGEX, (_, content: string) => colors.kbd(content))
 }
 
-/** Wraps code blocks (except `text`) in a box-drawing border with language label. */
+/** Wraps code blocks in a box-drawing border. Includes language label except for `text`. */
 export function addCodeBlockBox(ext: TerminalExtension): void {
   const orig = getRenderer(ext, 'code')
   ext.renderer.code = function (token: Tokens.Code) {
     const result = orig.call(this, token)
-    if (!result || !token.lang || token.lang === 'text') return result
+    if (!result || !token.lang) return result
 
     const stripTab = (line: string) => line.replace(LEADING_TAB_REGEX, '')
     const lines = result.split('\n').filter(l => l.trim())
@@ -202,9 +202,12 @@ export function addCodeBlockBox(ext: TerminalExtension): void {
     const inner = width + pad * 2
 
     const lang = token.lang
-    const labelLen = lang.length + 2 // space before and after
-    const remaining = Math.max(0, inner - labelLen - 1) // -1 for the ─ after ┌
-    const topBorder = colors.dim(`${TAB}┌─ ${lang} ${'─'.repeat(remaining)}┐`)
+    const hasLabel = lang !== 'text'
+    const labelLen = hasLabel ? lang.length + 2 : 0 // space before and after
+    const remaining = Math.max(0, inner - labelLen - (hasLabel ? 1 : 0))
+    const topBorder = hasLabel
+      ? colors.dim(`${TAB}┌─ ${lang} ${'─'.repeat(remaining)}┐`)
+      : colors.dim(`${TAB}┌${'─'.repeat(inner)}┐`)
     const bottomBorder = colors.dim(`${TAB}└${'─'.repeat(inner)}┘`)
 
     const row = (content: string, vis: number) =>
