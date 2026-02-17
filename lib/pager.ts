@@ -192,10 +192,10 @@ export async function runPager(
           goTo(state, state.lines.length)
           break
         case KEY.SEARCH:
-          await handleSearch(state, 'forward')
+          await handleSearch(state, 'forward', handleKey)
           break
         case KEY.SEARCH_BACK:
-          await handleSearch(state, 'backward')
+          await handleSearch(state, 'backward', handleKey)
           break
         case KEY.NEXT_HEADER:
           jumpToHeader(state, 1)
@@ -278,7 +278,8 @@ async function render(state: PagerState): Promise<void> {
 /** Handle search input. */
 async function handleSearch(
   state: PagerState,
-  direction: 'forward' | 'backward'
+  direction: 'forward' | 'backward',
+  keyHandler: (data: Buffer) => void
 ): Promise<void> {
   const prompt = direction === 'forward' ? '/' : '?'
 
@@ -288,7 +289,7 @@ async function handleSearch(
   )
   process.stdout.write(ANSI.cursorShow)
 
-  const pattern = await readLine()
+  const pattern = await readLine(keyHandler)
 
   process.stdout.write(ANSI.cursorHide)
 
@@ -309,8 +310,10 @@ async function handleSearch(
   }
 }
 
-/** Read a line of input from user. */
-function readLine(): Promise<string> {
+/** Read a line of input from user. Caller must pause other stdin listeners. */
+function readLine(pauseHandler: (data: Buffer) => void): Promise<string> {
+  process.stdin.removeListener('data', pauseHandler)
+
   return new Promise((resolve) => {
     let buffer = ''
 
@@ -319,6 +322,7 @@ function readLine(): Promise<string> {
 
       if (char === '\r' || char === '\n') {
         process.stdin.removeListener('data', handler)
+        process.stdin.on('data', pauseHandler)
         resolve(buffer)
       } else if (char === '\x7f' || char === '\x08') {
         // Backspace
@@ -329,6 +333,7 @@ function readLine(): Promise<string> {
       } else if (char === '\x1b' || char === '\x03') {
         // Escape or Ctrl+C - cancel
         process.stdin.removeListener('data', handler)
+        process.stdin.on('data', pauseHandler)
         resolve('')
       } else if (char >= ' ') {
         buffer += char
