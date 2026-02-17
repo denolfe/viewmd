@@ -26,6 +26,7 @@ type RendererColors = {
   h1: ChalkInstance
   imageLabel: ChalkInstance
   imagePath: ChalkInstance
+  kbd: ChalkInstance
 }
 
 /** VS Code Dark+ terminal theme */
@@ -66,4 +67,5 @@ export const colors: RendererColors = {
   h1: chalk.hex('#000000').bold.bgHex(theme.blue),
   imageLabel: chalk.hex(theme.foregroundMuted),
   imagePath: chalk.hex(theme.foregroundMuted).underline,
+  kbd: chalk.hex(theme.foreground).bgHex('#3a3a3a'),
 }

@@ -14,6 +14,7 @@ import {
   fixCheckboxSpacing,
   fixListInlineTokens,
   prepareImages,
+  replaceKbdTags,
   replaceMermaidBlocks,
   stripHeadingMarkers,
 } from './sanemd'
@@ -204,6 +205,38 @@ describe('replaceMermaidBlocks', () => {
     const result = replaceMermaidBlocks(input)
 
     expect(result).toBe(input)
+  })
+})
+
+describe('replaceKbdTags', () => {
+  test('replaces single kbd tag', () => {
+    const result = replaceKbdTags('Press <kbd>Enter</kbd> to continue')
+    expect(result).toContain('Enter')
+    expect(result).not.toContain('<kbd>')
+    expect(result).not.toContain('</kbd>')
+  })
+
+  test('replaces multiple kbd tags', () => {
+    const result = replaceKbdTags('<kbd>Ctrl</kbd>+<kbd>C</kbd>')
+    expect(result).toContain('Ctrl')
+    expect(result).toContain('C')
+    expect(result).not.toContain('<kbd>')
+  })
+
+  test('handles case-insensitive tags', () => {
+    const result = replaceKbdTags('<KBD>Shift</KBD>')
+    expect(result).toContain('Shift')
+    expect(result).not.toContain('<KBD>')
+  })
+
+  test('preserves surrounding text', () => {
+    const result = replaceKbdTags('Press <kbd>Q</kbd> to quit')
+    expect(result).toMatch(/^Press .+Q.+ to quit$/)
+  })
+
+  test('returns unchanged text without kbd tags', () => {
+    const input = 'No kbd tags here'
+    expect(replaceKbdTags(input)).toBe(input)
   })
 })
 

@@ -18,6 +18,7 @@ import {
   fixListInlineTokens,
   INDENT,
   MERMAID_BLOCK_REGEX,
+  replaceKbdTags,
   replaceMermaidBlocks,
   stripHeadingMarkers,
   styleH1,
@@ -35,6 +36,7 @@ export {
   collapseNestedListBlanks,
   fixCheckboxSpacing,
   fixListInlineTokens,
+  replaceKbdTags,
   stripHeadingMarkers,
   styleH1,
   useCheckmark,
@@ -90,7 +92,8 @@ async function main(): Promise<void> {
 
   const markdown = await readInput(filePath)
   const withMermaid = replaceMermaidBlocks(markdown)
-  const { markdown: withPlaceholders, images } = await prepareImages(withMermaid, basePath)
+  const withKbd = replaceKbdTags(withMermaid)
+  const { markdown: withPlaceholders, images } = await prepareImages(withKbd, basePath)
 
   const termWidth = process.stdout.columns
   const ext = markedTerminal({

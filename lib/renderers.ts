@@ -4,6 +4,8 @@ import type { TerminalExtension } from 'marked-terminal'
 
 import { colors } from './colors'
 
+const KBD_REGEX = /<kbd>([^<]*)<\/kbd>/gi
+
 export type { TerminalExtension }
 
 type RendererKey = keyof RendererObject
@@ -177,6 +179,11 @@ export function addBlockquotePipe(ext: TerminalExtension): void {
       '\n\n'
     )
   }
+}
+
+/** Replaces <kbd> tags with pill-styled text. */
+export function replaceKbdTags(markdown: string): string {
+  return markdown.replace(KBD_REGEX, (_, content: string) => colors.kbd(content))
 }
 
 /** Wraps code blocks (except `text`) in a box-drawing border with language label. */
