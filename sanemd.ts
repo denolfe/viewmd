@@ -19,6 +19,7 @@ import {
   INDENT,
   MERMAID_BLOCK_REGEX,
   replaceMermaidBlocks,
+  stripHeadingMarkers,
   styleH1,
   useCheckmark,
 } from './lib/renderers'
@@ -33,6 +34,7 @@ export {
   collapseNestedListBlanks,
   fixCheckboxSpacing,
   fixListInlineTokens,
+  stripHeadingMarkers,
   styleH1,
   useCheckmark,
 }
@@ -109,7 +111,7 @@ async function main(): Promise<void> {
   if (shouldPaginate(rendered, images, noPager)) {
     await runPager(rendered, images)
   } else {
-    await outputWithImages(rendered, images)
+    await outputWithImages(stripHeadingMarkers(rendered), images)
   }
 }
 

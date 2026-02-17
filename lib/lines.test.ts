@@ -32,9 +32,9 @@ describe('splitIntoLines', () => {
   test('splits by newline', () => {
     const result = splitIntoLines('a\nb\nc', 80)
     expect(result).toEqual([
-      { content: 'a', isHeader: false },
-      { content: 'b', isHeader: false },
-      { content: 'c', isHeader: false },
+      { content: 'a', headerLevel: undefined },
+      { content: 'b', headerLevel: undefined },
+      { content: 'c', headerLevel: undefined },
     ])
   })
 
@@ -55,16 +55,16 @@ describe('splitIntoLines', () => {
     expect(result[1]!.content).toBe('')
   })
 
-  test('detects header markers', () => {
-    const result = splitIntoLines('\x01Header\nText', 80)
-    expect(result[0]!.isHeader).toBe(true)
+  test('detects header markers with level', () => {
+    const result = splitIntoLines('\x012Header\nText', 80)
+    expect(result[0]!.headerLevel).toBe(2)
     expect(result[0]!.content).toBe('Header')
-    expect(result[1]!.isHeader).toBe(false)
+    expect(result[1]!.headerLevel).toBeUndefined()
   })
 
   test('strips header marker from content', () => {
-    const result = splitIntoLines('\x01## Title', 80)
+    const result = splitIntoLines('\x011## Title', 80)
     expect(result[0]!.content).toBe('## Title')
-    expect(result[0]!.isHeader).toBe(true)
+    expect(result[0]!.headerLevel).toBe(1)
   })
 })

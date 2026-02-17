@@ -15,6 +15,7 @@ import {
   fixListInlineTokens,
   prepareImages,
   replaceMermaidBlocks,
+  stripHeadingMarkers,
 } from './sanemd'
 import { splitIntoLines } from './lib/lines'
 import { createPagerState, scroll, isAtEnd, formatInfo } from './lib/pager'
@@ -34,7 +35,7 @@ function hasAnsiColor(s: string): boolean {
 }
 
 function stripAnsi(s: string): string {
-  return s.replace(/\x1b\[[0-9;]*m/g, '').replace(/\x01/g, '')
+  return stripHeadingMarkers(s).replace(/\x1b\[[0-9;]*m/g, '')
 }
 
 function renderMarkdown(md: string): string {

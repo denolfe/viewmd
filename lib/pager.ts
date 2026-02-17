@@ -236,7 +236,8 @@ async function render(state: PagerState): Promise<void> {
 
   process.stdout.write(ANSI.clearScreen + ANSI.cursorHome)
 
-  let rowsUsed = 0
+  // Render sticky headers first
+  let rowsUsed = renderStickyHeaders(state)
   let lineIndex = state.topLine
 
   while (rowsUsed < viewportHeight && lineIndex < state.lines.length) {
@@ -366,11 +367,67 @@ function jumpToMatch(state: PagerState, direction: 1 | -1): void {
 function getHeaderIndices(state: PagerState): number[] {
   const indices: number[] = []
   for (let i = 0; i < state.lines.length; i++) {
-    if (state.lines[i]!.isHeader) {
+    if (state.lines[i]!.headerLevel !== undefined) {
       indices.push(i)
     }
   }
   return indices
+}
+
+export type AncestorHeader = { lineIndex: number; level: number; content: string }
+
+/**
+ * Find ancestor headers for the current viewport position.
+ * Returns headers from H1 down to the parent of the current section.
+ */
+export function findAncestorHeaders(state: PagerState): AncestorHeader[] {
+  const ancestors: AncestorHeader[] = []
+  const { lines, topLine } = state
+
+  // Find the current section's header (at or before topLine)
+  let currentLevel = 7 // Start above max level
+
+  // Scan backwards from topLine to find ancestor headers
+  for (let i = topLine; i >= 0; i--) {
+    const line = lines[i]!
+    if (line.headerLevel !== undefined && line.headerLevel < currentLevel) {
+      ancestors.unshift({
+        lineIndex: i,
+        level: line.headerLevel,
+        content: line.content,
+      })
+      currentLevel = line.headerLevel
+      if (currentLevel === 1) break // Found H1, done
+    }
+  }
+
+  return ancestors
+}
+
+/** Render sticky header area. Returns number of rows used. */
+function renderStickyHeaders(state: PagerState): number {
+  const ancestors = findAncestorHeaders(state)
+  if (ancestors.length === 0) return 0
+
+  // Don't show sticky if topLine IS a header (it's already visible)
+  const topLineHeader = state.lines[state.topLine]?.headerLevel
+  if (topLineHeader !== undefined) {
+    // Filter out the header at topLine itself
+    const filtered = ancestors.filter(h => h.lineIndex !== state.topLine)
+    if (filtered.length === 0) return 0
+    return renderStickyArea(filtered, state.termWidth)
+  }
+
+  return renderStickyArea(ancestors, state.termWidth)
+}
+
+function renderStickyArea(headers: AncestorHeader[], termWidth: number): number {
+  for (const header of headers) {
+    process.stdout.write(colors.dim(header.content) + '\n')
+  }
+  // Separator line
+  process.stdout.write(colors.dim('─'.repeat(termWidth)) + '\n')
+  return headers.length + 1 // headers + separator
 }
 
 /** Jump to next/prev header. */

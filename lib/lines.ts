@@ -4,7 +4,7 @@ import { HEADING_MARKER } from './renderers'
 export type Line = {
   content: string
   imageRef?: string
-  isHeader?: boolean
+  headerLevel?: number
 }
 
 // Match placeholder with optional surrounding ANSI codes/whitespace
@@ -64,16 +64,17 @@ export function splitIntoLines(content: string, width: number): Line[] {
       continue
     }
 
-    // Check for header marker
-    const isHeader = raw.startsWith(HEADING_MARKER)
-    if (isHeader) {
-      raw = raw.slice(HEADING_MARKER.length)
+    // Check for header marker (format: \x01{level})
+    let headerLevel: number | undefined
+    if (raw.startsWith(HEADING_MARKER)) {
+      headerLevel = parseInt(raw[1]!, 10)
+      raw = raw.slice(2) // Skip marker + level digit
     }
 
     // Wrap long lines
     const wrapped = wrapLine(raw, width)
     for (const segment of wrapped) {
-      result.push({ content: segment, isHeader })
+      result.push({ content: segment, headerLevel })
     }
   }
 

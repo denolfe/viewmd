@@ -14,8 +14,13 @@ const TAB = ' '.repeat(INDENT)
 const ANSI_REGEX = /\x1b\[[0-9;]*m/g
 const LEADING_TAB_REGEX = new RegExp(`^${TAB}`)
 
-/** Marker prepended to heading lines for pager detection. */
+/** Marker prepended to heading lines for pager detection. Format: \x01{level} */
 export const HEADING_MARKER = '\x01'
+
+/** Strip heading markers from rendered output (for non-pager display). */
+export function stripHeadingMarkers(content: string): string {
+  return content.replace(/\x01\d/g, '')
+}
 
 export { INDENT }
 
@@ -113,7 +118,7 @@ export function addIndent(ext: TerminalExtension): void {
     if (!result) return result
     return result
       .split('\n')
-      .map(line => (line.trim() ? HEADING_MARKER + TAB + line : line))
+      .map(line => (line.trim() ? HEADING_MARKER + token.depth + TAB + line : line))
       .join('\n')
   }
 
