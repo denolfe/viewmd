@@ -66,6 +66,6 @@ export const colors: RendererColors = {
   dim: chalk.dim,
   h1: chalk.hex('#000000').bold.bgHex(theme.blue),
   imageLabel: chalk.hex(theme.foregroundMuted),
-  imagePath: chalk.hex(theme.foregroundMuted).underline,
+  imagePath: chalk.hex(theme.foregroundMuted),
   kbd: chalk.hex(theme.foreground).bgHex('#3a3a3a'),
 }

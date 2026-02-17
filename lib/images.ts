@@ -330,12 +330,10 @@ function isSvgPath(path: string): boolean {
 
 function formatFallback(alt: string, src: string, link?: string): string {
   const label = colors.imageLabel(`${alt || 'Image'} →`)
-  const styledPath = colors.imagePath(src)
-  if (link) {
-    const styledLink = colors.imagePath(link)
-    return `${IMAGE_INDENT}${label} ${styledLink}`
-  }
-  return `${IMAGE_INDENT}${label} ${styledPath}`
+  const url = link ?? src
+  // Wrap in markdown link syntax for consistent styling
+  // Use explicit reset before URL to avoid inherited styles from previous content
+  return `\n${IMAGE_INDENT}${label}\n${IMAGE_INDENT}${url}\n`
 }
 
 /**
