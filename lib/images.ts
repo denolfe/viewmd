@@ -12,6 +12,8 @@ const LINKED_IMAGE_REGEX = /\[!\[([^\]]*)\]\(([^)]+)\)\]\(([^)]+)\)/g
 const IMAGE_REGEX = /!\[([^\]]*)\]\(([^)]+)\)/g
 const REF_IMAGE_REGEX = /!\[([^\]]*)\]\[([^\]]+)\]/g
 const REF_DEFINITION_REGEX = /^\[([^\]]+)\]:\s*(.+)$/gm
+// HTML img tag: <img src="..." alt="..." />
+const HTML_IMG_REGEX = /<img\s+[^>]*src=["']([^"']+)["'][^>]*>/gi
 const IMAGE_WIDTH = '50%'
 const CHUNK_SIZE = 4096
 const IMAGE_PLACEHOLDER = '\x00IMG:'
@@ -23,11 +25,13 @@ type ImageMatch = {
   src: string
   index: number
   link?: string // For linked images [![alt](img)](link)
+  width?: number // Explicit width in pixels (from HTML img tag)
 }
 
 type ImageData = {
   buffer: Buffer
   alt: string
+  width?: number // Explicit width in pixels
 }
 
 type PreparedImages = {
@@ -121,17 +125,17 @@ export async function outputWithImages(
 }
 
 async function outputImage(imageData: ImageData, isKittySupported: boolean): Promise<void> {
-  const { buffer, alt } = imageData
-  const imageColumns = calculateImageColumns()
+  const { buffer, alt, width } = imageData
+  const imageColumns = width ? pixelsToColumns(width) : calculateImageColumns()
 
   process.stdout.write('\n')
 
   if (isKittySupported) {
     process.stdout.write(IMAGE_INDENT)
-    writeKittyImage(buffer)
+    writeKittyImage(buffer, imageColumns)
   } else {
     const rendered = await terminalImage.buffer(buffer, {
-      width: IMAGE_WIDTH,
+      width: imageColumns,
       preferNativeRender: false,
     })
     // Indent each line of ANSI block output
@@ -151,6 +155,11 @@ function calculateImageColumns(): number {
   return Math.floor((termWidth - 2) * percentage)
 }
 
+/** Convert pixel width to terminal columns (~8px per character). */
+function pixelsToColumns(pixels: number): number {
+  return Math.round(pixels / 8)
+}
+
 function formatCaption(alt: string, imageWidth: number): string {
   if (!alt) return '\n'
 
@@ -161,9 +170,8 @@ function formatCaption(alt: string, imageWidth: number): string {
 }
 
 /** Write image using Kitty graphics protocol directly to stdout. */
-function writeKittyImage(buffer: Buffer): void {
+function writeKittyImage(buffer: Buffer, columns: number): void {
   const base64 = buffer.toString('base64')
-  const columns = calculateImageColumns()
 
   // Send in chunks
   for (let i = 0; i < base64.length; i += CHUNK_SIZE) {
@@ -188,6 +196,7 @@ function parseImageMatches(markdown: string): ImageMatch[] {
   // Reset regex state (global regexes maintain lastIndex across calls)
   LINKED_IMAGE_REGEX.lastIndex = 0
   IMAGE_REGEX.lastIndex = 0
+  HTML_IMG_REGEX.lastIndex = 0
 
   // First, find linked images [![alt](img)](url)
   while ((match = LINKED_IMAGE_REGEX.exec(markdown)) !== null) {
@@ -214,6 +223,25 @@ function parseImageMatches(markdown: string): ImageMatch[] {
         index: match.index,
       })
     }
+  }
+
+  // Find HTML img tags
+  while ((match = HTML_IMG_REGEX.exec(markdown)) !== null) {
+    const tag = match[0]
+    const src = match[1]!
+    // Extract alt attribute if present
+    const altMatch = /alt=["']([^"']*)["']/i.exec(tag)
+    const alt = altMatch?.[1] ?? ''
+    // Extract width attribute if present (pixels only)
+    const widthMatch = /width=["']?(\d+)["']?/i.exec(tag)
+    const width = widthMatch ? Number.parseInt(widthMatch[1]!, 10) : undefined
+    matches.push({
+      full: tag,
+      alt,
+      src,
+      index: match.index,
+      width,
+    })
   }
 
   // Sort by index for correct replacement order
@@ -263,7 +291,7 @@ async function loadImage(
   match: ImageMatch,
   basePath?: string
 ): Promise<ImageData | null> {
-  const { alt, src } = match
+  const { alt, src, width } = match
 
   let imagePath = src
   if (basePath && !src.startsWith('/') && !src.startsWith('http')) {
@@ -286,11 +314,11 @@ async function loadImage(
       if (contentType.includes('svg')) return null
 
       const arrayBuffer = await response.arrayBuffer()
-      return { buffer: Buffer.from(arrayBuffer), alt }
+      return { buffer: Buffer.from(arrayBuffer), alt, width }
     }
 
     if (!fs.existsSync(imagePath)) return null
-    return { buffer: fs.readFileSync(imagePath), alt }
+    return { buffer: fs.readFileSync(imagePath), alt, width }
   } catch {
     return null
   }
@@ -318,17 +346,17 @@ export async function renderImage(
   imageData: ImageData,
   isKittySupported: boolean
 ): Promise<number> {
-  const { buffer, alt } = imageData
-  const imageColumns = calculateImageColumns()
+  const { buffer, alt, width } = imageData
+  const imageColumns = width ? pixelsToColumns(width) : calculateImageColumns()
 
   process.stdout.write('\n')
 
   if (isKittySupported) {
     process.stdout.write(IMAGE_INDENT)
-    writeKittyImage(buffer)
+    writeKittyImage(buffer, imageColumns)
   } else {
     const rendered = await terminalImage.buffer(buffer, {
-      width: IMAGE_WIDTH,
+      width: imageColumns,
       preferNativeRender: false,
     })
     const indented = rendered
