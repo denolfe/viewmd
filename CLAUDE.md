@@ -30,10 +30,10 @@ Terminal markdown renderer built on `marked` + `marked-terminal`. Converts markd
 
 - **`lib/renderers.ts`** - Renderer extensions that wrap `marked-terminal` functions. Pattern: `getRenderer()` to get original, wrap it, assign back to `ext.renderer[key]`.
 - **`lib/images.ts`** - Image loading (local/remote), Kitty protocol for direct image output, ANSI block fallback via `terminal-image`.
-- **`lib/pager.ts`** - Vim-style pager with search (`/`, `?`), header navigation (`n`, `N`), mouse scroll.
+- **`lib/pager.ts`** - Less-style pager with search (`/`, `?`), header navigation (`n`, `N`), sticky headers, mouse scroll.
 
 ### Conventions
 
 - Image placeholders use null byte format: `\x00IMG:n\x00`
-- Heading lines marked with `\x01` prefix for pager navigation
+- Heading lines marked with `\x01{level}` prefix (e.g., `\x012` for H2) for pager navigation and sticky headers
 - `INDENT = 2` spaces for consistent left margin

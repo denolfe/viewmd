@@ -2,6 +2,11 @@
 
 Terminal markdown renderer with mermaid diagram support.
 
+- Mermaid diagrams → ASCII art
+- Inline images (iTerm2, Kitty, Sixel, ANSI fallback)
+- Syntax-highlighted code blocks with box borders
+- Less-style pager with search and sticky headers
+
 ![preview](preview.png)
 
 ## Usage
@@ -119,10 +124,14 @@ For long documents, sanemd automatically activates a `less`-like pager when:
 | `G` | Go to bottom |
 | `/` | Search forward |
 | `?` | Search backward |
-| `n` | Next match |
-| `N` | Previous match |
+| `n` | Next header |
+| `N` | Previous header |
 | `=` | Show position info |
 | `q` | Quit |
+
+### Sticky Headers
+
+When scrolled past a heading, ancestor headers appear dimmed at the top of the viewport, showing your position in the document hierarchy. For example, when reading content under an H3, the parent H2 and H1 are displayed above with a separator line.
 
 ### Bypassing the Pager
 
