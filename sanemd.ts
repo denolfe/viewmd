@@ -22,6 +22,7 @@ import {
   stripHeadingMarkers,
   styleH1,
   useCheckmark,
+  useDashBullet,
 } from './lib/renderers'
 import type { TerminalExtension } from './lib/renderers'
 import { readInput } from './lib/utils'
@@ -37,6 +38,7 @@ export {
   stripHeadingMarkers,
   styleH1,
   useCheckmark,
+  useDashBullet,
 }
 export type { TerminalExtension }
 
@@ -104,6 +106,7 @@ async function main(): Promise<void> {
   addCodeBlockBox(ext)
   fixCheckboxSpacing(ext)
   useCheckmark(ext)
+  useDashBullet(ext)
   collapseNestedListBlanks(ext)
   marked.use(ext)
 

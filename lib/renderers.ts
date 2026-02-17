@@ -100,6 +100,15 @@ export function useCheckmark(ext: TerminalExtension): void {
   }
 }
 
+/** Uses dash (-) instead of asterisk (*) for unordered list bullets. */
+export function useDashBullet(ext: TerminalExtension): void {
+  const orig = getRenderer(ext, 'list')
+  ext.renderer.list = function (token: Tokens.List) {
+    const result = orig.call(this, token)
+    return result ? result.replace(/^(\s*)\* /gm, '$1- ') : result
+  }
+}
+
 /** Adds left indent to paragraphs, headings, and tables. */
 export function addIndent(ext: TerminalExtension): void {
   const origParagraph = getRenderer(ext, 'paragraph')
