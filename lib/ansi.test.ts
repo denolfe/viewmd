@@ -1,11 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  stripAnsi,
-  visibleLength,
-  buildPositionMap,
-  injectHighlight,
-  ANSI,
-} from './ansi'
+import { stripAnsi, visibleLength, buildPositionMap, injectHighlight, ANSI } from './ansi'
 
 describe('stripAnsi', () => {
   test('removes color codes', () => {

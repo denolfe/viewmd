@@ -53,7 +53,7 @@ type ImageData = {
 function shouldPaginate(
   content: string,
   images: Map<string, ImageData>,
-  skipPager: boolean
+  skipPager: boolean,
 ): boolean {
   if (skipPager) return false
 

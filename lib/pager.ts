@@ -22,7 +22,7 @@ export function createPagerState(
   lines: Line[],
   images: Map<string, ImageData>,
   termHeight: number,
-  termWidth: number
+  termWidth: number,
 ): PagerState {
   return {
     lines,
@@ -103,10 +103,7 @@ export function formatInfo(state: PagerState): string {
 /**
  * Run interactive pager. Returns when user quits.
  */
-export async function runPager(
-  content: string,
-  images: Map<string, ImageData>
-): Promise<void> {
+export async function runPager(content: string, images: Map<string, ImageData>): Promise<void> {
   let termHeight = process.stdout.rows || 24
   let termWidth = process.stdout.columns || 80
 
@@ -158,7 +155,7 @@ export async function runPager(
   // Initial render
   await render(state)
 
-  return new Promise<void>((resolve) => {
+  return new Promise<void>(resolve => {
     const handleKey = async (data: Buffer) => {
       const key = parseKey(data.toString())
       const viewportHeight = state.termHeight - 1
@@ -286,9 +283,7 @@ async function handleSearch(params: {
   const prompt = direction === 'forward' ? '/' : '?'
 
   // Show search prompt
-  process.stdout.write(
-    ANSI.cursorTo(state.termHeight, 1) + ANSI.eraseLine + prompt
-  )
+  process.stdout.write(ANSI.cursorTo(state.termHeight, 1) + ANSI.eraseLine + prompt)
   process.stdout.write(ANSI.cursorShow)
 
   const pattern = await readLine(keyHandler)
@@ -316,7 +311,7 @@ async function handleSearch(params: {
 function readLine(pauseHandler: (data: Buffer) => void): Promise<string> {
   process.stdin.removeListener('data', pauseHandler)
 
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     let buffer = ''
 
     const handler = (data: Buffer) => {

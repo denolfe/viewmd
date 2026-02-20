@@ -86,10 +86,12 @@ export function collapseNestedListBlanks(ext: TerminalExtension): void {
   ext.renderer.list = function (token: Tokens.List) {
     const result = orig.call(this, token)
     if (!result) return result
-    return result
-      .split('\n')
-      .filter(line => !!line.replace(ANSI_REGEX, '').trim())
-      .join('\n') + '\n\n'
+    return (
+      result
+        .split('\n')
+        .filter(line => !!line.replace(ANSI_REGEX, '').trim())
+        .join('\n') + '\n\n'
+    )
   }
 }
 
@@ -222,7 +224,6 @@ export function addCodeBlockBox(ext: TerminalExtension): void {
     return `\n${topBorder}\n${empty}\n${boxed.join('\n')}\n${empty}\n${bottomBorder}\n\n`
   }
 }
-
 
 // --- Helpers ---
 

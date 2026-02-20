@@ -43,14 +43,14 @@ server.listen(3000)
 
 ### Tertiary Heading
 
-Regular paragraph text with **bold emphasis** and *italic emphasis* and ~~strikethrough~~ inline.
+Regular paragraph text with **bold emphasis** and _italic emphasis_ and ~~strikethrough~~ inline.
 
 Inline code: `const server = createServer()` and `pnpm install` in a sentence.
 
 - **Bold** in a list item
 - Uses `inline code` in a list
 - [Link text](https://example.com) in a list
-- Mixed: **bold**, `code`, and *italic* together
+- Mixed: **bold**, `code`, and _italic_ together
 - Plain list item
 
 1. First ordered item with `code`

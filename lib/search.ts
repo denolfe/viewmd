@@ -44,7 +44,7 @@ export function highlightLine(params: {
 }): string {
   const { content, matches, lineIndex } = params
   const lineMatches = matches
-    .filter((m) => m.lineIndex === lineIndex)
+    .filter(m => m.lineIndex === lineIndex)
     .sort((a, b) => b.start - a.start) // Process from end to preserve indices
 
   let result = content

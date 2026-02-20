@@ -48,10 +48,7 @@ export function supportsKittyProtocol(): boolean {
  * Prepare images: replace markdown image syntax with placeholders.
  * Returns modified markdown and map of placeholder -> image data.
  */
-export async function prepareImages(
-  markdown: string,
-  basePath?: string
-): Promise<PreparedImages> {
+export async function prepareImages(markdown: string, basePath?: string): Promise<PreparedImages> {
   // Resolve reference-style images to inline syntax first
   const resolved = resolveReferenceImages(markdown)
   const matches = parseImageMatches(resolved)
@@ -70,15 +67,12 @@ export async function prepareImages(
     if (imageData) {
       const id = `${IMAGE_PLACEHOLDER}${i}\x00`
       images.set(id, imageData)
-      result =
-        result.slice(0, match.index) + id + result.slice(match.index + match.full.length)
+      result = result.slice(0, match.index) + id + result.slice(match.index + match.full.length)
     } else {
       // Failed to load - use fallback text
       const fallback = formatFallback(match.alt, match.src, match.link)
       result =
-        result.slice(0, match.index) +
-        fallback +
-        result.slice(match.index + match.full.length)
+        result.slice(0, match.index) + fallback + result.slice(match.index + match.full.length)
     }
   }
 
@@ -92,7 +86,7 @@ export async function prepareImages(
  */
 export async function outputWithImages(
   rendered: string,
-  images: Map<string, ImageData>
+  images: Map<string, ImageData>,
 ): Promise<void> {
   const isKittySupported = supportsKittyProtocol()
 
@@ -287,10 +281,7 @@ function resolveReferenceImages(markdown: string): string {
   return result
 }
 
-async function loadImage(
-  match: ImageMatch,
-  basePath?: string
-): Promise<ImageData | null> {
+async function loadImage(match: ImageMatch, basePath?: string): Promise<ImageData | null> {
   const { alt, src, width } = match
 
   let imagePath = src
@@ -342,7 +333,7 @@ function formatFallback(alt: string, src: string, link?: string): string {
  */
 export async function renderImage(
   imageData: ImageData,
-  isKittySupported: boolean
+  isKittySupported: boolean,
 ): Promise<number> {
   const { buffer, alt, width } = imageData
   const imageColumns = width ? pixelsToColumns(width) : calculateImageColumns()

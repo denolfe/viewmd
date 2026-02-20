@@ -190,9 +190,7 @@ describe('findAncestorHeaders', () => {
     state.topLine = 2
 
     const ancestors = findAncestorHeaders(state)
-    expect(ancestors).toEqual([
-      { lineIndex: 0, level: 1, content: '# Title' },
-    ])
+    expect(ancestors).toEqual([{ lineIndex: 0, level: 1, content: '# Title' }])
   })
 
   test('returns H1 and H2 when under H2', () => {
@@ -260,8 +258,6 @@ describe('findAncestorHeaders', () => {
     state.topLine = 3
 
     const ancestors = findAncestorHeaders(state)
-    expect(ancestors).toEqual([
-      { lineIndex: 2, level: 1, content: '# New Title' },
-    ])
+    expect(ancestors).toEqual([{ lineIndex: 2, level: 1, content: '# New Title' }])
   })
 })

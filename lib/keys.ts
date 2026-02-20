@@ -23,37 +23,37 @@ export type KeyAction = (typeof KEY)[keyof typeof KEY]
 
 const KEY_MAP: Record<string, KeyAction> = {
   // Scroll down
-  'j': KEY.DOWN,
+  j: KEY.DOWN,
   '\x1b[B': KEY.DOWN, // Down arrow
   '\r': KEY.ENTER, // Enter (also scrolls down)
   '\n': KEY.ENTER,
 
   // Scroll up
-  'k': KEY.UP,
+  k: KEY.UP,
   '\x1b[A': KEY.UP, // Up arrow
 
   // Page down
   ' ': KEY.PAGE_DOWN,
-  'f': KEY.PAGE_DOWN,
+  f: KEY.PAGE_DOWN,
   '\x06': KEY.PAGE_DOWN, // Ctrl+F
   '\x1b[6~': KEY.PAGE_DOWN, // Page Down key
 
   // Page up
-  'b': KEY.PAGE_UP,
+  b: KEY.PAGE_UP,
   '\x02': KEY.PAGE_UP, // Ctrl+B
   '\x1b[5~': KEY.PAGE_UP, // Page Up key
 
   // Half page
-  'd': KEY.HALF_DOWN,
+  d: KEY.HALF_DOWN,
   '\x04': KEY.HALF_DOWN, // Ctrl+D
-  'u': KEY.HALF_UP,
-  'w': KEY.HALF_UP,
+  u: KEY.HALF_UP,
+  w: KEY.HALF_UP,
   '\x15': KEY.HALF_UP, // Ctrl+U
 
   // Jump
-  'g': KEY.TOP,
+  g: KEY.TOP,
   '\x1b[H': KEY.TOP, // Home key
-  'G': KEY.BOTTOM,
+  G: KEY.BOTTOM,
   '\x1b[F': KEY.BOTTOM, // End key
 
   // Search
@@ -61,15 +61,15 @@ const KEY_MAP: Record<string, KeyAction> = {
   '?': KEY.SEARCH_BACK,
 
   // Header navigation
-  'n': KEY.NEXT_HEADER,
-  'N': KEY.PREV_HEADER,
+  n: KEY.NEXT_HEADER,
+  N: KEY.PREV_HEADER,
 
   // Info
   '=': KEY.INFO,
   '\x07': KEY.INFO, // Ctrl+G
 
   // Quit
-  'q': KEY.QUIT,
+  q: KEY.QUIT,
   '\x03': KEY.QUIT, // Ctrl+C
 }
 

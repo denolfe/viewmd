@@ -65,7 +65,6 @@ function renderMarkdownWithCheckboxFix(md: string): string {
   return instance.parse(md) as string
 }
 
-
 function renderMarkdownWithNestedListFix(md: string): string {
   const instance = new Marked()
   const extension = markedTerminal({ width: 80, tab: 2 })
@@ -518,7 +517,8 @@ describe('prepareImages', () => {
   })
 
   test('resolves reference-style linked images', async () => {
-    const input = '[![Alt][img]][link]\n\n[img]: https://example.com/badge.svg\n[link]: https://example.com/page'
+    const input =
+      '[![Alt][img]][link]\n\n[img]: https://example.com/badge.svg\n[link]: https://example.com/page'
     const { markdown } = await prepareImages(input)
 
     expect(markdown).toContain('Alt →')
