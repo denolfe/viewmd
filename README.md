@@ -9,9 +9,20 @@ Terminal markdown renderer with mermaid diagram support.
 
 <img src="preview.png" alt="Preview of sanemd rendering a markdown document with various features" width="600"/>
 
+## Installation
+
+_Prerequisites: Bun_
+
+```sh
+git clone git@github.com:denolfe/sanemd.git
+cd sanemd
+bun install
+bun link
+```
+
 ## Usage
 
-```bash
+```sh
 # From file
 sanemd README.md
 
