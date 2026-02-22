@@ -1,10 +1,10 @@
 {
   "name": "sanemd",
-  "module": "sanemd.ts",
+  "module": "src/sanemd.ts",
   "type": "module",
   "private": true,
   "bin": {
-    "sanemd": "./sanemd.ts"
+    "sanemd": "./src/sanemd.ts"
   },
   "scripts": {
     "start": "bun index.ts",

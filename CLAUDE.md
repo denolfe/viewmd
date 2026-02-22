@@ -5,13 +5,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-bun test                    # Run tests (uses bun:test, not vitest)
-bun test --watch            # Watch mode
-bun test lib/ansi.test.ts   # Single test file
-bun run typecheck           # Type check
+bun test                        # Run tests (uses bun:test, not vitest)
+bun test --watch                # Watch mode
+bun test src/lib/ansi.test.ts   # Single test file
+bun run typecheck               # Type check
 
-./sanemd.ts README.md       # Run CLI directly
-cat README.md | ./sanemd.ts # Stdin mode
+./src/sanemd.ts README.md       # Run CLI directly
+cat README.md | ./src/sanemd.ts # Stdin mode
 ```
 
 ## Architecture
@@ -20,17 +20,17 @@ Terminal markdown renderer built on `marked` + `marked-terminal`. Converts markd
 
 ### Pipeline
 
-1. **Input** (`sanemd.ts`) - Read from file or stdin
-2. **Mermaid** (`lib/renderers.ts`) - Convert mermaid blocks to ASCII art via `beautiful-mermaid`
-3. **Images** (`lib/images.ts`) - Replace image syntax with placeholders, load image data
+1. **Input** (`src/sanemd.ts`) - Read from file or stdin
+2. **Mermaid** (`src/lib/renderers.ts`) - Convert mermaid blocks to ASCII art via `beautiful-mermaid`
+3. **Images** (`src/lib/images.ts`) - Replace image syntax with placeholders, load image data
 4. **Parse** - `marked` with customized `marked-terminal` renderers
 5. **Output** - Direct write or pager mode based on content length
 
 ### Key Modules
 
-- **`lib/renderers.ts`** - Renderer extensions that wrap `marked-terminal` functions. Pattern: `getRenderer()` to get original, wrap it, assign back to `ext.renderer[key]`.
-- **`lib/images.ts`** - Image loading (local/remote), Kitty protocol for direct image output, ANSI block fallback via `terminal-image`.
-- **`lib/pager.ts`** - Less-style pager with search (`/`, `?`), header navigation (`n`, `N`), sticky headers, mouse scroll.
+- **`src/lib/renderers.ts`** - Renderer extensions that wrap `marked-terminal` functions. Pattern: `getRenderer()` to get original, wrap it, assign back to `ext.renderer[key]`.
+- **`src/lib/images.ts`** - Image loading (local/remote), Kitty protocol for direct image output, ANSI block fallback via `terminal-image`.
+- **`src/lib/pager.ts`** - Less-style pager with search (`/`, `?`), header navigation (`n`, `N`), sticky headers, mouse scroll.
 
 ### Conventions
 
