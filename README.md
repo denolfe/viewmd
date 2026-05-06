@@ -38,7 +38,7 @@ sanemd --no-pager README.md
 
 ### Mermaid Diagrams
 
-Converts mermaid code blocks to ASCII art using [beautiful-mermaid](https://github.com/nicober/beautiful-mermaid).
+Converts mermaid code blocks to ASCII art using [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid).
 
 ### Inline Images
 
