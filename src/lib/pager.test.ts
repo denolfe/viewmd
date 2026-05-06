@@ -229,7 +229,7 @@ describe('findAncestorHeaders', () => {
     ])
   })
 
-  test('only returns ancestors, not siblings', () => {
+  test('includes siblings under the same parent', () => {
     const lines: Line[] = [
       { content: '# Title', headerLevel: 1 },
       { content: '## Section A', headerLevel: 2 },
@@ -243,11 +243,12 @@ describe('findAncestorHeaders', () => {
     const ancestors = findAncestorHeaders(state)
     expect(ancestors).toEqual([
       { lineIndex: 0, level: 1, content: '# Title' },
+      { lineIndex: 1, level: 2, content: '## Section A' },
       { lineIndex: 3, level: 2, content: '## Section B' },
     ])
   })
 
-  test('skips headers at same or higher level', () => {
+  test('includes sibling H1s when at top level', () => {
     const lines: Line[] = [
       { content: '# Title', headerLevel: 1 },
       { content: '## Old Section', headerLevel: 2 },
@@ -258,6 +259,9 @@ describe('findAncestorHeaders', () => {
     state.topLine = 3
 
     const ancestors = findAncestorHeaders(state)
-    expect(ancestors).toEqual([{ lineIndex: 2, level: 1, content: '# New Title' }])
+    expect(ancestors).toEqual([
+      { lineIndex: 0, level: 1, content: '# Title' },
+      { lineIndex: 2, level: 1, content: '# New Title' },
+    ])
   })
 })
