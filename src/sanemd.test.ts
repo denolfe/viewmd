@@ -373,16 +373,15 @@ describe('addBlockquotePipe', () => {
 })
 
 describe('addCodeBlockBox', () => {
-  test('code block has left-side border', () => {
+  test('code block is wrapped in box-drawing characters', () => {
     const output = renderMarkdown('```ts\nconst x = 1\n```')
     const plain = stripAnsi(output)
 
     expect(plain).toContain('┌─ ts')
     expect(plain).toContain('│')
     expect(plain).toContain('└')
-    // No right-side borders
-    expect(plain).not.toContain('┐')
-    expect(plain).not.toContain('┘')
+    expect(plain).toContain('┐')
+    expect(plain).toContain('┘')
   })
 
   test('text code blocks are boxed without language label', () => {
@@ -394,7 +393,7 @@ describe('addCodeBlockBox', () => {
     expect(plain).not.toContain('text') // no language label in border
   })
 
-  test('code content is indented after border', () => {
+  test('code content is indented inside box', () => {
     const output = renderMarkdown('```ts\nconst x = 1\n```')
     const plain = stripAnsi(output)
 

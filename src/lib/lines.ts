@@ -12,16 +12,22 @@ const IMAGE_PLACEHOLDER_REGEX = /^(?:\x1b\[[0-9;]*m|\s)*(\x00IMG:\d+\x00)(?:\x1b
 
 /**
  * Wrap a single line to fit within width, preserving ANSI codes.
- * Wraps at word boundaries when possible.
+ * Wraps at word boundaries when possible. Preserves leading indent.
  * Returns array of wrapped line segments.
  */
 export function wrapLine(line: string, width: number): string[] {
   const visLen = visibleLength(line)
   if (visLen <= width) return [line]
 
+  // Extract leading indent (spaces at start, ignoring ANSI codes)
+  const indentMatch = line.match(/^(\x1b\[[0-9;]*m)*(\s*)/)
+  const indent = indentMatch ? indentMatch[2] || '' : ''
+  const indentLen = indent.length
+
   const result: string[] = []
   let remaining = line
   let activeAnsi = '' // Track active ANSI codes to reapply
+  let isFirst = true
 
   while (visibleLength(remaining) > width) {
     let chunk = ''
@@ -57,6 +63,13 @@ export function wrapLine(line: string, width: number): string[] {
 
     result.push(chunk)
     remaining = activeAnsi + remaining.slice(i)
+    // Add indent to continuation lines
+    if (isFirst && indentLen > 0) {
+      isFirst = false
+    }
+    if (!isFirst && visibleLength(remaining) > 0 && !remaining.startsWith(indent)) {
+      remaining = indent + remaining
+    }
   }
 
   if (remaining) result.push(remaining)

@@ -243,7 +243,7 @@ async function render(state: PagerState): Promise<void> {
     if (line.imageRef) {
       const imageData = state.images.get(line.imageRef)
       const alt = imageData?.alt || 'Image'
-      const { output, rows } = formatImageBox(alt)
+      const { output, rows } = formatImageBox(alt, state.termWidth)
       if (rowsUsed + rows <= viewportHeight) {
         process.stdout.write(output)
         rowsUsed += rows
@@ -449,10 +449,13 @@ function showInfo(state: PagerState): void {
 }
 
 /** Format image placeholder with left-side border. */
-function formatImageBox(alt: string): { output: string; rows: number } {
+function formatImageBox(alt: string, maxWidth: number): { output: string; rows: number } {
   const TAB = '  '
+  const maxAltLen = Math.max(10, maxWidth - 5) // 5 = TAB (2) + │ (1) + spaces (2)
+  const truncatedAlt = alt.length > maxAltLen ? alt.slice(0, maxAltLen - 1) + '…' : alt
+
   const top = colors.dim(`${TAB}┌─ Image`)
-  const content = `${colors.dim(`${TAB}│`)}  ${colors.imageLabel(alt)}`
+  const content = `${colors.dim(`${TAB}│`)}  ${colors.imageLabel(truncatedAlt)}`
   const bottom = colors.dim(`${TAB}└─`)
 
   const output = `${top}\n${content}\n${bottom}\n`

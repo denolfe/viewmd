@@ -95,10 +95,7 @@ async function main(): Promise<void> {
   const withKbd = replaceKbdTags(withMermaid)
   const { markdown: withPlaceholders, images } = await prepareImages(withKbd, basePath)
 
-  const termWidth = process.stdout.columns
   const ext = markedTerminal({
-    width: termWidth ? Math.min(termWidth, 100) : undefined,
-    reflowText: !!termWidth,
     tab: INDENT,
     ...terminalColors,
   })
