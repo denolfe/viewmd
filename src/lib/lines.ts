@@ -20,7 +20,7 @@ export function wrapLine(line: string, width: number): string[] {
   if (visLen <= width) return [line]
 
   // Extract leading indent (spaces at start, ignoring ANSI codes)
-  const indentMatch = line.match(/^(\x1b\[[0-9;]*m)*(\s*)/)
+  const indentMatch = line.match(/^(?:\x1b\[[0-9;]*m|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\))*(\s*)/)
   const indent = indentMatch ? indentMatch[2] || '' : ''
   const indentLen = indent.length
 
@@ -38,21 +38,29 @@ export function wrapLine(line: string, width: number): string[] {
     let lastSpaceVisCount = 0
 
     while (i < remaining.length && visibleCount < width) {
-      const match = remaining.slice(i).match(/^\x1b\[[0-9;]*m/)
-      if (match) {
-        activeAnsi = match[0]
-        chunk += match[0]
-        i += match[0].length
-      } else {
-        if (remaining[i] === ' ') {
-          lastSpaceIdx = i
-          lastSpaceChunkLen = chunk.length + 1
-          lastSpaceVisCount = visibleCount + 1
-        }
-        chunk += remaining[i]
-        visibleCount++
-        i++
+      // Check for SGR escape sequence
+      const sgrMatch = remaining.slice(i).match(/^\x1b\[[0-9;]*m/)
+      if (sgrMatch) {
+        activeAnsi = sgrMatch[0]
+        chunk += sgrMatch[0]
+        i += sgrMatch[0].length
+        continue
       }
+      // Check for OSC 8 hyperlink sequence
+      const osc8Match = remaining.slice(i).match(/^\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)/)
+      if (osc8Match) {
+        chunk += osc8Match[0]
+        i += osc8Match[0].length
+        continue
+      }
+      if (remaining[i] === ' ') {
+        lastSpaceIdx = i
+        lastSpaceChunkLen = chunk.length + 1
+        lastSpaceVisCount = visibleCount + 1
+      }
+      chunk += remaining[i]
+      visibleCount++
+      i++
     }
 
     // If we found a space and it's not at the very start, wrap there

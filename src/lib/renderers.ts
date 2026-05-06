@@ -188,6 +188,17 @@ export function replaceKbdTags(markdown: string): string {
   return markdown.replace(KBD_REGEX, (_, content: string) => colors.kbd(content))
 }
 
+/** Hides URLs in links, showing only the link text. */
+export function hideUrlsInLinks(ext: TerminalExtension): void {
+  const orig = getRenderer(ext, 'link')
+  ext.renderer.link = function (token: Tokens.Link) {
+    const result = orig.call(this, token)
+    if (!result) return result
+    // Remove the (url) part from rendered output
+    return result.replace(/\s*\([^)]+\)/g, '')
+  }
+}
+
 /** Wraps code blocks in a box-drawing border with language label. */
 export function addCodeBlockBox(ext: TerminalExtension): void {
   const orig = getRenderer(ext, 'code')

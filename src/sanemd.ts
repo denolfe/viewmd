@@ -16,6 +16,7 @@ import {
   collapseNestedListBlanks,
   fixCheckboxSpacing,
   fixListInlineTokens,
+  hideUrlsInLinks,
   INDENT,
   MERMAID_BLOCK_REGEX,
   replaceKbdTags,
@@ -108,6 +109,7 @@ async function main(): Promise<void> {
   useCheckmark(ext)
   useDashBullet(ext)
   collapseNestedListBlanks(ext)
+  hideUrlsInLinks(ext)
   marked.use(ext)
 
   const rendered = '\n\n' + (marked(withPlaceholders) as string)

@@ -1,4 +1,5 @@
-const ANSI_REGEX = /\x1b\[[0-9;]*m/g
+// Combined regex for stripping ANSI: SGR codes + OSC 8 hyperlinks
+const ANSI_REGEX = /\x1b\[[0-9;]*m|\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)/g
 
 /** ANSI escape sequences for terminal control. */
 export const ANSI = {
@@ -34,10 +35,16 @@ export function buildPositionMap(s: string): number[] {
   let i = 0
 
   while (i < s.length) {
-    // Check for ANSI escape sequence
-    const match = s.slice(i).match(/^\x1b\[[0-9;]*m/)
-    if (match) {
-      i += match[0].length
+    // Check for SGR escape sequence
+    const sgrMatch = s.slice(i).match(/^\x1b\[[0-9;]*m/)
+    if (sgrMatch) {
+      i += sgrMatch[0].length
+      continue
+    }
+    // Check for OSC 8 hyperlink sequence
+    const osc8Match = s.slice(i).match(/^\x1b\]8;;[^\x07\x1b]*(?:\x07|\x1b\\)/)
+    if (osc8Match) {
+      i += osc8Match[0].length
       continue
     }
     map[visibleIdx] = i
