@@ -448,24 +448,13 @@ function showInfo(state: PagerState): void {
   process.stdout.write(ANSI.cursorTo(state.termHeight, 1) + ANSI.eraseLine + info)
 }
 
-/** Format image placeholder as a framed box with title. */
+/** Format image placeholder with left-side border. */
 function formatImageBox(alt: string): { output: string; rows: number } {
   const TAB = '  '
-  const pad = 2
-  const sp = ' '.repeat(pad)
-  const minWidth = 20
-  const contentWidth = Math.max(minWidth, alt.length)
-  const inner = contentWidth + pad * 2
+  const top = colors.dim(`${TAB}┌─ Image`)
+  const content = `${colors.dim(`${TAB}│`)}  ${colors.imageLabel(alt)}`
+  const bottom = colors.dim(`${TAB}└─`)
 
-  const title = 'Image'
-  const titleLen = title.length + 2
-  const remaining = Math.max(0, inner - titleLen - 1)
-
-  const top = colors.dim(`${TAB}┌─ ${title} ${'─'.repeat(remaining)}┐`)
-  const bottom = colors.dim(`${TAB}└${'─'.repeat(inner)}┘`)
-  const empty = `${colors.dim(`${TAB}│`)}${' '.repeat(inner)}${colors.dim('│')}`
-  const content = `${colors.dim(`${TAB}│`)}${sp}${colors.imageLabel(alt)}${' '.repeat(contentWidth - alt.length)}${sp}${colors.dim('│')}`
-
-  const output = `${top}\n${empty}\n${content}\n${empty}\n${bottom}\n`
-  return { output, rows: 5 }
+  const output = `${top}\n${content}\n${bottom}\n`
+  return { output, rows: 3 }
 }

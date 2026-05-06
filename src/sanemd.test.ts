@@ -373,15 +373,16 @@ describe('addBlockquotePipe', () => {
 })
 
 describe('addCodeBlockBox', () => {
-  test('code block is wrapped in box-drawing characters', () => {
+  test('code block has left-side border', () => {
     const output = renderMarkdown('```ts\nconst x = 1\n```')
     const plain = stripAnsi(output)
 
-    expect(plain).toContain('┌')
-    expect(plain).toContain('┐')
-    expect(plain).toContain('└')
-    expect(plain).toContain('┘')
+    expect(plain).toContain('┌─ ts')
     expect(plain).toContain('│')
+    expect(plain).toContain('└')
+    // No right-side borders
+    expect(plain).not.toContain('┐')
+    expect(plain).not.toContain('┘')
   })
 
   test('text code blocks are boxed without language label', () => {
@@ -393,30 +394,13 @@ describe('addCodeBlockBox', () => {
     expect(plain).not.toContain('text') // no language label in border
   })
 
-  test('box width matches longest line', () => {
-    const output = renderMarkdown('```ts\nshort\nthis is a longer line\n```')
-    const plain = stripAnsi(output)
-
-    const topLine = plain.split('\n').find(l => l.includes('┌'))
-    const bottomLine = plain.split('\n').find(l => l.includes('└'))
-    expect(topLine).toBeTruthy()
-    expect(bottomLine).toBeTruthy()
-    // Top and bottom borders should be the same width
-    expect(stripAnsi(topLine!).length).toBe(stripAnsi(bottomLine!).length)
-  })
-
-  test('box has vertical padding lines', () => {
+  test('code content is indented after border', () => {
     const output = renderMarkdown('```ts\nconst x = 1\n```')
     const plain = stripAnsi(output)
 
     const lines = plain.split('\n')
-    const topIdx = lines.findIndex(l => l.includes('┌'))
-    const bottomIdx = lines.findIndex(l => l.includes('└'))
-    // Line after top border and line before bottom border should be empty padding
-    const afterTop = lines[topIdx + 1]
-    const beforeBottom = lines[bottomIdx - 1]
-    expect(afterTop).toMatch(/│\s+│/)
-    expect(beforeBottom).toMatch(/│\s+│/)
+    const contentLine = lines.find(l => l.includes('const x'))
+    expect(contentLine).toMatch(/│\s+const x = 1/)
   })
 })
 

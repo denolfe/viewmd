@@ -67,4 +67,11 @@ describe('splitIntoLines', () => {
     expect(result[0]!.content).toBe('## Title')
     expect(result[0]!.headerLevel).toBe(1)
   })
+
+  test('wrapped header only has headerLevel on first segment', () => {
+    const result = splitIntoLines('\x012A Long Header Title', 10)
+    expect(result.length).toBe(2)
+    expect(result[0]!.headerLevel).toBe(2)
+    expect(result[1]!.headerLevel).toBeUndefined()
+  })
 })

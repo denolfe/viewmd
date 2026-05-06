@@ -71,10 +71,10 @@ export function splitIntoLines(content: string, width: number): Line[] {
       raw = raw.slice(2) // Skip marker + level digit
     }
 
-    // Wrap long lines
+    // Wrap long lines - only first segment keeps headerLevel
     const wrapped = wrapLine(raw, width)
-    for (const segment of wrapped) {
-      result.push({ content: segment, headerLevel })
+    for (let i = 0; i < wrapped.length; i++) {
+      result.push({ content: wrapped[i]!, headerLevel: i === 0 ? headerLevel : undefined })
     }
   }
 

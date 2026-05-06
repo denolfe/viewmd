@@ -188,7 +188,7 @@ export function replaceKbdTags(markdown: string): string {
   return markdown.replace(KBD_REGEX, (_, content: string) => colors.kbd(content))
 }
 
-/** Wraps code blocks in a box-drawing border. Includes language label except for `text`. */
+/** Wraps code blocks with left-side border and language label. */
 export function addCodeBlockBox(ext: TerminalExtension): void {
   const orig = getRenderer(ext, 'code')
   ext.renderer.code = function (token: Tokens.Code) {
@@ -198,30 +198,19 @@ export function addCodeBlockBox(ext: TerminalExtension): void {
     const stripTab = (line: string) => line.replace(LEADING_TAB_REGEX, '')
     const lines = result.split('\n').filter(l => l.trim())
     if (lines.length === 0) return result
-    const width = Math.max(...lines.map(l => visibleLen(stripTab(l))))
-    const pad = 2
-    const sp = ' '.repeat(pad)
-    const inner = width + pad * 2
 
     const lang = token.lang
     const hasLabel = lang !== 'text'
-    const labelLen = hasLabel ? lang.length + 2 : 0 // space before and after
-    const remaining = Math.max(0, inner - labelLen - (hasLabel ? 1 : 0))
     const topBorder = hasLabel
-      ? colors.dim(`${TAB}┌─ ${lang} ${'─'.repeat(remaining)}┐`)
-      : colors.dim(`${TAB}┌${'─'.repeat(inner)}┐`)
-    const bottomBorder = colors.dim(`${TAB}└${'─'.repeat(inner)}┘`)
+      ? colors.dim(`${TAB}┌─ ${lang}`)
+      : colors.dim(`${TAB}┌──`)
+    const bottomBorder = colors.dim(`${TAB}└─`)
 
-    const row = (content: string, vis: number) =>
-      `${colors.dim(`${TAB}│`)}${sp}${content}${' '.repeat(width - vis)}${sp}${colors.dim('│')}`
-    const empty = row('', 0)
+    const row = (content: string) => `${colors.dim(`${TAB}│`)}  ${content}`
 
-    const boxed = lines.map(l => {
-      const content = stripTab(l)
-      return row(content, visibleLen(content))
-    })
+    const boxed = lines.map(l => row(stripTab(l)))
 
-    return `\n${topBorder}\n${empty}\n${boxed.join('\n')}\n${empty}\n${bottomBorder}\n\n`
+    return `\n${topBorder}\n${boxed.join('\n')}\n${bottomBorder}\n\n`
   }
 }
 
