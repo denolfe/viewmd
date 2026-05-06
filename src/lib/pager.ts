@@ -373,31 +373,48 @@ function getHeaderIndices(state: PagerState): number[] {
 export type AncestorHeader = { lineIndex: number; level: number; content: string }
 
 /**
- * Find ancestor headers for the current viewport position.
- * Returns headers from H1 down to the parent of the current section.
+ * Find ancestor and sibling headers for the current viewport position.
+ * Returns ancestors (H1 down to parent) plus siblings at the current section's level.
  */
 export function findAncestorHeaders(state: PagerState): AncestorHeader[] {
-  const ancestors: AncestorHeader[] = []
   const { lines, topLine } = state
+  const ancestors: AncestorHeader[] = []
+  const siblings: AncestorHeader[] = []
 
-  // Find the current section's header (at or before topLine)
-  let currentLevel = 7 // Start above max level
+  let currentSectionLevel: number | undefined
+  let collectingSiblings = true
+  let currentLevel = 7
 
-  // Scan backwards from topLine to find ancestor headers
   for (let i = topLine; i >= 0; i--) {
     const line = lines[i]!
-    if (line.headerLevel !== undefined && line.headerLevel < currentLevel) {
+    if (line.headerLevel === undefined) continue
+
+    if (currentSectionLevel === undefined) {
+      currentSectionLevel = line.headerLevel
+      currentLevel = line.headerLevel
+    }
+
+    if (collectingSiblings && line.headerLevel === currentSectionLevel) {
+      // Sibling at same level (including current section)
+      siblings.unshift({
+        lineIndex: i,
+        level: line.headerLevel,
+        content: line.content,
+      })
+    } else if (line.headerLevel < currentLevel) {
+      // Ancestor - stop collecting siblings once we pass the parent
+      collectingSiblings = false
       ancestors.unshift({
         lineIndex: i,
         level: line.headerLevel,
         content: line.content,
       })
       currentLevel = line.headerLevel
-      if (currentLevel === 1) break // Found H1, done
+      if (currentLevel === 1) break
     }
   }
 
-  return ancestors
+  return [...ancestors, ...siblings]
 }
 
 /** Render sticky header area. Returns number of rows used. */
