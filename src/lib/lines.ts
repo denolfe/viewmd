@@ -12,6 +12,7 @@ const IMAGE_PLACEHOLDER_REGEX = /^(?:\x1b\[[0-9;]*m|\s)*(\x00IMG:\d+\x00)(?:\x1b
 
 /**
  * Wrap a single line to fit within width, preserving ANSI codes.
+ * Wraps at word boundaries when possible.
  * Returns array of wrapped line segments.
  */
 export function wrapLine(line: string, width: number): string[] {
@@ -26,22 +27,36 @@ export function wrapLine(line: string, width: number): string[] {
     let chunk = ''
     let visibleCount = 0
     let i = 0
+    let lastSpaceIdx = -1
+    let lastSpaceChunkLen = 0
+    let lastSpaceVisCount = 0
 
     while (i < remaining.length && visibleCount < width) {
       const match = remaining.slice(i).match(/^\x1b\[[0-9;]*m/)
       if (match) {
-        activeAnsi = match[0] // Track last ANSI code
+        activeAnsi = match[0]
         chunk += match[0]
         i += match[0].length
       } else {
+        if (remaining[i] === ' ') {
+          lastSpaceIdx = i
+          lastSpaceChunkLen = chunk.length + 1
+          lastSpaceVisCount = visibleCount + 1
+        }
         chunk += remaining[i]
         visibleCount++
         i++
       }
     }
 
+    // If we found a space and it's not at the very start, wrap there
+    if (lastSpaceIdx > 0 && lastSpaceVisCount < visibleCount) {
+      chunk = chunk.slice(0, lastSpaceChunkLen - 1) // Exclude the space
+      i = lastSpaceIdx + 1 // Skip the space
+    }
+
     result.push(chunk)
-    remaining = activeAnsi + remaining.slice(i) // Reapply active ANSI
+    remaining = activeAnsi + remaining.slice(i)
   }
 
   if (remaining) result.push(remaining)

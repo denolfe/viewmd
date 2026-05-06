@@ -69,9 +69,12 @@ describe('splitIntoLines', () => {
   })
 
   test('wrapped header only has headerLevel on first segment', () => {
-    const result = splitIntoLines('\x012A Long Header Title', 10)
-    expect(result.length).toBe(2)
+    const result = splitIntoLines('\x012A Long Header Title', 12)
+    expect(result.length).toBeGreaterThan(1)
     expect(result[0]!.headerLevel).toBe(2)
-    expect(result[1]!.headerLevel).toBeUndefined()
+    // All continuation segments should not have headerLevel
+    for (let i = 1; i < result.length; i++) {
+      expect(result[i]!.headerLevel).toBeUndefined()
+    }
   })
 })
