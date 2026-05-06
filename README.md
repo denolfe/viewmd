@@ -52,19 +52,20 @@ When scrolled past a heading, ancestor headers appear dimmed at the top of the v
 
 ### Keyboard Shortcuts
 
-| Key           | Action               |
-| ------------- | -------------------- |
-| `n`           | Next header          |
-| `N`           | Previous header      |
-| `j` / `↓`     | Scroll down one line |
-| `k` / `↑`     | Scroll up one line   |
-| `Space` / `f` | Page down            |
-| `b`           | Page up              |
-| `d`           | Half page down       |
-| `u`           | Half page up         |
-| `g`           | Go to top            |
-| `G`           | Go to bottom         |
-| `/`           | Search forward       |
-| `?`           | Search backward      |
-| `=`           | Show position info   |
-| `q`           | Quit                 |
+| Key           | Action                                  |
+| ------------- | --------------------------------------- |
+| `n`           | Next header                             |
+| `N`           | Previous header                         |
+| `j` / `↓`     | Scroll down one line                    |
+| `k` / `↑`     | Scroll up one line                      |
+| `Space` / `f` | Page down                               |
+| `b`           | Page up                                 |
+| `d`           | Half page down                          |
+| `u`           | Half page up                            |
+| `g`           | Go to top                               |
+| `G`           | Go to bottom                            |
+| `/`           | Search forward                          |
+| `?`           | Search backward                         |
+| `m`           | Toggle mouse scroll (off = select text) |
+| `=`           | Show position info                      |
+| `q`           | Quit                                    |

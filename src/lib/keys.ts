@@ -13,6 +13,7 @@ export const KEY = {
   SEARCH_BACK: 'search_back',
   NEXT_HEADER: 'next_header',
   PREV_HEADER: 'prev_header',
+  TOGGLE_MOUSE: 'toggle_mouse',
   INFO: 'info',
   QUIT: 'quit',
   ENTER: 'enter',
@@ -63,6 +64,9 @@ const KEY_MAP: Record<string, KeyAction> = {
   // Header navigation
   n: KEY.NEXT_HEADER,
   N: KEY.PREV_HEADER,
+
+  // Toggle mouse mode (allows text selection when off)
+  m: KEY.TOGGLE_MOUSE,
 
   // Info
   '=': KEY.INFO,

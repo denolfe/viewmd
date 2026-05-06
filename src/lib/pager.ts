@@ -150,7 +150,8 @@ export async function runPager(content: string, images: Map<string, ImageData>):
     process.stdin.setRawMode(true)
   }
   process.stdin.resume()
-  process.stdout.write(ANSI.cursorHide + ANSI.mouseOn)
+  process.stdout.write(ANSI.cursorHide)
+  let mouseEnabled = false
 
   // Initial render
   await render(state)
@@ -200,6 +201,10 @@ export async function runPager(content: string, images: Map<string, ImageData>):
         case KEY.PREV_HEADER:
           jumpToHeader(state, -1)
           break
+        case KEY.TOGGLE_MOUSE:
+          mouseEnabled = !mouseEnabled
+          process.stdout.write(mouseEnabled ? ANSI.mouseOn : ANSI.mouseOff)
+          return // Don't re-render
         case KEY.INFO:
           showInfo(state)
           return // Don't re-render, info shows on prompt line
