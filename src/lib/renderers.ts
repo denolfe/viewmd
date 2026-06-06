@@ -1,5 +1,6 @@
 import { renderMermaidAscii } from 'beautiful-mermaid'
 import type { RendererObject, Tokens } from 'marked'
+import Renderer from 'marked-terminal'
 import type { TerminalExtension } from 'marked-terminal'
 
 import { colors } from './colors'
@@ -55,7 +56,7 @@ export function fixListInlineTokens(ext: TerminalExtension): void {
     for (const item of token.items) {
       for (const t of item.tokens) {
         if (t.type === 'text' && 'tokens' in t && t.tokens) {
-          ;(t as { type: string }).type = 'paragraph'
+          ; (t as { type: string }).type = 'paragraph'
         }
       }
     }
@@ -143,6 +144,29 @@ export function addIndent(ext: TerminalExtension): void {
       .split('\n')
       .map(line => (line.trim() ? TAB + line : line))
       .join('\n')
+  }
+}
+
+/** Makes table header cells white and bold. */
+export function styleTableHeader(ext: TerminalExtension): void {
+  const origTable = getRenderer(ext, 'table')
+  ext.renderer.table = function (token: Tokens.Table) {
+    const proto = Renderer.prototype as any
+    const origTableCell = proto.tablecell
+    let cellIndex = 0
+
+    proto.tablecell = function (content: Tokens.TableCell) {
+      const result = origTableCell.call(this, content)
+      if (cellIndex < token.header.length) {
+        cellIndex++
+        return colors.tableHeader(result)
+      }
+      return result
+    }
+
+    const result = origTable.call(this, token)
+    proto.tablecell = origTableCell
+    return result
   }
 }
 

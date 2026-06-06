@@ -23,6 +23,7 @@ import {
   replaceMermaidBlocks,
   stripHeadingMarkers,
   styleH1,
+  styleTableHeader,
   useCheckmark,
   useDashBullet,
 } from './lib/renderers'
@@ -40,6 +41,7 @@ export {
   replaceKbdTags,
   stripHeadingMarkers,
   styleH1,
+  styleTableHeader,
   useCheckmark,
   useDashBullet,
 }
@@ -105,6 +107,7 @@ async function main(): Promise<void> {
   styleH1(ext)
   addBlockquotePipe(ext)
   addCodeBlockBox(ext)
+  styleTableHeader(ext)
   fixCheckboxSpacing(ext)
   useCheckmark(ext)
   useDashBullet(ext)

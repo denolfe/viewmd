@@ -27,6 +27,7 @@ type RendererColors = {
   imageLabel: ChalkInstance
   imagePath: ChalkInstance
   kbd: ChalkInstance
+  tableHeader: ChalkInstance
 }
 
 /** VS Code Dark+ terminal theme */
@@ -48,7 +49,7 @@ const theme: Theme = {
 export const terminalColors: MarkedTerminalOptions = {
   firstHeading: chalk.hex('#000000').bold.bgHex(theme.cyan),
   heading: chalk.hex(theme.cyan).bold,
-  codespan: chalk.hex(theme.red).bgHex(theme.background),
+  codespan: chalk.hex(theme.foreground).bgHex('#3c3c3c'),
   code: chalk.hex(theme.foreground),
   blockquote: chalk.hex(theme.foregroundDim).italic,
   link: chalk.hex(theme.blue),
@@ -68,4 +69,5 @@ export const colors: RendererColors = {
   imageLabel: chalk.hex(theme.foregroundMuted),
   imagePath: chalk.hex(theme.foregroundMuted),
   kbd: chalk.hex(theme.foreground).bgHex('#3a3a3a'),
+  tableHeader: chalk.hex(theme.foreground).bold,
 }

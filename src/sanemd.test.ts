@@ -17,6 +17,7 @@ import {
   replaceKbdTags,
   replaceMermaidBlocks,
   stripHeadingMarkers,
+  styleTableHeader,
 } from './sanemd'
 import { splitIntoLines } from './lib/lines'
 import { createPagerState, scroll, isAtEnd, formatInfo } from './lib/pager'
@@ -46,6 +47,7 @@ function renderMarkdown(md: string): string {
   addIndent(extension)
   addBlockquotePipe(extension)
   addCodeBlockBox(extension)
+  styleTableHeader(extension)
   instance.use(extension)
   return instance.parse(md) as string
 }
@@ -341,6 +343,14 @@ describe('addIndent', () => {
     for (const line of plain.split('\n')) {
       if (line.trim()) expect(line).toMatch(/^\s{2}/)
     }
+  })
+
+  test('table headers are white and bold', () => {
+    const output = renderMarkdown('| Name | Age |\n|------|-----|\n| Alice | 30 |\n| Bob | 25 |')
+    const lines = output.split('\n')
+    const headerLine = lines.find(l => l.replace(/\x1b\[[0-9;]*m/g, '').includes('Name'))
+    expect(headerLine).toBeTruthy()
+    expect(headerLine).toContain('\x1b[1m')
   })
 })
 

@@ -22,6 +22,10 @@ type TerminalExtension = MarkedExtension & {
 }
 
 declare module 'marked-terminal' {
+  class Renderer {
+    constructor(options?: TerminalRendererOptions, highlightOptions?: any)
+  }
+  export default Renderer
   export { TerminalExtension, TerminalRendererOptions }
   export function markedTerminal(options?: TerminalRendererOptions): TerminalExtension
 }
