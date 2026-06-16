@@ -6,6 +6,7 @@ import type { Focus } from './keys'
 import type { Node, TocEntry } from './ast'
 import { mapKey } from './keys'
 import { Viewer } from './Viewer'
+import { Toc } from './Toc'
 import { StatusLine } from './StatusLine'
 import { StickyHeader } from './StickyHeader'
 
@@ -99,7 +100,7 @@ export function App({ nodes, toc, title }: Props) {
         <box flexDirection="row" flexGrow={1}>
           {hasToc && (
             <box width={28} borderColor="#666666">
-              <text fg="#9d9d9d">TOC (Task 9)</text>
+              <Toc toc={toc} />
             </box>
           )}
           <Viewer nodes={nodes} />
