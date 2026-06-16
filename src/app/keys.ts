@@ -65,9 +65,8 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
     case 'question':
       return { kind: 'startSearch', dir: 'backward' }
     case 'n':
+      if (ev.shift) return ctx.searchActive ? { kind: 'prevMatch' } : { kind: 'prevHeading' }
       return ctx.searchActive ? { kind: 'nextMatch' } : { kind: 'nextHeading' }
-    case 'N':
-      return ctx.searchActive ? { kind: 'prevMatch' } : { kind: 'prevHeading' }
     case 'escape':
       return { kind: 'clearSearch' }
     default:

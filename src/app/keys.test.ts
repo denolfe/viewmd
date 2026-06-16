@@ -42,11 +42,11 @@ describe('mapKey (viewer focus)', () => {
       kind: 'nextHeading',
     })
   })
-  test('N -> prevMatch when search active, prevHeading otherwise', () => {
-    expect(mapKey(k({ name: 'N' }), 'viewer', { searchActive: true })).toEqual({
+  test('shift-n -> prevMatch when search active, prevHeading otherwise', () => {
+    expect(mapKey(k({ name: 'n', shift: true }), 'viewer', { searchActive: true })).toEqual({
       kind: 'prevMatch',
     })
-    expect(mapKey(k({ name: 'N' }), 'viewer', { searchActive: false })).toEqual({
+    expect(mapKey(k({ name: 'n', shift: true }), 'viewer', { searchActive: false })).toEqual({
       kind: 'prevHeading',
     })
   })
