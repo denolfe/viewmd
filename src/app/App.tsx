@@ -5,6 +5,7 @@ import type { AppState, ScrollboxHandle } from './state'
 import type { Focus } from './keys'
 import type { Node, TocEntry } from './ast'
 import { mapKey } from './keys'
+import { dispatch } from './dispatch'
 import { Viewer } from './Viewer'
 import { Toc } from './Toc'
 import { StatusLine } from './StatusLine'
@@ -61,34 +62,9 @@ export function App({ nodes, toc, title }: Props) {
   )
 
   useKeyboard(ev => {
+    if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
-    switch (action.kind) {
-      case 'quit':
-        renderer.destroy()
-        return
-      case 'scrollLine':
-        viewerRef.current?.scrollBy(action.delta)
-        return
-      case 'scrollPage':
-        viewerRef.current?.scrollBy(action.delta * (renderer.height - 2))
-        return
-      case 'scrollHalf':
-        viewerRef.current?.scrollBy(action.delta * Math.floor((renderer.height - 2) / 2))
-        return
-      case 'top':
-        viewerRef.current?.scrollTo(0)
-        return
-      case 'bottom':
-        viewerRef.current?.scrollToBottom()
-        return
-      case 'focusSidebar':
-        if (toc.length) setFocus('sidebar')
-        return
-      case 'focusViewer':
-        setFocus('viewer')
-        return
-      // nextHeading/prevHeading/tocSelect/search wired in later tasks
-    }
+    dispatch(action, state, toc, renderer.height, () => renderer.destroy())
   })
 
   const hasToc = toc.length > 0
