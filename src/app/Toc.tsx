@@ -17,10 +17,14 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
         const isCurrent = e.id === currentHeadingId
         const isCursor = focus === 'sidebar' && e.id === tocCursorId
         return (
-          <box key={e.id} flexDirection="row" backgroundColor={isCursor ? theme.tocFocusBg : undefined}>
+          <box
+            key={e.id}
+            flexDirection="row"
+            backgroundColor={isCursor ? theme.tocFocusBg : undefined}
+          >
             <text fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}>
-              {indent}{marker}{' '}
-              {isCurrent ? <strong>{e.text}</strong> : e.text}
+              {indent}
+              {marker} {isCurrent ? <strong>{e.text}</strong> : e.text}
             </text>
           </box>
         )

@@ -7,7 +7,11 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
     return (
       <box id={node.id} marginY={1}>
         <text bg={theme.h1Bg} fg={theme.h1Fg}>
-          <strong>{` `}<InlineRenderer nodes={node.text} />{` `}</strong>
+          <strong>
+            {` `}
+            <InlineRenderer nodes={node.text} />
+            {` `}
+          </strong>
         </text>
       </box>
     )
@@ -15,7 +19,9 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
   return (
     <box id={node.id} marginTop={1}>
       <text fg={theme.heading}>
-        <strong>{'#'.repeat(node.level)}{' '}<InlineRenderer nodes={node.text} /></strong>
+        <strong>
+          {'#'.repeat(node.level)} <InlineRenderer nodes={node.text} />
+        </strong>
       </text>
     </box>
   )

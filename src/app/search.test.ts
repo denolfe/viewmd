@@ -52,8 +52,8 @@ describe('findMatches', () => {
     const headerMatch = findMatches(nodes, 'H1')
     const bodyMatch = findMatches(nodes, 'target')
     expect(headerMatch.length).toBe(1)
-    expect(headerMatch[0]?.inlinePath[0]).toBe(-1)  // header row sentinel
+    expect(headerMatch[0]?.inlinePath[0]).toBe(-1) // header row sentinel
     expect(bodyMatch.length).toBe(1)
-    expect(bodyMatch[0]?.inlinePath[0]).toBe(0)  // first body row
+    expect(bodyMatch[0]?.inlinePath[0]).toBe(0) // first body row
   })
 })

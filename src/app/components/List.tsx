@@ -8,7 +8,9 @@ export function List({ node }: { node: Extract<Node, { kind: 'list' }> }) {
       {node.items.map((item, i) => (
         <box key={i} flexDirection="row">
           <text>{node.ordered ? `${i + 1}. ` : '- '}</text>
-          <box flexGrow={1}><ItemBody nodes={item} /></box>
+          <box flexGrow={1}>
+            <ItemBody nodes={item} />
+          </box>
         </box>
       ))}
     </box>
@@ -20,7 +22,9 @@ function ItemBody({ nodes }: { nodes: Node[] }) {
   if (first?.kind === 'paragraph') {
     return (
       <>
-        <text><InlineRenderer nodes={first.inline} /></text>
+        <text>
+          <InlineRenderer nodes={first.inline} />
+        </text>
         {rest.length > 0 && <NodeList nodes={rest} />}
       </>
     )

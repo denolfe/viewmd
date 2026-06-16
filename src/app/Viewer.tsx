@@ -12,10 +12,10 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
     const box = localRef.current
     if (!box) return
     const handle: ScrollboxHandle = {
-      scrollBy: (delta) => box.scrollBy(delta),
-      scrollTo: (y) => box.scrollTo(y),
+      scrollBy: delta => box.scrollBy(delta),
+      scrollTo: y => box.scrollTo(y),
       scrollToBottom: () => box.scrollTo(box.scrollHeight),
-      scrollChildIntoView: (id) => box.scrollChildIntoView(id),
+      scrollChildIntoView: id => box.scrollChildIntoView(id),
     }
     viewerRef.current = handle
     return () => {

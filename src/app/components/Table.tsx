@@ -8,7 +8,11 @@ export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
       <box flexDirection="row">
         {node.header.map((cell, i) => (
           <box key={i} flexGrow={1} paddingX={1}>
-            <text fg={theme.foregroundBright}><strong><InlineRenderer nodes={cell} /></strong></text>
+            <text fg={theme.foregroundBright}>
+              <strong>
+                <InlineRenderer nodes={cell} />
+              </strong>
+            </text>
           </box>
         ))}
       </box>
@@ -16,7 +20,9 @@ export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
         <box key={ri} flexDirection="row">
           {row.map((cell, ci) => (
             <box key={ci} flexGrow={1} paddingX={1}>
-              <text><InlineRenderer nodes={cell} /></text>
+              <text>
+                <InlineRenderer nodes={cell} />
+              </text>
             </box>
           ))}
         </box>

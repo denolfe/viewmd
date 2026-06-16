@@ -78,7 +78,7 @@ export function dispatch(
       if (!state.search || state.search.matches.length === 0) return
       const total = state.search.matches.length
       const delta = action.kind === 'nextMatch' ? 1 : -1
-      const index = ((state.search.index + delta) % total + total) % total
+      const index = (((state.search.index + delta) % total) + total) % total
       state.setSearch({ ...state.search, index })
       return
     }

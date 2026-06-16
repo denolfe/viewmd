@@ -35,7 +35,7 @@ describe('buildTree', () => {
   test('dedupes against naturally-suffixed slugs', () => {
     const { toc } = buildTree('# Intro\n# Intro-2\n# Intro')
     const ids = toc.map(t => t.id)
-    expect(new Set(ids).size).toBe(ids.length)  // all unique
+    expect(new Set(ids).size).toBe(ids.length) // all unique
   })
 
   test('paragraph with strong+em inline', () => {

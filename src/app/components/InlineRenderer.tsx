@@ -4,7 +4,13 @@ import { useAppState } from '../state'
 import { theme } from '../theme'
 
 export function InlineRenderer({ nodes }: { nodes: InlineNode[] }) {
-  return <>{nodes.map((n, i) => <InlineOne key={i} node={n} />)}</>
+  return (
+    <>
+      {nodes.map((n, i) => (
+        <InlineOne key={i} node={n} />
+      ))}
+    </>
+  )
 }
 
 function InlineOne({ node }: { node: InlineNode }) {
