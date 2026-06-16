@@ -7,6 +7,7 @@ import type { Node, TocEntry } from './ast'
 import { mapKey } from './keys'
 import { Viewer } from './Viewer'
 import { StatusLine } from './StatusLine'
+import { StickyHeader } from './StickyHeader'
 
 type Props = { nodes: Node[]; toc: TocEntry[]; title: string }
 
@@ -30,15 +31,33 @@ export function App({ nodes, toc, title }: Props) {
   }, [])
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
 
-  const state = useMemo<AppState>(() => ({
-    focus, setFocus,
-    currentHeadingId, setCurrentHeadingId,
-    viewerRef,
-    expanded, toggleExpanded,
-    tocCursorId, setTocCursorId,
-    search, setSearch,
-    mouseEnabled, toggleMouse,
-  }), [focus, currentHeadingId, tocCursorId, search, expanded, mouseEnabled, toggleExpanded, toggleMouse])
+  const state = useMemo<AppState>(
+    () => ({
+      focus,
+      setFocus,
+      currentHeadingId,
+      setCurrentHeadingId,
+      viewerRef,
+      expanded,
+      toggleExpanded,
+      tocCursorId,
+      setTocCursorId,
+      search,
+      setSearch,
+      mouseEnabled,
+      toggleMouse,
+    }),
+    [
+      focus,
+      currentHeadingId,
+      tocCursorId,
+      search,
+      expanded,
+      mouseEnabled,
+      toggleExpanded,
+      toggleMouse,
+    ],
+  )
 
   useKeyboard(ev => {
     const action = mapKey(ev, focus, { searchActive: !!search })
@@ -76,10 +95,7 @@ export function App({ nodes, toc, title }: Props) {
   return (
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
-        {/* Sticky header placeholder (Task 8) */}
-        <box height={1} paddingX={1}>
-          <text fg="#9d9d9d">{title}</text>
-        </box>
+        <StickyHeader toc={toc} title={title} />
         <box flexDirection="row" flexGrow={1}>
           {hasToc && (
             <box width={28} borderColor="#666666">
