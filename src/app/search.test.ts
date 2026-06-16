@@ -31,4 +31,29 @@ describe('findMatches', () => {
     const { nodes } = buildTree('```\nfoo target\n```')
     expect(findMatches(nodes, 'target').length).toBe(1)
   })
+
+  test('searches inside blockquote and extends path', () => {
+    const { nodes } = buildTree('> target text')
+    const m = findMatches(nodes, 'target')
+    expect(m.length).toBe(1)
+    // Path should include both blockquote index and child paragraph index.
+    expect(m[0]?.blockPath.length).toBeGreaterThan(1)
+  })
+
+  test('searches inside list items', () => {
+    const { nodes } = buildTree('- alpha\n- target item\n- gamma')
+    const m = findMatches(nodes, 'target')
+    expect(m.length).toBe(1)
+  })
+
+  test('searches inside table header and body with row sentinel', () => {
+    const md = '| H1 | H2 |\n|---|---|\n| body target | x |'
+    const { nodes } = buildTree(md)
+    const headerMatch = findMatches(nodes, 'H1')
+    const bodyMatch = findMatches(nodes, 'target')
+    expect(headerMatch.length).toBe(1)
+    expect(headerMatch[0]?.inlinePath[0]).toBe(-1)  // header row sentinel
+    expect(bodyMatch.length).toBe(1)
+    expect(bodyMatch[0]?.inlinePath[0]).toBe(0)  // first body row
+  })
 })
