@@ -48,11 +48,12 @@ export function dispatch(
     case 'tocDown': {
       const visible = flattenVisible(toc, state.expanded)
       if (visible.length === 0) return
-      const idx = Math.max(0, visible.findIndex(e => e.id === state.tocCursorId))
+      const idx = Math.max(
+        0,
+        visible.findIndex(e => e.id === state.tocCursorId),
+      )
       const ni =
-        action.kind === 'tocDown'
-          ? Math.min(visible.length - 1, idx + 1)
-          : Math.max(0, idx - 1)
+        action.kind === 'tocDown' ? Math.min(visible.length - 1, idx + 1) : Math.max(0, idx - 1)
       const next = visible[ni]
       if (next) state.setTocCursorId(next.id)
       return
@@ -73,9 +74,14 @@ export function dispatch(
       state.setFocus('search')
       return
     case 'nextMatch':
-    case 'prevMatch':
-      // Wired in Task 11
+    case 'prevMatch': {
+      if (!state.search || state.search.matches.length === 0) return
+      const total = state.search.matches.length
+      const delta = action.kind === 'nextMatch' ? 1 : -1
+      const index = ((state.search.index + delta) % total + total) % total
+      state.setSearch({ ...state.search, index })
       return
+    }
     case 'clearSearch':
       state.setSearch(null)
       if (state.focus === 'search') state.setFocus('viewer')

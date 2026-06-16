@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useKeyboard, useRenderer } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle } from './state'
@@ -6,6 +6,7 @@ import type { Focus } from './keys'
 import type { Node, TocEntry } from './ast'
 import { mapKey } from './keys'
 import { dispatch } from './dispatch'
+import { nearestPrecedingHeadingId } from './match-nav'
 import { Viewer } from './Viewer'
 import { Toc } from './Toc'
 import { StatusLine } from './StatusLine'
@@ -61,6 +62,14 @@ export function App({ nodes, toc, title }: Props) {
     ],
   )
 
+  useEffect(() => {
+    if (!search || search.index < 0) return
+    const m = search.matches[search.index]
+    if (!m) return
+    const headingId = nearestPrecedingHeadingId(nodes, m)
+    if (headingId) viewerRef.current?.scrollChildIntoView(headingId)
+  }, [search?.index, search?.pattern])
+
   useKeyboard(ev => {
     if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
@@ -81,7 +90,7 @@ export function App({ nodes, toc, title }: Props) {
           )}
           <Viewer nodes={nodes} />
         </box>
-        <StatusLine />
+        <StatusLine nodes={nodes} />
       </box>
     </AppStateContext.Provider>
   )

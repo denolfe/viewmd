@@ -1,8 +1,11 @@
 import { useAppState } from './state'
 import { theme } from './theme'
+import { SearchInput } from './SearchInput'
+import type { Node } from './ast'
 
-export function StatusLine() {
-  const { search } = useAppState()
+export function StatusLine({ nodes }: { nodes: Node[] }) {
+  const { search, focus } = useAppState()
+  if (focus === 'search') return <SearchInput nodes={nodes} />
   let content = ':'
   if (search) {
     const total = search.matches.length
