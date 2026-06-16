@@ -1,0 +1,33 @@
+import { SyntaxStyle } from '@opentui/core'
+
+// VS Code Dark+ inspired token colors keyed by tree-sitter scope names.
+export const syntaxStyle = SyntaxStyle.fromStyles({
+  keyword: { fg: '#569cd6' },
+  'keyword.control': { fg: '#c586c0' },
+  'keyword.operator': { fg: '#d4d4d4' },
+  function: { fg: '#dcdcaa' },
+  'function.builtin': { fg: '#dcdcaa' },
+  'function.method': { fg: '#dcdcaa' },
+  'function.call': { fg: '#dcdcaa' },
+  string: { fg: '#ce9178' },
+  'string.special': { fg: '#d7ba7d' },
+  number: { fg: '#b5cea8' },
+  boolean: { fg: '#569cd6' },
+  comment: { fg: '#6a9955', italic: true },
+  type: { fg: '#4ec9b0' },
+  'type.builtin': { fg: '#4ec9b0' },
+  constant: { fg: '#4fc1ff' },
+  'constant.builtin': { fg: '#569cd6' },
+  variable: { fg: '#9cdcfe' },
+  'variable.parameter': { fg: '#9cdcfe' },
+  'variable.builtin': { fg: '#569cd6' },
+  property: { fg: '#9cdcfe' },
+  operator: { fg: '#d4d4d4' },
+  punctuation: { fg: '#d4d4d4' },
+  'punctuation.bracket': { fg: '#d4d4d4' },
+  'punctuation.delimiter': { fg: '#d4d4d4' },
+  tag: { fg: '#569cd6' },
+  attribute: { fg: '#9cdcfe' },
+  escape: { fg: '#d7ba7d' },
+  label: { fg: '#c8c8c8' },
+})
