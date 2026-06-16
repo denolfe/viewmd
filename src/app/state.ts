@@ -3,7 +3,14 @@ import type { RefObject } from 'react'
 import type { Match } from './search'
 import type { Focus } from './keys'
 
-// Scrollbox imperative API surface (subset of @opentui/core ScrollBoxRenderable)
+/**
+ * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
+ *
+ * `scrollBy`, `scrollTo`, `scrollChildIntoView` map directly to
+ * `ScrollBoxRenderable`. `scrollToBottom` is a polyfill the Viewer
+ * provides by wrapping the raw renderable ref:
+ *   `{ scrollToBottom: () => box.scrollTo(box.scrollHeight) }`
+ */
 export type ScrollboxHandle = {
   scrollBy: (delta: number) => void
   scrollTo: (y: number) => void
@@ -38,6 +45,6 @@ export const AppStateContext = createContext<AppState | null>(null)
 
 export function useAppState(): AppState {
   const s = useContext(AppStateContext)
-  if (!s) throw new Error('AppStateContext missing')
+  if (!s) throw new Error('useAppState must be called inside an AppStateContext.Provider')
   return s
 }

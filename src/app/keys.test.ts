@@ -2,17 +2,18 @@ import { describe, expect, test } from 'bun:test'
 import { mapKey } from './keys'
 import type { KeyEvent } from '@opentui/core'
 
-const k = (over: Partial<KeyEvent> = {}): KeyEvent => ({
-  name: '',
-  sequence: '',
-  ctrl: false,
-  shift: false,
-  meta: false,
-  option: false,
-  eventType: 'press',
-  repeated: false,
-  ...over,
-}) as KeyEvent
+const k = (over: Partial<KeyEvent> = {}): KeyEvent =>
+  ({
+    name: '',
+    sequence: '',
+    ctrl: false,
+    shift: false,
+    meta: false,
+    option: false,
+    eventType: 'press',
+    repeated: false,
+    ...over,
+  }) as KeyEvent
 
 describe('mapKey (viewer focus)', () => {
   test('q -> quit', () => {
@@ -34,10 +35,23 @@ describe('mapKey (viewer focus)', () => {
     expect(mapKey(k({ name: 'slash' }), 'viewer')).toEqual({ kind: 'startSearch', dir: 'forward' })
   })
   test('n -> nextMatch when search active, nextHeading otherwise', () => {
-    expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: true }))
-      .toEqual({ kind: 'nextMatch' })
-    expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: false }))
-      .toEqual({ kind: 'nextHeading' })
+    expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: true })).toEqual({
+      kind: 'nextMatch',
+    })
+    expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: false })).toEqual({
+      kind: 'nextHeading',
+    })
+  })
+  test('N -> prevMatch when search active, prevHeading otherwise', () => {
+    expect(mapKey(k({ name: 'N' }), 'viewer', { searchActive: true })).toEqual({
+      kind: 'prevMatch',
+    })
+    expect(mapKey(k({ name: 'N' }), 'viewer', { searchActive: false })).toEqual({
+      kind: 'prevHeading',
+    })
+  })
+  test('unmapped key -> noop', () => {
+    expect(mapKey(k({ name: 'x' }), 'viewer')).toEqual({ kind: 'noop' })
   })
 })
 
