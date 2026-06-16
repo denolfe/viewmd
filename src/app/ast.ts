@@ -12,7 +12,7 @@ export type InlineNode =
   | { kind: 'kbd'; value: string }
 
 export type Node =
-  | { kind: 'heading'; level: 1|2|3|4|5|6; id: string; text: InlineNode[] }
+  | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; id: string; text: InlineNode[] }
   | { kind: 'paragraph'; inline: InlineNode[] }
   | { kind: 'code'; lang?: string; value: string }
   | { kind: 'list'; ordered: boolean; items: Node[][] }
@@ -25,12 +25,16 @@ export type Node =
 export type TocEntry = { id: string; level: number; text: string; children: TocEntry[] }
 
 export function slugify(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9\s-]/g, '').trim().replace(/\s+/g, '-')
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
 }
 
 export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } {
   const tokens = marked.lexer(markdown)
-  const usedSlugs = new Map<string, number>()
+  const usedSlugs = new Set<string>()
   const nodes: Node[] = []
   const tocFlat: { id: string; level: number; text: string }[] = []
 
@@ -44,19 +48,20 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
 
 function blockToNode(
   t: Tokens.Generic,
-  usedSlugs: Map<string, number>,
+  usedSlugs: Set<string>,
   tocFlat: { id: string; level: number; text: string }[],
 ): Node | null {
   switch (t.type) {
     case 'heading': {
       const h = t as Tokens.Heading
-      const level = h.depth as 1|2|3|4|5|6
+      const level = h.depth as 1 | 2 | 3 | 4 | 5 | 6
       const text = (h.tokens ?? []).flatMap(inlineToNode)
       const plain = h.text
       let id = slugify(plain) || 'section'
-      const count = usedSlugs.get(id) ?? 0
-      if (count > 0) id = `${id}-${count + 1}`
-      usedSlugs.set(slugify(plain) || 'section', count + 1)
+      const base = id
+      let n = 2
+      while (usedSlugs.has(id)) id = `${base}-${n++}`
+      usedSlugs.add(id)
       tocFlat.push({ id, level, text: plain })
       return { kind: 'heading', level, id, text }
     }
@@ -90,19 +95,24 @@ function blockToNode(
       const rows = tab.rows.map(r => r.map(c => (c.tokens ?? []).flatMap(inlineToNode)))
       return { kind: 'table', header, rows }
     }
-    case 'hr': return { kind: 'hr' }
+    case 'hr':
+      return { kind: 'hr' }
     case 'html': {
       const h = t as Tokens.HTML
       return { kind: 'html', value: h.text }
     }
-    case 'space': return { kind: 'space' }
+    case 'space':
+      return { kind: 'space' }
     case 'text': {
       // Top-level text wrapped as paragraph
       const tt = t as Tokens.Text & { tokens?: Tokens.Generic[] }
-      const inline = tt.tokens ? tt.tokens.flatMap(inlineToNode) : [{ kind: 'text' as const, value: tt.text }]
+      const inline = tt.tokens
+        ? tt.tokens.flatMap(inlineToNode)
+        : [{ kind: 'text' as const, value: tt.text }]
       return { kind: 'paragraph', inline }
     }
-    default: return null
+    default:
+      return null
   }
 }
 
@@ -134,7 +144,8 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
       const i = t as Tokens.Image
       return [{ kind: 'image', alt: i.text }]
     }
-    case 'br': return [{ kind: 'br' }]
+    case 'br':
+      return [{ kind: 'br' }]
     default: {
       const raw = (t as { raw?: string }).raw ?? ''
       return raw ? [{ kind: 'text', value: raw }] : []
@@ -149,7 +160,7 @@ function parseKbd(text: string): InlineNode[] {
   let m: RegExpExecArray | null
   while ((m = KBD.exec(text)) !== null) {
     if (m.index > last) out.push({ kind: 'text', value: text.slice(last, m.index) })
-    out.push({ kind: 'kbd', value: m[1]! })
+    out.push({ kind: 'kbd', value: m[1] ?? '' })
     last = m.index + m[0].length
   }
   if (last < text.length) out.push({ kind: 'text', value: text.slice(last) })
