@@ -4,13 +4,16 @@ import type { AppState, ScrollboxHandle } from './state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 
-function makeViewerRef(): { ref: RefObject<ScrollboxHandle | null>; calls: string[] } {
+function makeViewerRef(
+  opts: { nearTop?: string | null } = {},
+): { ref: RefObject<ScrollboxHandle | null>; calls: string[] } {
   const calls: string[] = []
   const handle: ScrollboxHandle = {
     scrollBy: d => calls.push(`scrollBy(${d})`),
     scrollTo: y => calls.push(`scrollTo(${y})`),
     scrollToBottom: () => calls.push('scrollToBottom'),
     scrollChildIntoView: id => calls.push(`scrollChildIntoView(${id})`),
+    getHeadingNearTop: () => opts.nearTop ?? null,
   }
   return { ref: { current: handle }, calls }
 }
@@ -139,6 +142,31 @@ describe('dispatch', () => {
     dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
     expect(vref.calls).toContain('scrollChildIntoView(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+  })
+
+  test('prevHeading seeds from viewport heading when current is null', () => {
+    // User scrolled past `a1` with j/k; pressing N should go back to `a1`'s predecessor.
+    const vref = makeViewerRef({ nearTop: 'a1' })
+    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
+    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    expect(vref.calls).toContain('scrollChildIntoView(a)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
+  })
+
+  test('nextHeading seeds from viewport heading when current is null', () => {
+    const vref = makeViewerRef({ nearTop: 'a' })
+    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
+    dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
+    expect(vref.calls).toContain('scrollChildIntoView(a1)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+  })
+
+  test('prevHeading with no current and no viewport heading goes to last', () => {
+    const vref = makeViewerRef({ nearTop: null })
+    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
+    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    expect(vref.calls).toContain('scrollChildIntoView(b)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
 
   test('prevHeading clamps at first heading', () => {

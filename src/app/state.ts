@@ -16,6 +16,8 @@ export type ScrollboxHandle = {
   scrollTo: (y: number) => void
   scrollToBottom: () => void
   scrollChildIntoView: (childId: string) => void
+  /** Returns the id from `headingIds` whose box sits at or just above the current scrollTop, or null. */
+  getHeadingNearTop: (headingIds: string[]) => string | null
 }
 
 export type AppState = {

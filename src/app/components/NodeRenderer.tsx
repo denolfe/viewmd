@@ -13,6 +13,9 @@ export function NodeRenderer({ node }: { node: Node }) {
     case 'heading':
       return <Heading node={node} />
     case 'paragraph':
+      if (node.inline.length === 1 && node.inline[0]?.kind === 'image') {
+        return <ImageBlock alt={node.inline[0].alt} />
+      }
       return <Paragraph node={node} />
     case 'code':
       return <CodeBlock node={node} />
@@ -29,6 +32,14 @@ export function NodeRenderer({ node }: { node: Node }) {
     case 'space':
       return <box height={1} />
   }
+}
+
+function ImageBlock({ alt }: { alt: string }) {
+  return (
+    <box marginBottom={1} paddingX={2}>
+      <text fg={theme.foregroundMuted}>[Image: {alt}]</text>
+    </box>
+  )
 }
 
 function Hr() {

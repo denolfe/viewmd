@@ -98,11 +98,15 @@ function jumpHeading(state: AppState, toc: TocEntry[], dir: 1 | -1): void {
   const ids: string[] = []
   collect(toc, ids)
   if (ids.length === 0) return
-  const cur = state.currentHeadingId
+  // Seed current heading from scroll position so n/N walk relative to the
+  // viewport when the user scrolled with j/k rather than via heading nav.
+  const cur =
+    state.currentHeadingId ?? state.viewerRef.current?.getHeadingNearTop(ids) ?? null
   const idx = cur ? ids.indexOf(cur) : -1
   let nextIdx: number
   if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(ids.length - 1, idx + 1)
-  else nextIdx = idx <= 0 ? 0 : idx - 1
+  else if (idx < 0) nextIdx = ids.length - 1
+  else nextIdx = Math.max(0, idx - 1)
   const next = ids[nextIdx]
   if (!next) return
   state.viewerRef.current?.scrollChildIntoView(next)

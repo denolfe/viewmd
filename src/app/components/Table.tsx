@@ -4,7 +4,14 @@ import type { Node } from '../ast'
 
 export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
   return (
-    <box flexDirection="column" marginY={1} marginX={2} border borderColor={theme.border}>
+    <box
+      flexDirection="column"
+      width="100%"
+      marginY={1}
+      marginX={2}
+      border
+      borderColor={theme.border}
+    >
       <box flexDirection="row">
         {node.header.map((cell, i) => (
           <box key={i} flexGrow={1} flexBasis={0} paddingX={1}>
