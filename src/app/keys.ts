@@ -53,9 +53,7 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
     case 'u':
       return { kind: 'scrollHalf', delta: -1 }
     case 'g':
-      return { kind: 'top' }
-    case 'G':
-      return { kind: 'bottom' }
+      return ev.shift ? { kind: 'bottom' } : { kind: 'top' }
     case 'tab':
       return { kind: 'focusSidebar' }
     case 'm':

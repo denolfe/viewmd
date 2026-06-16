@@ -50,6 +50,9 @@ describe('mapKey (viewer focus)', () => {
       kind: 'prevHeading',
     })
   })
+  test('shift-g -> bottom', () => {
+    expect(mapKey(k({ name: 'g', shift: true }), 'viewer')).toEqual({ kind: 'bottom' })
+  })
   test('unmapped key -> noop', () => {
     expect(mapKey(k({ name: 'x' }), 'viewer')).toEqual({ kind: 'noop' })
   })
