@@ -16,6 +16,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
       scrollTo: y => box.scrollTo(y),
       scrollToBottom: () => box.scrollTo(box.scrollHeight),
       scrollChildIntoView: id => box.scrollChildIntoView(id),
+      scrollChildToTop: id => scrollChildToTop(box, id),
       getHeadingNearTop: ids => findHeadingNearTop(box, ids),
     }
     viewerRef.current = handle
@@ -36,6 +37,14 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
 type ScrollBoxLike = {
   viewport: { y: number }
   content: { findDescendantById: (id: string) => { y: number } | undefined }
+  scrollBy: (delta: number) => void
+}
+
+function scrollChildToTop(box: ScrollBoxLike, id: string): void {
+  const child = box.content.findDescendantById(id)
+  if (!child) return
+  const delta = child.y - box.viewport.y
+  if (delta !== 0) box.scrollBy(delta)
 }
 
 function findHeadingNearTop(box: ScrollBoxLike, ids: string[]): string | null {

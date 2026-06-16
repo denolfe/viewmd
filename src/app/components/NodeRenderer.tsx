@@ -14,7 +14,8 @@ export function NodeRenderer({ node }: { node: Node }) {
       return <Heading node={node} />
     case 'paragraph':
       if (node.inline.length === 1 && node.inline[0]?.kind === 'image') {
-        return <ImageBlock alt={node.inline[0].alt} />
+        const img = node.inline[0]
+        return <ImageBlock alt={img.alt} src={img.src} />
       }
       return <Paragraph node={node} />
     case 'code':
@@ -27,19 +28,36 @@ export function NodeRenderer({ node }: { node: Node }) {
       return <Table node={node} />
     case 'hr':
       return <Hr />
-    case 'html':
+    case 'html': {
+      const img = parseImgTag(node.value)
+      if (img) return <ImageBlock alt={img.alt} src={img.src} />
       return <text>{node.value}</text>
+    }
     case 'space':
       return <box height={1} />
   }
 }
 
-function ImageBlock({ alt }: { alt: string }) {
+function ImageBlock({ alt, src }: { alt: string; src: string }) {
+  const label = alt || src
   return (
     <box marginBottom={1} paddingX={2}>
-      <text fg={theme.foregroundMuted}>[Image: {alt}]</text>
+      <text fg={theme.foregroundMuted}>
+        <em>[Image: {label}]</em>
+      </text>
     </box>
   )
+}
+
+function parseImgTag(html: string): { alt: string; src: string } | null {
+  const trimmed = html.trim()
+  if (!/^<img\b[^>]*\/?>(\s*<\/img>)?$/i.test(trimmed)) return null
+  const alt = /\balt\s*=\s*("([^"]*)"|'([^']*)')/i.exec(trimmed)
+  const src = /\bsrc\s*=\s*("([^"]*)"|'([^']*)')/i.exec(trimmed)
+  return {
+    alt: alt ? (alt[2] ?? alt[3] ?? '') : '',
+    src: src ? (src[2] ?? src[3] ?? '') : '',
+  }
 }
 
 function Hr() {

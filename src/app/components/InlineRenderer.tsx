@@ -44,7 +44,11 @@ function InlineOne({ node }: { node: InlineNode }) {
         </a>
       )
     case 'image':
-      return <span fg={theme.foregroundMuted}>[Image: {node.alt}]</span>
+      return (
+        <em>
+          <span fg={theme.foregroundMuted}>[Image: {node.alt || node.src}]</span>
+        </em>
+      )
     case 'br':
       return <br />
     case 'kbd':

@@ -4,15 +4,17 @@ import type { AppState, ScrollboxHandle } from './state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 
-function makeViewerRef(
-  opts: { nearTop?: string | null } = {},
-): { ref: RefObject<ScrollboxHandle | null>; calls: string[] } {
+function makeViewerRef(opts: { nearTop?: string | null } = {}): {
+  ref: RefObject<ScrollboxHandle | null>
+  calls: string[]
+} {
   const calls: string[] = []
   const handle: ScrollboxHandle = {
     scrollBy: d => calls.push(`scrollBy(${d})`),
     scrollTo: y => calls.push(`scrollTo(${y})`),
     scrollToBottom: () => calls.push('scrollToBottom'),
     scrollChildIntoView: id => calls.push(`scrollChildIntoView(${id})`),
+    scrollChildToTop: id => calls.push(`scrollChildToTop(${id})`),
     getHeadingNearTop: () => opts.nearTop ?? null,
   }
   return { ref: { current: handle }, calls }
@@ -74,7 +76,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, tocCursorId: 'a1' })
     dispatch({ kind: 'tocSelect' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
     expect(state.setFocus).toHaveBeenCalledWith('viewer')
   })
@@ -116,7 +118,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
     dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -124,7 +126,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
@@ -132,7 +134,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
     dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(b)')
+    expect(vref.calls).toContain('scrollChildToTop(b)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
 
@@ -140,7 +142,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
     dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -149,7 +151,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: 'a1' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
@@ -157,7 +159,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: 'a' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -165,7 +167,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: null })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(b)')
+    expect(vref.calls).toContain('scrollChildToTop(b)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
 
@@ -173,7 +175,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
     dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
-    expect(vref.calls).toContain('scrollChildIntoView(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 

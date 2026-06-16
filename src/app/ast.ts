@@ -7,7 +7,7 @@ export type InlineNode =
   | { kind: 'em'; children: InlineNode[] }
   | { kind: 'codespan'; value: string }
   | { kind: 'link'; href: string; children: InlineNode[] }
-  | { kind: 'image'; alt: string }
+  | { kind: 'image'; alt: string; src: string }
   | { kind: 'br' }
   | { kind: 'kbd'; value: string }
 
@@ -142,7 +142,7 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
     }
     case 'image': {
       const i = t as Tokens.Image
-      return [{ kind: 'image', alt: i.text }]
+      return [{ kind: 'image', alt: i.text, src: i.href }]
     }
     case 'br':
       return [{ kind: 'br' }]

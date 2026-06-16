@@ -17,18 +17,23 @@ export function dispatch(
       return
     case 'scrollLine':
       v?.scrollBy(action.delta)
+      syncCurrentHeading(state, toc)
       return
     case 'scrollPage':
       v?.scrollBy(action.delta * Math.max(1, viewportHeight - 2))
+      syncCurrentHeading(state, toc)
       return
     case 'scrollHalf':
       v?.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2)))
+      syncCurrentHeading(state, toc)
       return
     case 'top':
       v?.scrollTo(0)
+      syncCurrentHeading(state, toc)
       return
     case 'bottom':
       v?.scrollToBottom()
+      syncCurrentHeading(state, toc)
       return
     case 'nextHeading':
       jumpHeading(state, toc, 1)
@@ -64,7 +69,7 @@ export function dispatch(
     case 'tocSelect': {
       const id = state.tocCursorId
       if (!id) return
-      v?.scrollChildIntoView(id)
+      v?.scrollChildToTop(id)
       state.setCurrentHeadingId(id)
       state.setFocus('viewer')
       return
@@ -100,8 +105,7 @@ function jumpHeading(state: AppState, toc: TocEntry[], dir: 1 | -1): void {
   if (ids.length === 0) return
   // Seed current heading from scroll position so n/N walk relative to the
   // viewport when the user scrolled with j/k rather than via heading nav.
-  const cur =
-    state.currentHeadingId ?? state.viewerRef.current?.getHeadingNearTop(ids) ?? null
+  const cur = state.currentHeadingId ?? state.viewerRef.current?.getHeadingNearTop(ids) ?? null
   const idx = cur ? ids.indexOf(cur) : -1
   let nextIdx: number
   if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(ids.length - 1, idx + 1)
@@ -109,8 +113,16 @@ function jumpHeading(state: AppState, toc: TocEntry[], dir: 1 | -1): void {
   else nextIdx = Math.max(0, idx - 1)
   const next = ids[nextIdx]
   if (!next) return
-  state.viewerRef.current?.scrollChildIntoView(next)
+  state.viewerRef.current?.scrollChildToTop(next)
   state.setCurrentHeadingId(next)
+}
+
+function syncCurrentHeading(state: AppState, toc: TocEntry[]): void {
+  const ids: string[] = []
+  collect(toc, ids)
+  if (ids.length === 0) return
+  const id = state.viewerRef.current?.getHeadingNearTop(ids) ?? null
+  if (id && id !== state.currentHeadingId) state.setCurrentHeadingId(id)
 }
 
 function collect(entries: TocEntry[], out: string[]): void {
