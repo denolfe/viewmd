@@ -1,4 +1,6 @@
-import { NodeList } from './NodeRenderer'
+import { Fragment } from 'react'
+import { InlineRenderer } from './InlineRenderer'
+import { NodeRenderer } from './NodeRenderer'
 import { theme } from '../theme'
 import type { Node } from '../ast'
 
@@ -26,7 +28,20 @@ export function Blockquote({ node }: { node: Extract<Node, { kind: 'blockquote' 
         paddingLeft={1}
         flexGrow={1}
       >
-        <NodeList nodes={node.children} />
+        {node.children.map((child, i) => (
+          <Fragment key={i}>
+            {i > 0 && <box height={1} />}
+            {child.kind === 'paragraph' ? (
+              <text fg={theme.blockquote}>
+                <em>
+                  <InlineRenderer nodes={child.inline} />
+                </em>
+              </text>
+            ) : (
+              <NodeRenderer node={child} />
+            )}
+          </Fragment>
+        ))}
       </box>
     </box>
   )
