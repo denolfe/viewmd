@@ -83,12 +83,12 @@ export function App({ nodes, toc, title }: Props) {
       <box flexDirection="column" height="100%">
         <StickyHeader toc={toc} title={title} />
         <box flexDirection="row" flexGrow={1}>
+          <Viewer nodes={nodes} />
           {hasToc && (
             <box width={28} borderColor="#666666">
               <Toc toc={toc} />
             </box>
           )}
-          <Viewer nodes={nodes} />
         </box>
         <StatusLine nodes={nodes} />
       </box>
