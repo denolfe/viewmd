@@ -9,8 +9,8 @@ export function StickyHeader({ toc, title }: { toc: TocEntry[]; title: string })
   const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
   const crumbs = [title, ...chain.map(c => c.text)].join('  ›  ')
   return (
-    <box flexDirection="column">
-      <box height={1} paddingX={1}>
+    <box flexDirection="column" flexShrink={0}>
+      <box height={1} paddingX={1} overflow="hidden">
         <text fg={theme.foregroundMuted}>{crumbs}</text>
       </box>
     </box>
