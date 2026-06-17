@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../ast'
 import { useAppState } from '../state'
 import { theme } from '../theme'
@@ -38,7 +39,7 @@ function InlineOne({ node }: { node: InlineNode }) {
     case 'link':
       return (
         <a href={node.href}>
-          <span fg={theme.link}>
+          <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
             <InlineRenderer nodes={node.children} />
           </span>
         </a>
