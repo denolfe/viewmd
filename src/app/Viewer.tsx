@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { useTerminalDimensions } from '@opentui/react'
 import { NodeList } from './components/NodeRenderer'
 import { useAppState } from './state'
 import type { ScrollboxHandle } from './state'
@@ -6,7 +7,9 @@ import type { Node } from './ast'
 
 export function Viewer({ nodes }: { nodes: Node[] }) {
   const { focus, viewerRef } = useAppState()
+  const { height } = useTerminalDimensions()
   const localRef = useRef<any>(null)
+  const tailSpace = Math.max(0, height - 4)
 
   useEffect(() => {
     const box = localRef.current
@@ -27,9 +30,10 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
 
   return (
     <scrollbox ref={localRef} focused={focus === 'viewer'} flexGrow={1}>
-      <box paddingY={1}>
+      <box>
         <NodeList nodes={nodes} />
       </box>
+      <box height={tailSpace} />
     </scrollbox>
   )
 }
@@ -40,10 +44,12 @@ type ScrollBoxLike = {
   scrollBy: (delta: number) => void
 }
 
+const PIN_TOP_OFFSET = 1
+
 function scrollChildToTop(box: ScrollBoxLike, id: string): void {
   const child = box.content.findDescendantById(id)
   if (!child) return
-  const delta = child.y - box.viewport.y
+  const delta = child.y - box.viewport.y - PIN_TOP_OFFSET
   if (delta !== 0) box.scrollBy(delta)
 }
 

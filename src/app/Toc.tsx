@@ -8,7 +8,7 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
   const visible = flattenVisible(toc, expanded)
 
   return (
-    <scrollbox flexGrow={1} focused={false} paddingX={1}>
+    <scrollbox flexGrow={1} focused={false} paddingX={1} paddingTop={1}>
       {visible.map(e => {
         const isExpanded = expanded.get(e.id) ?? e.level <= 2
         const hasChildren = e.children.length > 0
