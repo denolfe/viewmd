@@ -6,7 +6,7 @@ import type { ScrollboxHandle } from './state'
 import type { Node } from './ast'
 
 export function Viewer({ nodes }: { nodes: Node[] }) {
-  const { focus, viewerRef } = useAppState()
+  const { viewerRef } = useAppState()
   const { height } = useTerminalDimensions()
   const localRef = useRef<any>(null)
   const tailSpace = Math.max(0, height - 4)
@@ -29,7 +29,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
   }, [viewerRef])
 
   return (
-    <scrollbox ref={localRef} focused={focus === 'viewer'} flexGrow={1}>
+    <scrollbox ref={localRef} focused={false} flexGrow={1}>
       <box>
         <NodeList nodes={nodes} />
       </box>
