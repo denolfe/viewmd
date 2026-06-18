@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useKeyboard, useRenderer } from '@opentui/react'
+import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle } from './state'
 import type { Focus } from './keys'
@@ -9,6 +9,7 @@ import { dispatch } from './dispatch'
 import { nearestPrecedingHeadingId } from './match-nav'
 import { Viewer } from './Viewer'
 import { Toc } from './Toc'
+import { tocContentWidth } from './toc-util'
 import { StatusLine } from './StatusLine'
 import { StickyHeader } from './StickyHeader'
 
@@ -77,6 +78,11 @@ export function App({ nodes, toc, title }: Props) {
   })
 
   const hasToc = toc.length > 0
+  const { width: termWidth } = useTerminalDimensions()
+  // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
+  const TOC_PADDING = 3
+  // Size the TOC to its content, but never below 16 cols nor above 40% of the terminal.
+  const tocWidth = Math.min(Math.floor(termWidth * 0.4), Math.max(16, tocContentWidth(toc) + TOC_PADDING))
 
   return (
     <AppStateContext.Provider value={state}>
@@ -85,7 +91,7 @@ export function App({ nodes, toc, title }: Props) {
         <box flexDirection="row" flexGrow={1}>
           <Viewer nodes={nodes} />
           {hasToc && (
-            <box width={28} borderColor="#666666">
+            <box width={tocWidth} borderColor="#666666">
               <Toc toc={toc} />
             </box>
           )}

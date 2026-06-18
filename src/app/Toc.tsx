@@ -26,15 +26,19 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
             <text fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}>
               {indent}
               {marker}{' '}
-              {/* Current entry: bold emphasis on top of the tocCurrent color (bold is idempotent over nested <strong>). */}
-              {isCurrent ? (
-                <strong>
-                  <TocInline nodes={e.inline} />
-                </strong>
-              ) : (
-                <TocInline nodes={e.inline} />
-              )}
             </text>
+            <box flexGrow={1}>
+              <text fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}>
+                {/* Current entry: bold emphasis on top of the tocCurrent color (bold is idempotent over nested <strong>). */}
+                {isCurrent ? (
+                  <strong>
+                    <TocInline nodes={e.inline} />
+                  </strong>
+                ) : (
+                  <TocInline nodes={e.inline} />
+                )}
+              </text>
+            </box>
           </box>
         )
       })}
