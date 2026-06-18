@@ -173,7 +173,9 @@ function parseKbd(text: string): InlineNode[] {
   return out
 }
 
-function nestToc(flat: { id: string; level: number; text: string; inline: InlineNode[] }[]): TocEntry[] {
+function nestToc(
+  flat: { id: string; level: number; text: string; inline: InlineNode[] }[],
+): TocEntry[] {
   const root: TocEntry[] = []
   const stack: TocEntry[] = []
   for (const h of flat) {

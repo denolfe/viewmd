@@ -82,7 +82,10 @@ export function App({ nodes, toc, title }: Props) {
   // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
   const TOC_PADDING = 3
   // Size the TOC to its content, but never below 16 cols nor above 40% of the terminal.
-  const tocWidth = Math.min(Math.floor(termWidth * 0.4), Math.max(16, tocContentWidth(toc) + TOC_PADDING))
+  const tocWidth = Math.min(
+    Math.floor(termWidth * 0.4),
+    Math.max(16, tocContentWidth(toc) + TOC_PADDING),
+  )
 
   return (
     <AppStateContext.Provider value={state}>
