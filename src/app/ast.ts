@@ -22,7 +22,13 @@ export type Node =
   | { kind: 'html'; value: string }
   | { kind: 'space' }
 
-export type TocEntry = { id: string; level: number; text: string; children: TocEntry[] }
+export type TocEntry = {
+  id: string
+  level: number
+  text: string
+  inline: InlineNode[]
+  children: TocEntry[]
+}
 
 export function slugify(text: string): string {
   return text
@@ -36,7 +42,7 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
   const tokens = marked.lexer(markdown)
   const usedSlugs = new Set<string>()
   const nodes: Node[] = []
-  const tocFlat: { id: string; level: number; text: string }[] = []
+  const tocFlat: { id: string; level: number; text: string; inline: InlineNode[] }[] = []
 
   for (const t of tokens) {
     const node = blockToNode(t, usedSlugs, tocFlat)
@@ -49,7 +55,7 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
 function blockToNode(
   t: Tokens.Generic,
   usedSlugs: Set<string>,
-  tocFlat: { id: string; level: number; text: string }[],
+  tocFlat: { id: string; level: number; text: string; inline: InlineNode[] }[],
 ): Node | null {
   switch (t.type) {
     case 'heading': {
@@ -62,7 +68,7 @@ function blockToNode(
       let n = 2
       while (usedSlugs.has(id)) id = `${base}-${n++}`
       usedSlugs.add(id)
-      tocFlat.push({ id, level, text: plain })
+      tocFlat.push({ id, level, text: plain, inline: text })
       return { kind: 'heading', level, id, text }
     }
     case 'paragraph': {
@@ -167,7 +173,7 @@ function parseKbd(text: string): InlineNode[] {
   return out
 }
 
-function nestToc(flat: { id: string; level: number; text: string }[]): TocEntry[] {
+function nestToc(flat: { id: string; level: number; text: string; inline: InlineNode[] }[]): TocEntry[] {
   const root: TocEntry[] = []
   const stack: TocEntry[] = []
   for (const h of flat) {

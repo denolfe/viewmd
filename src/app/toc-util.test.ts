@@ -7,16 +7,18 @@ const toc: TocEntry[] = [
     id: 'a',
     level: 1,
     text: 'A',
+    inline: [],
     children: [
       {
         id: 'b',
         level: 2,
         text: 'B',
-        children: [{ id: 'c', level: 3, text: 'C', children: [] }],
+        inline: [],
+        children: [{ id: 'c', level: 3, text: 'C', inline: [], children: [] }],
       },
     ],
   },
-  { id: 'd', level: 1, text: 'D', children: [] },
+  { id: 'd', level: 1, text: 'D', inline: [], children: [] },
 ]
 
 describe('findAncestors', () => {

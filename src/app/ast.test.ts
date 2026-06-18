@@ -13,17 +13,28 @@ describe('slugify', () => {
 describe('buildTree', () => {
   test('extracts heading TOC with hierarchy', () => {
     const { toc } = buildTree('# A\n## B\n## C\n# D')
-    expect(toc).toEqual([
+    expect(toc).toMatchObject([
       {
         id: 'a',
         level: 1,
         text: 'A',
+        inline: [{ kind: 'text', value: 'A' }],
         children: [
           { id: 'b', level: 2, text: 'B', children: [] },
           { id: 'c', level: 2, text: 'C', children: [] },
         ],
       },
       { id: 'd', level: 1, text: 'D', children: [] },
+    ])
+  })
+
+  test('heading codespan captured as inline node', () => {
+    const { toc } = buildTree('## Use `foo` now')
+    expect(toc[0]?.text).toBe('Use `foo` now')
+    expect(toc[0]?.inline).toEqual([
+      { kind: 'text', value: 'Use ' },
+      { kind: 'codespan', value: 'foo' },
+      { kind: 'text', value: ' now' },
     ])
   })
 

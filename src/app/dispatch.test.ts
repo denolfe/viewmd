@@ -45,9 +45,10 @@ const toc: TocEntry[] = [
     id: 'a',
     level: 1,
     text: 'A',
-    children: [{ id: 'a1', level: 2, text: 'A1', children: [] }],
+    inline: [],
+    children: [{ id: 'a1', level: 2, text: 'A1', inline: [], children: [] }],
   },
-  { id: 'b', level: 1, text: 'B', children: [] },
+  { id: 'b', level: 1, text: 'B', inline: [], children: [] },
 ]
 
 describe('dispatch', () => {
