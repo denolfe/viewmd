@@ -52,6 +52,20 @@ export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
   return []
 }
 
+export type Crumb = { text: string; indent: number }
+
+export function buildBreadcrumbs(
+  toc: TocEntry[],
+  title: string,
+  currentHeadingId: string | null,
+): Crumb[] {
+  const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
+  return [
+    { text: title, indent: 0 },
+    ...chain.map((c, i) => ({ text: c.text, indent: (i + 1) * 2 })),
+  ]
+}
+
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {
   const out: TocEntry[] = []
   walk(toc, expanded, out)

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { findAncestors, flattenVisible, inlineVisibleWidth, tocContentWidth } from './toc-util'
+import { buildBreadcrumbs, findAncestors, flattenVisible, inlineVisibleWidth, tocContentWidth } from './toc-util'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [
@@ -108,5 +108,28 @@ describe('flattenVisible', () => {
     // b (L2) default-expanded -> c visible
     // c is a leaf; d (L1) default-expanded but has no children
     expect(flattenVisible(toc, exp).map(e => e.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('buildBreadcrumbs', () => {
+  test('null current heading -> title only', () => {
+    expect(buildBreadcrumbs(toc, 'README', null)).toEqual([{ text: 'README', indent: 0 }])
+  })
+  test('deep chain indents (i+1)*2 in root->current order', () => {
+    expect(buildBreadcrumbs(toc, 'README', 'c')).toEqual([
+      { text: 'README', indent: 0 },
+      { text: 'A', indent: 2 },
+      { text: 'B', indent: 4 },
+      { text: 'C', indent: 6 },
+    ])
+  })
+  test('single root heading', () => {
+    expect(buildBreadcrumbs(toc, 'README', 'a')).toEqual([
+      { text: 'README', indent: 0 },
+      { text: 'A', indent: 2 },
+    ])
+  })
+  test('empty toc -> title only', () => {
+    expect(buildBreadcrumbs([], 'README', null)).toEqual([{ text: 'README', indent: 0 }])
   })
 })
