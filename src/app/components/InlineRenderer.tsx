@@ -4,6 +4,19 @@ import type { InlineNode } from '../ast'
 import { useAppState } from '../state'
 import { theme } from '../theme'
 
+// Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
+export function Pill({ bg, fg, children }: { bg: string; fg?: string; children: ReactNode }) {
+  return (
+    <>
+      <span fg={bg}>▐</span>
+      <span bg={bg} fg={fg}>
+        {children}
+      </span>
+      <span fg={bg}>▌</span>
+    </>
+  )
+}
+
 export function InlineRenderer({ nodes }: { nodes: InlineNode[] }) {
   return (
     <>
@@ -32,9 +45,9 @@ function InlineOne({ node }: { node: InlineNode }) {
       )
     case 'codespan':
       return (
-        <span bg={theme.codespanBg}>
+        <Pill bg={theme.codespanBg} fg={theme.codespanFg}>
           <HighlightedText value={node.value} />
-        </span>
+        </Pill>
       )
     case 'link':
       return (
@@ -54,9 +67,9 @@ function InlineOne({ node }: { node: InlineNode }) {
       return <br />
     case 'kbd':
       return (
-        <span bg={theme.kbdBg}>
-          <HighlightedText value={` ${node.value} `} />
-        </span>
+        <Pill bg={theme.kbdBg}>
+          <HighlightedText value={node.value} />
+        </Pill>
       )
   }
 }
