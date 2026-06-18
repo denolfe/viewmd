@@ -94,7 +94,7 @@ export function App({ nodes, toc, title }: Props) {
         <box flexDirection="row" flexGrow={1}>
           <Viewer nodes={nodes} />
           {hasToc && (
-            <box width={tocWidth} borderColor="#666666">
+            <box width={tocWidth} border={false}>
               <Toc toc={toc} />
             </box>
           )}
