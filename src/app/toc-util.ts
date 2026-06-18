@@ -1,4 +1,47 @@
-import type { TocEntry } from './ast'
+import type { InlineNode, TocEntry } from './ast'
+
+const MARKER_WIDTH = 2 // marker glyph + trailing space
+const INDENT_PER_LEVEL = 2
+const PILL_GLYPH_WIDTH = 2 // ▐ and ▌ edge characters
+
+export function tocContentWidth(toc: TocEntry[]): number {
+  let max = 0
+  const visit = (entries: TocEntry[]): void => {
+    for (const e of entries) {
+      const w = INDENT_PER_LEVEL * (e.level - 1) + MARKER_WIDTH + inlineVisibleWidth(e.inline)
+      if (w > max) max = w
+      if (e.children.length) visit(e.children)
+    }
+  }
+  visit(toc)
+  return max
+}
+
+export function inlineVisibleWidth(nodes: InlineNode[]): number {
+  let total = 0
+  for (const n of nodes) {
+    switch (n.kind) {
+      case 'text':
+        total += n.value.length
+        break
+      case 'codespan':
+      case 'kbd':
+        total += n.value.length + PILL_GLYPH_WIDTH
+        break
+      case 'strong':
+      case 'em':
+      case 'link':
+        total += inlineVisibleWidth(n.children)
+        break
+      case 'image':
+        total += (n.alt || n.src).length
+        break
+      case 'br':
+        break
+    }
+  }
+  return total
+}
 
 export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
   for (const e of toc) {

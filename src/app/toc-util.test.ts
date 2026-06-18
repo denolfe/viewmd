@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { findAncestors, flattenVisible } from './toc-util'
+import { findAncestors, flattenVisible, inlineVisibleWidth, tocContentWidth } from './toc-util'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [
@@ -30,6 +30,58 @@ describe('findAncestors', () => {
   })
   test('missing id returns empty', () => {
     expect(findAncestors(toc, 'zzz')).toEqual([])
+  })
+})
+
+describe('inlineVisibleWidth', () => {
+  test('plain text length', () => {
+    expect(inlineVisibleWidth([{ kind: 'text', value: 'hello' }])).toBe(5)
+  })
+  test('codespan adds 2 for pill glyphs', () => {
+    expect(inlineVisibleWidth([{ kind: 'codespan', value: 'foo' }])).toBe(5)
+  })
+  test('mixed text + codespan', () => {
+    expect(
+      inlineVisibleWidth([
+        { kind: 'text', value: 'Use ' },
+        { kind: 'codespan', value: 'foo' },
+      ]),
+    ).toBe(9)
+  })
+  test('recurses strong children', () => {
+    expect(
+      inlineVisibleWidth([{ kind: 'strong', children: [{ kind: 'text', value: 'abcd' }] }]),
+    ).toBe(4)
+  })
+})
+
+describe('tocContentWidth', () => {
+  test('accounts for indent, marker, and inline width', () => {
+    const toc: TocEntry[] = [
+      {
+        id: 'a',
+        level: 1,
+        text: 'A',
+        inline: [{ kind: 'text', value: 'A' }],
+        children: [
+          {
+            id: 'b',
+            level: 2,
+            text: 'Use foo',
+            inline: [
+              { kind: 'text', value: 'Use ' },
+              { kind: 'codespan', value: 'foo' },
+            ],
+            children: [],
+          },
+        ],
+      },
+    ]
+    // entry a: 2*0 + 2 + 1 = 3 ; entry b: 2*1 + 2 + (4 + 5) = 13
+    expect(tocContentWidth(toc)).toBe(13)
+  })
+  test('empty tree is 0', () => {
+    expect(tocContentWidth([])).toBe(0)
   })
 })
 
