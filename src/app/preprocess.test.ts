@@ -2,11 +2,12 @@ import { describe, expect, test } from 'bun:test'
 import { replaceMermaidBlocks, replaceKbdTags, KBD_PREFIX, KBD_SUFFIX } from './preprocess'
 
 describe('replaceMermaidBlocks', () => {
-  test('converts mermaid fence to text fence with ascii art', () => {
+  test('converts mermaid fence to ascii art, keeping the mermaid info string', () => {
     const md = '```mermaid\ngraph TD\n  A --> B\n```'
     const out = replaceMermaidBlocks(md)
-    expect(out.startsWith('```text\n')).toBe(true)
+    expect(out.startsWith('```mermaid\n')).toBe(true)
     expect(out.endsWith('\n```')).toBe(true)
+    expect(out).not.toContain('graph TD')
   })
 
   test('invalid mermaid is left unchanged', () => {

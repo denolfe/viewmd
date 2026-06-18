@@ -13,7 +13,7 @@ export function replaceMermaidBlocks(markdown: string): string {
         .split('\n')
         .map(l => l.trimEnd())
         .join('\n')
-      return '```text\n' + ascii + '\n```'
+      return '```mermaid\n' + ascii + '\n```'
     } catch {
       return raw
     }
