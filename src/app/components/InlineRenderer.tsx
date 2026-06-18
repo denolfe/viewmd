@@ -43,6 +43,12 @@ function InlineOne({ node }: { node: InlineNode }) {
           <InlineRenderer nodes={node.children} />
         </em>
       )
+    case 'del':
+      return (
+        <span attributes={TextAttributes.STRIKETHROUGH}>
+          <InlineRenderer nodes={node.children} />
+        </span>
+      )
     case 'codespan':
       return (
         <Pill bg={theme.codespanBg} fg={theme.codespanFg}>

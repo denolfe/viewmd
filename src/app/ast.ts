@@ -5,6 +5,7 @@ export type InlineNode =
   | { kind: 'text'; value: string }
   | { kind: 'strong'; children: InlineNode[] }
   | { kind: 'em'; children: InlineNode[] }
+  | { kind: 'del'; children: InlineNode[] }
   | { kind: 'codespan'; value: string }
   | { kind: 'link'; href: string; children: InlineNode[] }
   | { kind: 'image'; alt: string; src: string }
@@ -137,6 +138,10 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
     case 'em': {
       const e = t as Tokens.Em
       return [{ kind: 'em', children: (e.tokens ?? []).flatMap(inlineToNode) }]
+    }
+    case 'del': {
+      const d = t as Tokens.Del
+      return [{ kind: 'del', children: (d.tokens ?? []).flatMap(inlineToNode) }]
     }
     case 'codespan': {
       const c = t as Tokens.Codespan
