@@ -52,7 +52,7 @@ export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
   return []
 }
 
-export type Crumb = { text: string; indent: number }
+export type Crumb = { inline: InlineNode[]; indent: number }
 
 export function buildBreadcrumbs(
   toc: TocEntry[],
@@ -61,8 +61,8 @@ export function buildBreadcrumbs(
 ): Crumb[] {
   const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
   return [
-    { text: title, indent: 0 },
-    ...chain.map((c, i) => ({ text: c.text, indent: (i + 1) * 2 })),
+    { inline: [{ kind: 'text', value: title }], indent: 0 },
+    ...chain.map((c, i) => ({ inline: c.inline, indent: (i + 1) * 2 })),
   ]
 }
 

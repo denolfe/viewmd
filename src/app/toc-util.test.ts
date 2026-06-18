@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { buildBreadcrumbs, findAncestors, flattenVisible, inlineVisibleWidth, tocContentWidth } from './toc-util'
+import {
+  buildBreadcrumbs,
+  findAncestors,
+  flattenVisible,
+  inlineVisibleWidth,
+  tocContentWidth,
+} from './toc-util'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [
@@ -113,23 +119,39 @@ describe('flattenVisible', () => {
 
 describe('buildBreadcrumbs', () => {
   test('null current heading -> title only', () => {
-    expect(buildBreadcrumbs(toc, 'README', null)).toEqual([{ text: 'README', indent: 0 }])
-  })
-  test('deep chain indents (i+1)*2 in root->current order', () => {
-    expect(buildBreadcrumbs(toc, 'README', 'c')).toEqual([
-      { text: 'README', indent: 0 },
-      { text: 'A', indent: 2 },
-      { text: 'B', indent: 4 },
-      { text: 'C', indent: 6 },
+    expect(buildBreadcrumbs(toc, 'README', null)).toEqual([
+      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
     ])
   })
-  test('single root heading', () => {
-    expect(buildBreadcrumbs(toc, 'README', 'a')).toEqual([
-      { text: 'README', indent: 0 },
-      { text: 'A', indent: 2 },
+  test('deep chain indents (i+1)*2 in root->current order, carrying inline nodes', () => {
+    expect(buildBreadcrumbs(toc, 'README', 'c')).toEqual([
+      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
+      { inline: [], indent: 2 },
+      { inline: [], indent: 4 },
+      { inline: [], indent: 6 },
+    ])
+  })
+  test('passes ancestor inline nodes through verbatim (link kept; flattened by renderer)', () => {
+    const linked: TocEntry[] = [
+      {
+        id: 'x',
+        level: 1,
+        text: 'Setup',
+        inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
+        children: [],
+      },
+    ]
+    expect(buildBreadcrumbs(linked, 'README', 'x')).toEqual([
+      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
+      {
+        inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
+        indent: 2,
+      },
     ])
   })
   test('empty toc -> title only', () => {
-    expect(buildBreadcrumbs([], 'README', null)).toEqual([{ text: 'README', indent: 0 }])
+    expect(buildBreadcrumbs([], 'README', null)).toEqual([
+      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
+    ])
   })
 })
