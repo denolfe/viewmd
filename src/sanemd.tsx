@@ -16,7 +16,7 @@ const processed = replaceKbdTags(replaceMermaidBlocks(md))
 const { nodes, toc } = buildTree(processed)
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
-createRoot(renderer).render(<App nodes={nodes} toc={toc} title={filePath ?? '(stdin)'} />)
+createRoot(renderer).render(<App nodes={nodes} toc={toc} />)
 
 function parseArgs(args: string[]): { filePath?: string } {
   for (const a of args) if (!a.startsWith('-')) return { filePath: a }

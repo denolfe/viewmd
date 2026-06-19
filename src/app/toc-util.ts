@@ -54,16 +54,21 @@ export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
 
 export type Crumb = { inline: InlineNode[]; indent: number }
 
-export function buildBreadcrumbs(
-  toc: TocEntry[],
-  title: string,
-  currentHeadingId: string | null,
-): Crumb[] {
+export function buildBreadcrumbs(toc: TocEntry[], currentHeadingId: string | null): Crumb[] {
   const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
-  return [
-    { inline: [{ kind: 'text', value: title }], indent: 0 },
-    ...chain.map((c, i) => ({ inline: c.inline, indent: (i + 1) * 2 })),
-  ]
+  return chain.map((c, i) => ({ inline: c.inline, indent: i * 2 }))
+}
+
+export function maxTocDepth(toc: TocEntry[]): number {
+  let max = 0
+  const visit = (entries: TocEntry[], depth: number): void => {
+    for (const e of entries) {
+      if (depth > max) max = depth
+      if (e.children.length) visit(e.children, depth + 1)
+    }
+  }
+  visit(toc, 1)
+  return max
 }
 
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {

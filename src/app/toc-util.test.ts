@@ -4,6 +4,7 @@ import {
   findAncestors,
   flattenVisible,
   inlineVisibleWidth,
+  maxTocDepth,
   tocContentWidth,
 } from './toc-util'
 import type { TocEntry } from './ast'
@@ -118,17 +119,14 @@ describe('flattenVisible', () => {
 })
 
 describe('buildBreadcrumbs', () => {
-  test('null current heading -> title only', () => {
-    expect(buildBreadcrumbs(toc, 'README', null)).toEqual([
-      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
-    ])
+  test('null current heading -> empty chain', () => {
+    expect(buildBreadcrumbs(toc, null)).toEqual([])
   })
-  test('deep chain indents (i+1)*2 in root->current order, carrying inline nodes', () => {
-    expect(buildBreadcrumbs(toc, 'README', 'c')).toEqual([
-      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
+  test('chain root->current with indent i*2, carrying inline nodes', () => {
+    expect(buildBreadcrumbs(toc, 'c')).toEqual([
+      { inline: [], indent: 0 },
       { inline: [], indent: 2 },
       { inline: [], indent: 4 },
-      { inline: [], indent: 6 },
     ])
   })
   test('passes ancestor inline nodes through verbatim (link kept; flattened by renderer)', () => {
@@ -141,17 +139,26 @@ describe('buildBreadcrumbs', () => {
         children: [],
       },
     ]
-    expect(buildBreadcrumbs(linked, 'README', 'x')).toEqual([
-      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
+    expect(buildBreadcrumbs(linked, 'x')).toEqual([
       {
         inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
-        indent: 2,
+        indent: 0,
       },
     ])
   })
-  test('empty toc -> title only', () => {
-    expect(buildBreadcrumbs([], 'README', null)).toEqual([
-      { inline: [{ kind: 'text', value: 'README' }], indent: 0 },
-    ])
+  test('empty toc -> empty chain', () => {
+    expect(buildBreadcrumbs([], null)).toEqual([])
+  })
+})
+
+describe('maxTocDepth', () => {
+  test('three-level tree', () => {
+    expect(maxTocDepth(toc)).toBe(3)
+  })
+  test('flat list', () => {
+    expect(maxTocDepth([{ id: 'a', level: 1, text: 'A', inline: [], children: [] }])).toBe(1)
+  })
+  test('empty toc -> 0', () => {
+    expect(maxTocDepth([])).toBe(0)
   })
 })

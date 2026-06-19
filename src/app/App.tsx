@@ -13,9 +13,9 @@ import { tocContentWidth } from './toc-util'
 import { StatusLine } from './StatusLine'
 import { StickyHeader } from './StickyHeader'
 
-type Props = { nodes: Node[]; toc: TocEntry[]; title: string }
+type Props = { nodes: Node[]; toc: TocEntry[] }
 
-export function App({ nodes, toc, title }: Props) {
+export function App({ nodes, toc }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
@@ -90,7 +90,7 @@ export function App({ nodes, toc, title }: Props) {
   return (
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
-        <StickyHeader toc={toc} title={title} />
+        <StickyHeader toc={toc} />
         <box flexDirection="row" flexGrow={1}>
           <Viewer nodes={nodes} />
           {hasToc && (
