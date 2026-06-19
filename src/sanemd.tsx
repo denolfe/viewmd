@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import { basename, dirname, resolve } from 'node:path'
 import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
@@ -16,7 +17,14 @@ const processed = replaceKbdTags(replaceMermaidBlocks(md))
 const { nodes, toc } = buildTree(processed)
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
-createRoot(renderer).render(<App nodes={nodes} toc={toc} />)
+createRoot(renderer).render(<App nodes={nodes} toc={toc} fileLabel={fileLabel(filePath)} />)
+
+function fileLabel(p?: string): string | undefined {
+  if (!p) return undefined
+  const abs = resolve(p)
+  const parent = basename(dirname(abs))
+  return parent ? `${parent}/${basename(abs)}` : basename(abs)
+}
 
 function parseArgs(args: string[]): { filePath?: string } {
   for (const a of args) if (!a.startsWith('-')) return { filePath: a }

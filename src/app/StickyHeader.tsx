@@ -2,17 +2,29 @@ import { useAppState } from './state'
 import { buildBreadcrumbs, maxTocDepth } from './toc-util'
 import { theme } from './theme'
 import { MutedInline } from './components/MutedInline'
-import type { TocEntry } from './ast'
+import type { InlineNode, TocEntry } from './ast'
 
-export function StickyHeader({ toc }: { toc: TocEntry[] }) {
+export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
   const { currentHeadingId } = useAppState()
   if (toc.length === 0) return null
-  const crumbs = buildBreadcrumbs(toc, currentHeadingId)
-  const rows = maxTocDepth(toc)
+
+  const hasH1 = toc[0]?.level === 1
+  const synthRoot: { inline: InlineNode[] } | null =
+    !hasH1 && fileLabel ? { inline: [{ kind: 'text', value: fileLabel }] } : null
+
+  const chain = buildBreadcrumbs(toc, currentHeadingId)
+  const offset = synthRoot ? 1 : 0
+  const rows = maxTocDepth(toc) + offset
+
   return (
     <box flexDirection="column" flexShrink={0} paddingX={1}>
       {Array.from({ length: rows }, (_, i) => {
-        const crumb = crumbs[i]
+        let crumb: { inline: InlineNode[]; indent: number } | null = null
+        if (synthRoot && i === 0) crumb = { inline: synthRoot.inline, indent: 0 }
+        else {
+          const c = chain[i - offset]
+          if (c) crumb = { inline: c.inline, indent: i * 2 }
+        }
         return (
           <box key={i} height={1} overflow="hidden">
             <text fg={theme.foregroundMuted}>
