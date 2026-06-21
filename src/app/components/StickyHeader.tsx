@@ -1,4 +1,3 @@
-import { useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
 import { buildBreadcrumbs, maxTocDepth } from '../lib/toc-util'
 import { theme } from '../styles/theme'
@@ -13,7 +12,6 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
   const synthRoot: { inline: InlineNode[] } | null =
     !hasH1 && fileLabel ? { inline: [{ kind: 'text', value: fileLabel }] } : null
 
-  const { width: termWidth } = useTerminalDimensions()
   const chain = buildBreadcrumbs(toc, currentHeadingId)
   const offset = synthRoot ? 1 : 0
   const rows = maxTocDepth(toc) + offset
@@ -48,11 +46,6 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
           </box>
         )
       })}
-      <box key="rule" height={1} overflow="hidden">
-        <text fg={theme.stickyRule} bg={theme.stickyBg}>
-          {'─'.repeat(Math.max(0, termWidth - 2))}
-        </text>
-      </box>
     </box>
   )
 }
