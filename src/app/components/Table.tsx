@@ -1,39 +1,82 @@
+import { Fragment } from 'react'
 import { InlineRenderer } from './InlineRenderer'
+import { inlineVisibleWidth } from '../inline-width'
 import { theme } from '../theme'
-import type { Node } from '../ast'
+import type { InlineNode, Node } from '../ast'
+
+const CELL_PADDING_X = 1
 
 export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
+  const colWidths = computeColumnWidths(node.header, node.rows)
+  const cellWidths = colWidths.map(w => w + CELL_PADDING_X * 2)
+  const topRule = '┌' + cellWidths.map(w => '─'.repeat(w)).join('┬') + '┐'
+  const midRule = '├' + cellWidths.map(w => '─'.repeat(w)).join('┼') + '┤'
+  const botRule = '└' + cellWidths.map(w => '─'.repeat(w)).join('┴') + '┘'
+
   return (
-    <box
-      flexDirection="column"
-      width="100%"
-      marginY={1}
-      marginX={2}
-      border
-      borderColor={theme.border}
-    >
-      <box flexDirection="row">
-        {node.header.map((cell, i) => (
-          <box key={i} flexGrow={1} flexBasis={0} paddingX={1}>
-            <text fg={theme.foregroundBright}>
-              <strong>
-                <InlineRenderer nodes={cell} />
-              </strong>
-            </text>
-          </box>
-        ))}
-      </box>
+    <box flexDirection="column" alignSelf="flex-start" marginY={1} marginX={2}>
+      <text fg={theme.border}>{topRule}</text>
+      <Row cells={node.header} cellWidths={cellWidths} isHeader />
+      <text fg={theme.border}>{midRule}</text>
       {node.rows.map((row, ri) => (
-        <box key={ri} flexDirection="row">
-          {row.map((cell, ci) => (
-            <box key={ci} flexGrow={1} flexBasis={0} paddingX={1}>
+        <Row key={ri} cells={row} cellWidths={cellWidths} />
+      ))}
+      <text fg={theme.border}>{botRule}</text>
+    </box>
+  )
+}
+
+function Row({
+  cells,
+  cellWidths,
+  isHeader,
+}: {
+  cells: InlineNode[][]
+  cellWidths: number[]
+  isHeader?: boolean
+}) {
+  return (
+    <box flexDirection="row">
+      <Pipe />
+      {cells.map((cell, i) => (
+        <Fragment key={i}>
+          <box width={cellWidths[i]} paddingX={CELL_PADDING_X}>
+            {isHeader ? (
+              <text fg={theme.foregroundBright}>
+                <strong>
+                  <InlineRenderer nodes={cell} />
+                </strong>
+              </text>
+            ) : (
               <text>
                 <InlineRenderer nodes={cell} />
               </text>
-            </box>
-          ))}
-        </box>
+            )}
+          </box>
+          <Pipe />
+        </Fragment>
       ))}
     </box>
   )
+}
+
+function Pipe() {
+  return (
+    <box width={1}>
+      <text fg={theme.border}>│</text>
+    </box>
+  )
+}
+
+function computeColumnWidths(header: InlineNode[][], rows: InlineNode[][][]): number[] {
+  return header.map((headerCell, i) => {
+    let max = inlineVisibleWidth(headerCell)
+    for (const row of rows) {
+      const cell = row[i]
+      if (!cell) continue
+      const w = inlineVisibleWidth(cell)
+      if (w > max) max = w
+    }
+    return max
+  })
 }
