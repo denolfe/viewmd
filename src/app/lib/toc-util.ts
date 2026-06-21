@@ -28,11 +28,11 @@ export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
   return []
 }
 
-export type Crumb = { inline: InlineNode[]; indent: number }
+export type Crumb = { id: string; inline: InlineNode[]; indent: number }
 
 export function buildBreadcrumbs(toc: TocEntry[], currentHeadingId: string | null): Crumb[] {
   const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
-  return chain.map((c, i) => ({ inline: c.inline, indent: i * 2 }))
+  return chain.map((c, i) => ({ id: c.id, inline: c.inline, indent: i * 2 }))
 }
 
 export function maxTocDepth(toc: TocEntry[]): number {

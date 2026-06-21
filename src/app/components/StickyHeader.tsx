@@ -5,7 +5,7 @@ import { MutedInline } from './blocks/MutedInline'
 import type { InlineNode, TocEntry } from '../lib/ast'
 
 export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
-  const { currentHeadingId } = useAppState()
+  const { currentHeadingId, visibleHeadingIds } = useAppState()
   if (toc.length === 0) return null
 
   const hasH1 = toc[0]?.level === 1
@@ -20,15 +20,20 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
     <box flexDirection="column" flexShrink={0} paddingX={1}>
       {Array.from({ length: rows }, (_, i) => {
         let crumb: { inline: InlineNode[]; indent: number } | null = null
-        if (synthRoot && i === 0) crumb = { inline: synthRoot.inline, indent: 0 }
-        else {
+        let hidden = false
+        if (synthRoot && i === 0) {
+          crumb = { inline: synthRoot.inline, indent: 0 }
+        } else {
           const c = chain[i - offset]
-          if (c) crumb = { inline: c.inline, indent: i * 2 }
+          if (c) {
+            crumb = { inline: c.inline, indent: i * 2 }
+            if (visibleHeadingIds.has(c.id)) hidden = true
+          }
         }
         return (
           <box key={i} height={1} overflow="hidden">
             <text fg={theme.foregroundMuted}>
-              {crumb ? (
+              {crumb && !hidden ? (
                 <>
                   {' '.repeat(crumb.indent)}
                   {crumb.indent > 0 ? '› ' : ''}

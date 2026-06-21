@@ -122,14 +122,14 @@ describe('buildBreadcrumbs', () => {
   test('null current heading -> empty chain', () => {
     expect(buildBreadcrumbs(toc, null)).toEqual([])
   })
-  test('chain root->current with indent i*2, carrying inline nodes', () => {
+  test('chain root->current carries id, inline, indent', () => {
     expect(buildBreadcrumbs(toc, 'c')).toEqual([
-      { inline: [], indent: 0 },
-      { inline: [], indent: 2 },
-      { inline: [], indent: 4 },
+      { id: 'a', inline: [], indent: 0 },
+      { id: 'b', inline: [], indent: 2 },
+      { id: 'c', inline: [], indent: 4 },
     ])
   })
-  test('passes ancestor inline nodes through verbatim (link kept; flattened by renderer)', () => {
+  test('passes ancestor inline nodes through verbatim', () => {
     const linked: TocEntry[] = [
       {
         id: 'x',
@@ -141,6 +141,7 @@ describe('buildBreadcrumbs', () => {
     ]
     expect(buildBreadcrumbs(linked, 'x')).toEqual([
       {
+        id: 'x',
         inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
         indent: 0,
       },
