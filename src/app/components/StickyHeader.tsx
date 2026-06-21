@@ -1,8 +1,8 @@
-import { useAppState } from './state'
-import { buildBreadcrumbs, maxTocDepth } from './toc-util'
-import { theme } from './theme'
-import { MutedInline } from './components/MutedInline'
-import type { InlineNode, TocEntry } from './ast'
+import { useAppState } from '../state'
+import { buildBreadcrumbs, maxTocDepth } from '../lib/toc-util'
+import { theme } from '../styles/theme'
+import { MutedInline } from './blocks/MutedInline'
+import type { InlineNode, TocEntry } from '../lib/ast'
 
 export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
   const { currentHeadingId } = useAppState()

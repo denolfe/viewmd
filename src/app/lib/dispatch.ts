@@ -1,5 +1,5 @@
 import type { Action } from './keys'
-import type { AppState } from './state'
+import type { AppState } from '../state'
 import type { TocEntry } from './ast'
 import { flattenVisible } from './toc-util'
 

@@ -1,6 +1,6 @@
 import { InlineRenderer } from './InlineRenderer'
 import { NodeList } from './NodeRenderer'
-import type { Node } from '../ast'
+import type { Node } from '../../lib/ast'
 
 export function List({ node }: { node: Extract<Node, { kind: 'list' }> }) {
   return (

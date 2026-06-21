@@ -1,7 +1,7 @@
-import { useAppState } from './state'
-import { theme } from './theme'
+import { useAppState } from '../state'
+import { theme } from '../styles/theme'
 import { SearchInput } from './SearchInput'
-import type { Node } from './ast'
+import type { Node } from '../lib/ast'
 
 export function StatusLine({ nodes }: { nodes: Node[] }) {
   const { search, focus } = useAppState()

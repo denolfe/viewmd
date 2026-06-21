@@ -1,7 +1,7 @@
 import { createContext, useContext } from 'react'
 import type { RefObject } from 'react'
-import type { Match } from './search'
-import type { Focus } from './keys'
+import type { Match } from './lib/search'
+import type { Focus } from './lib/keys'
 
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.

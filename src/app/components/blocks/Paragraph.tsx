@@ -1,5 +1,5 @@
 import { InlineRenderer } from './InlineRenderer'
-import type { Node } from '../ast'
+import type { Node } from '../../lib/ast'
 
 export function Paragraph({ node }: { node: Extract<Node, { kind: 'paragraph' }> }) {
   return (

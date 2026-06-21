@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { useKeyboard } from '@opentui/react'
-import { useAppState } from './state'
-import { findMatches } from './search'
-import { theme } from './theme'
-import type { Node } from './ast'
+import { useAppState } from '../state'
+import { findMatches } from '../lib/search'
+import { theme } from '../styles/theme'
+import type { Node } from '../lib/ast'
 
 export function SearchInput({ nodes }: { nodes: Node[] }) {
   const { search, setSearch, setFocus } = useAppState()

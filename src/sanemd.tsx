@@ -3,8 +3,8 @@ import { basename, dirname, resolve } from 'node:path'
 import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
-import { buildTree } from './app/ast'
-import { replaceMermaidBlocks, replaceKbdTags } from './app/preprocess'
+import { buildTree } from './app/lib/ast'
+import { replaceMermaidBlocks, replaceKbdTags } from './app/lib/preprocess'
 
 const { filePath } = parseArgs(process.argv.slice(2))
 if (!process.stdout.isTTY) {

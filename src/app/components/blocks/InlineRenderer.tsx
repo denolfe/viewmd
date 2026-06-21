@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
-import type { InlineNode } from '../ast'
-import { useAppState } from '../state'
-import { theme } from '../theme'
+import type { InlineNode } from '../../lib/ast'
+import { useAppState } from '../../state'
+import { theme } from '../../styles/theme'
 
 // Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
 export function Pill({ bg, fg, children }: { bg: string; fg?: string; children: ReactNode }) {

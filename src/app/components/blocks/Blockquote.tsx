@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { InlineRenderer } from './InlineRenderer'
 import { NodeRenderer } from './NodeRenderer'
-import { theme } from '../theme'
-import type { Node } from '../ast'
+import { theme } from '../../styles/theme'
+import type { Node } from '../../lib/ast'
 
 const PIPE_BORDER_CHARS = {
   topLeft: '▌',

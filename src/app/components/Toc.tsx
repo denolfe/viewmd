@@ -1,8 +1,8 @@
-import { useAppState } from './state'
-import { flattenVisible } from './toc-util'
-import { theme } from './theme'
-import type { TocEntry } from './ast'
-import { MutedInline } from './components/MutedInline'
+import { useAppState } from '../state'
+import { flattenVisible } from '../lib/toc-util'
+import { theme } from '../styles/theme'
+import type { TocEntry } from '../lib/ast'
+import { MutedInline } from './blocks/MutedInline'
 
 export function Toc({ toc }: { toc: TocEntry[] }) {
   const { expanded, currentHeadingId, tocCursorId, focus } = useAppState()

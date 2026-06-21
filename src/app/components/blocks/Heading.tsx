@@ -1,6 +1,6 @@
 import { InlineRenderer } from './InlineRenderer'
-import { theme } from '../theme'
-import type { Node } from '../ast'
+import { theme } from '../../styles/theme'
+import type { Node } from '../../lib/ast'
 
 export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) {
   if (node.level === 1) {

@@ -1,6 +1,6 @@
 import { useTerminalDimensions } from '@opentui/react'
-import type { Node } from '../ast'
-import { theme } from '../theme'
+import type { Node } from '../../lib/ast'
+import { theme } from '../../styles/theme'
 import { Heading } from './Heading'
 import { Paragraph } from './Paragraph'
 import { CodeBlock } from './CodeBlock'

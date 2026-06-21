@@ -1,6 +1,6 @@
-import { theme } from '../theme'
+import { theme } from '../../styles/theme'
 import { Pill } from './InlineRenderer'
-import type { InlineNode } from '../ast'
+import type { InlineNode } from '../../lib/ast'
 
 /** Renders inline nodes as plain muted text (links flattened to their text, code as pills). Shared by the TOC and the breadcrumb. */
 export function MutedInline({ nodes }: { nodes: InlineNode[] }) {

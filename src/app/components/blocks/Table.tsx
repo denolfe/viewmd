@@ -1,8 +1,8 @@
 import { Fragment } from 'react'
 import { InlineRenderer } from './InlineRenderer'
-import { inlineVisibleWidth } from '../inline-width'
-import { theme } from '../theme'
-import type { InlineNode, Node } from '../ast'
+import { inlineVisibleWidth } from '../../lib/inline-width'
+import { theme } from '../../styles/theme'
+import type { InlineNode, Node } from '../../lib/ast'
 
 const CELL_PADDING_X = 1
 

@@ -1,10 +1,10 @@
 import { useEffect, useRef } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
-import { NodeList } from './components/NodeRenderer'
-import { CONTENT_MAX_WIDTH } from './layout'
-import { useAppState } from './state'
-import type { ScrollboxHandle } from './state'
-import type { Node } from './ast'
+import { NodeList } from './blocks/NodeRenderer'
+import { CONTENT_MAX_WIDTH } from '../styles/layout'
+import { useAppState } from '../state'
+import type { ScrollboxHandle } from '../state'
+import type { Node } from '../lib/ast'
 
 export function Viewer({ nodes }: { nodes: Node[] }) {
   const { viewerRef } = useAppState()

@@ -1,6 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { dispatch } from './dispatch'
-import type { AppState, ScrollboxHandle } from './state'
+import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 

@@ -1,8 +1,8 @@
 import { useTerminalDimensions } from '@opentui/react'
-import { CONTENT_MAX_WIDTH } from '../layout'
-import { theme } from '../theme'
-import { syntaxStyle } from '../syntax-style'
-import type { Node } from '../ast'
+import { CONTENT_MAX_WIDTH } from '../../styles/layout'
+import { theme } from '../../styles/theme'
+import { syntaxStyle } from '../../styles/syntax-style'
+import type { Node } from '../../lib/ast'
 
 const BORDER = 2 // left + right border cells
 const PADDING_X = 2
@@ -40,12 +40,7 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
       paddingY={1}
     >
       {lang ? (
-        <code
-          content={node.value}
-          filetype={lang}
-          syntaxStyle={syntaxStyle}
-          wrapMode="char"
-        />
+        <code content={node.value} filetype={lang} syntaxStyle={syntaxStyle} wrapMode="char" />
       ) : (
         <text wrapMode="char">{node.value}</text>
       )}
