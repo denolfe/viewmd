@@ -25,6 +25,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
   const [tocCursorId, setTocCursorId] = useState<string | null>(null)
   const [search, setSearch] = useState<AppState['search']>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
+  const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() => new Set())
 
   const toggleExpanded = useCallback((id: string) => {
     setExpanded(prev => {
@@ -50,6 +51,8 @@ export function App({ nodes, toc, fileLabel }: Props) {
       setSearch,
       mouseEnabled,
       toggleMouse,
+      visibleHeadingIds,
+      setVisibleHeadingIds,
     }),
     [
       focus,
@@ -60,6 +63,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
       mouseEnabled,
       toggleExpanded,
       toggleMouse,
+      visibleHeadingIds,
     ],
   )
 

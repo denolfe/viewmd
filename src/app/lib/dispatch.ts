@@ -115,14 +115,42 @@ function jumpHeading(state: AppState, toc: TocEntry[], dir: 1 | -1): void {
   if (!next) return
   state.viewerRef.current?.scrollChildToTop(next)
   state.setCurrentHeadingId(next)
+  refreshVisibleAfterJump(state, toc)
 }
 
 function syncCurrentHeading(state: AppState, toc: TocEntry[]): void {
   const ids: string[] = []
   collect(toc, ids)
   if (ids.length === 0) return
-  const id = state.viewerRef.current?.getHeadingNearTop(ids) ?? null
+  const v = state.viewerRef.current
+  if (!v) return
+  const id = v.getHeadingNearTop(ids) ?? null
   if (id && id !== state.currentHeadingId) state.setCurrentHeadingId(id)
+  refreshVisible(state, v, ids)
+}
+
+function refreshVisibleAfterJump(state: AppState, toc: TocEntry[]): void {
+  const ids: string[] = []
+  collect(toc, ids)
+  const v = state.viewerRef.current
+  if (!v || ids.length === 0) return
+  refreshVisible(state, v, ids)
+}
+
+function refreshVisible(
+  state: AppState,
+  v: NonNullable<AppState['viewerRef']['current']>,
+  ids: string[],
+): void {
+  const next = v.getVisibleHeadingIds(ids)
+  if (setsEqual(state.visibleHeadingIds, next)) return
+  state.setVisibleHeadingIds(next)
+}
+
+function setsEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false
+  for (const v of a) if (!b.has(v)) return false
+  return true
 }
 
 function collect(entries: TocEntry[], out: string[]): void {

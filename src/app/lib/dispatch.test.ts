@@ -4,7 +4,7 @@ import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 
-function makeViewerRef(opts: { nearTop?: string | null } = {}): {
+function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } = {}): {
   ref: RefObject<ScrollboxHandle | null>
   calls: string[]
 } {
@@ -16,6 +16,7 @@ function makeViewerRef(opts: { nearTop?: string | null } = {}): {
     scrollChildIntoView: id => calls.push(`scrollChildIntoView(${id})`),
     scrollChildToTop: id => calls.push(`scrollChildToTop(${id})`),
     getHeadingNearTop: () => opts.nearTop ?? null,
+    getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
   }
   return { ref: { current: handle }, calls }
 }
@@ -36,6 +37,8 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     setSearch: mock(),
     mouseEnabled: false,
     toggleMouse: mock(),
+    visibleHeadingIds: new Set<string>(),
+    setVisibleHeadingIds: mock(),
     ...overrides,
   } as AppState
 }

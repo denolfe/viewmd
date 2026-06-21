@@ -24,6 +24,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
       scrollChildIntoView: id => box.scrollChildIntoView(id),
       scrollChildToTop: id => scrollChildToTop(box, id),
       getHeadingNearTop: ids => findHeadingNearTop(box, ids),
+      getVisibleHeadingIds: ids => findVisibleHeadingIds(box, ids),
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
@@ -44,8 +45,8 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
 }
 
 type ScrollBoxLike = {
-  viewport: { y: number }
-  content: { findDescendantById: (id: string) => { y: number } | undefined }
+  viewport: { y: number; height: number }
+  content: { findDescendantById: (id: string) => { y: number; height: number } | undefined }
   scrollBy: (delta: number) => void
 }
 
@@ -82,6 +83,20 @@ function findHeadingNearTop(box: ScrollBoxLike, ids: string[]): string | null {
     }
   }
   return firstBelowId
+}
+
+function findVisibleHeadingIds(box: ScrollBoxLike, ids: string[]): Set<string> {
+  const top = box.viewport.y
+  const bottom = top + box.viewport.height
+  const out = new Set<string>()
+  for (const id of ids) {
+    const child = box.content.findDescendantById(id)
+    if (!child) continue
+    const childTop = child.y
+    const childBottom = child.y + child.height
+    if (childBottom > top && childTop < bottom) out.add(id)
+  }
+  return out
 }
 
 /**

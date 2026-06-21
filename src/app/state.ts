@@ -20,6 +20,8 @@ export type ScrollboxHandle = {
   scrollChildToTop: (childId: string) => void
   /** Returns the id from `headingIds` whose box sits at or just above the current scrollTop, or null. */
   getHeadingNearTop: (headingIds: string[]) => string | null
+  /** Returns the subset of `headingIds` whose box vertically intersects the current viewport. */
+  getVisibleHeadingIds: (headingIds: string[]) => Set<string>
 }
 
 export type AppState = {
@@ -28,6 +30,9 @@ export type AppState = {
 
   currentHeadingId: string | null
   setCurrentHeadingId: (id: string | null) => void
+
+  visibleHeadingIds: Set<string>
+  setVisibleHeadingIds: (s: Set<string>) => void
 
   // Imperative scroll: handler calls viewerRef.current?.scrollBy(...) etc.
   viewerRef: RefObject<ScrollboxHandle | null>
