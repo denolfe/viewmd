@@ -1,4 +1,5 @@
 import { useTerminalDimensions } from '@opentui/react'
+import { CONTENT_MAX_WIDTH } from '../layout'
 import { theme } from '../theme'
 import { syntaxStyle } from '../syntax-style'
 import type { Node } from '../ast'
@@ -25,7 +26,7 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
   const lines = node.value.split('\n')
   const contentWidth = lines.reduce((max, l) => Math.max(max, l.length), title?.length ?? 0)
   const frameWidth = contentWidth + 2 * PADDING_X + BORDER
-  const maxFrameWidth = Math.max(1, termWidth - 2 * MARGIN_X)
+  const maxFrameWidth = Math.max(1, Math.min(termWidth, CONTENT_MAX_WIDTH) - 2 * MARGIN_X)
 
   return (
     <box
@@ -39,9 +40,14 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
       paddingY={1}
     >
       {lang ? (
-        <code content={node.value} filetype={lang} syntaxStyle={syntaxStyle} />
+        <code
+          content={node.value}
+          filetype={lang}
+          syntaxStyle={syntaxStyle}
+          wrapMode="char"
+        />
       ) : (
-        <text>{node.value}</text>
+        <text wrapMode="char">{node.value}</text>
       )}
     </box>
   )

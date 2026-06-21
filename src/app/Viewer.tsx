@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import { NodeList } from './components/NodeRenderer'
+import { CONTENT_MAX_WIDTH } from './layout'
 import { useAppState } from './state'
 import type { ScrollboxHandle } from './state'
 import type { Node } from './ast'
@@ -34,7 +35,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
 
   return (
     <scrollbox ref={localRef} focused={false} flexGrow={1}>
-      <box>
+      <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1}>
         <NodeList nodes={nodes} />
       </box>
       <box height={tailSpace} />
