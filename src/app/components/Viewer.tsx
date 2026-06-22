@@ -35,7 +35,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
   }, [viewerRef])
 
   return (
-    <scrollbox ref={localRef} focused={false} flexGrow={1}>
+    <scrollbox ref={localRef} focusable={false} flexGrow={1}>
       <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1}>
         <NodeList nodes={nodes} />
       </box>
