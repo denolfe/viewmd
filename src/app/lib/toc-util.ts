@@ -1,4 +1,4 @@
-import type { InlineNode, TocEntry } from './ast'
+import type { TocEntry } from './ast'
 import { inlineVisibleWidth } from './inline-width'
 
 const MARKER_WIDTH = 2 // marker glyph + trailing space
@@ -19,15 +19,6 @@ export function tocContentWidth(toc: TocEntry[]): number {
   return max
 }
 
-export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
-  for (const e of toc) {
-    if (e.id === id) return [e]
-    const sub = findAncestors(e.children, id)
-    if (sub.length) return [e, ...sub]
-  }
-  return []
-}
-
 export function findCurrent(toc: TocEntry[], id: string | null): TocEntry | null {
   if (!id) return null
   for (const e of toc) {
@@ -38,24 +29,6 @@ export function findCurrent(toc: TocEntry[], id: string | null): TocEntry | null
   return null
 }
 
-export type Crumb = { id: string; inline: InlineNode[]; indent: number }
-
-export function buildBreadcrumbs(toc: TocEntry[], currentHeadingId: string | null): Crumb[] {
-  const chain = currentHeadingId ? findAncestors(toc, currentHeadingId) : []
-  return chain.map((c, i) => ({ id: c.id, inline: c.inline, indent: i * 2 }))
-}
-
-export function maxTocDepth(toc: TocEntry[]): number {
-  let max = 0
-  const visit = (entries: TocEntry[], depth: number): void => {
-    for (const e of entries) {
-      if (depth > max) max = depth
-      if (e.children.length) visit(e.children, depth + 1)
-    }
-  }
-  visit(toc, 1)
-  return max
-}
 
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {
   const out: TocEntry[] = []

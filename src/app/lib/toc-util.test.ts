@@ -1,11 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
-  buildBreadcrumbs,
-  findAncestors,
   findCurrent,
   flattenVisible,
   inlineVisibleWidth,
-  maxTocDepth,
   tocContentWidth,
 } from './toc-util'
 import type { TocEntry } from './ast'
@@ -28,18 +25,6 @@ const toc: TocEntry[] = [
   },
   { id: 'd', level: 1, text: 'D', inline: [], children: [] },
 ]
-
-describe('findAncestors', () => {
-  test('returns chain from root to entry', () => {
-    expect(findAncestors(toc, 'c').map(e => e.id)).toEqual(['a', 'b', 'c'])
-  })
-  test('root entry', () => {
-    expect(findAncestors(toc, 'a').map(e => e.id)).toEqual(['a'])
-  })
-  test('missing id returns empty', () => {
-    expect(findAncestors(toc, 'zzz')).toEqual([])
-  })
-})
 
 describe('inlineVisibleWidth', () => {
   test('plain text length', () => {
@@ -116,52 +101,6 @@ describe('flattenVisible', () => {
     // b (L2) default-expanded -> c visible
     // c is a leaf; d (L1) default-expanded but has no children
     expect(flattenVisible(toc, exp).map(e => e.id)).toEqual(['a', 'b', 'c', 'd'])
-  })
-})
-
-describe('buildBreadcrumbs', () => {
-  test('null current heading -> empty chain', () => {
-    expect(buildBreadcrumbs(toc, null)).toEqual([])
-  })
-  test('chain root->current carries id, inline, indent', () => {
-    expect(buildBreadcrumbs(toc, 'c')).toEqual([
-      { id: 'a', inline: [], indent: 0 },
-      { id: 'b', inline: [], indent: 2 },
-      { id: 'c', inline: [], indent: 4 },
-    ])
-  })
-  test('passes ancestor inline nodes through verbatim', () => {
-    const linked: TocEntry[] = [
-      {
-        id: 'x',
-        level: 1,
-        text: 'Setup',
-        inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
-        children: [],
-      },
-    ]
-    expect(buildBreadcrumbs(linked, 'x')).toEqual([
-      {
-        id: 'x',
-        inline: [{ kind: 'link', href: './s.md', children: [{ kind: 'text', value: 'Setup' }] }],
-        indent: 0,
-      },
-    ])
-  })
-  test('empty toc -> empty chain', () => {
-    expect(buildBreadcrumbs([], null)).toEqual([])
-  })
-})
-
-describe('maxTocDepth', () => {
-  test('three-level tree', () => {
-    expect(maxTocDepth(toc)).toBe(3)
-  })
-  test('flat list', () => {
-    expect(maxTocDepth([{ id: 'a', level: 1, text: 'A', inline: [], children: [] }])).toBe(1)
-  })
-  test('empty toc -> 0', () => {
-    expect(maxTocDepth([])).toBe(0)
   })
 })
 
