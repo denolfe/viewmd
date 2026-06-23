@@ -1,0 +1,32 @@
+export const theme = {
+  foreground: '#d4d4d4',
+  foregroundBright: '#e5e5e5',
+  foregroundMuted: '#9d9d9d',
+  foregroundDim: '#666666',
+  background: '#1e1e1e',
+  red: '#f14c4c',
+  green: '#23d18b',
+  yellow: '#f5f543',
+  blue: '#2472c8',
+  magenta: '#bc3fbc',
+  cyan: '#11a8cd',
+
+  heading: '#11a8cd',
+  h1Bg: '#2472c8',
+  h1Fg: '#000000',
+  codespanBg: '#3c3c3c',
+  codespanFg: '#f48771',
+  kbdBg: '#3a3a3a',
+  link: '#2472c8',
+  blockquote: '#9d9d9d',
+  blockquotePipe: '#d4d4d4',
+  border: '#666666',
+  stickyBg: '#252525',
+  searchMatchBg: '#f5f543',
+  searchMatchFg: '#000000',
+  searchCurrentBg: '#f59e1f',
+  tocCurrent: '#e5e5e5',
+  tocFocusBg: '#264f78',
+} as const
+
+export type Theme = typeof theme
