@@ -28,6 +28,16 @@ export function findAncestors(toc: TocEntry[], id: string): TocEntry[] {
   return []
 }
 
+export function findCurrent(toc: TocEntry[], id: string | null): TocEntry | null {
+  if (!id) return null
+  for (const e of toc) {
+    if (e.id === id) return e
+    const sub = findCurrent(e.children, id)
+    if (sub) return sub
+  }
+  return null
+}
+
 export type Crumb = { id: string; inline: InlineNode[]; indent: number }
 
 export function buildBreadcrumbs(toc: TocEntry[], currentHeadingId: string | null): Crumb[] {

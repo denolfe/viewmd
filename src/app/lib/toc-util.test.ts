@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   buildBreadcrumbs,
   findAncestors,
+  findCurrent,
   flattenVisible,
   inlineVisibleWidth,
   maxTocDepth,
@@ -161,5 +162,27 @@ describe('maxTocDepth', () => {
   })
   test('empty toc -> 0', () => {
     expect(maxTocDepth([])).toBe(0)
+  })
+})
+
+describe('findCurrent', () => {
+  test('null id -> null', () => {
+    expect(findCurrent(toc, null)).toBeNull()
+  })
+  test('top-level id -> matching entry', () => {
+    const e = findCurrent(toc, 'a')
+    expect(e?.id).toBe('a')
+    expect(e?.level).toBe(1)
+  })
+  test('nested id -> matching entry', () => {
+    const e = findCurrent(toc, 'c')
+    expect(e?.id).toBe('c')
+    expect(e?.level).toBe(3)
+  })
+  test('missing id -> null', () => {
+    expect(findCurrent(toc, 'nope')).toBeNull()
+  })
+  test('empty toc -> null', () => {
+    expect(findCurrent([], 'a')).toBeNull()
   })
 })
