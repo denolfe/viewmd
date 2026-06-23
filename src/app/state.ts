@@ -48,6 +48,9 @@ export type AppState = {
 
   mouseEnabled: boolean
   toggleMouse: () => void
+
+  /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
+  contentWidth: number
 }
 
 export const AppStateContext = createContext<AppState | null>(null)

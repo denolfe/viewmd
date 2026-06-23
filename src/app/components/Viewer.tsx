@@ -6,8 +6,11 @@ import { useAppState } from '../state'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 
+// Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
+const VIEWER_OVERHEAD = 2
+
 export function Viewer({ nodes }: { nodes: Node[] }) {
-  const { viewerRef } = useAppState()
+  const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
   const localRef = useRef<any>(null)
   const tailSpace = Math.max(0, height - 4)
@@ -35,7 +38,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
   }, [viewerRef])
 
   return (
-    <scrollbox ref={localRef} focusable={false} flexGrow={1}>
+    <scrollbox ref={localRef} focusable={false} width={contentWidth + VIEWER_OVERHEAD}>
       <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1}>
         <NodeList nodes={nodes} />
       </box>

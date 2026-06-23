@@ -12,7 +12,7 @@ import { Toc } from './components/Toc'
 import { tocContentWidth } from './lib/toc-util'
 import { StatusLine } from './components/StatusLine'
 import { StickyHeader } from './components/StickyHeader'
-import { SHOW_BREADCRUMB } from './styles/layout'
+import { CONTENT_MAX_WIDTH, SHOW_BREADCRUMB } from './styles/layout'
 
 type Props = { nodes: Node[]; toc: TocEntry[]; fileLabel?: string }
 
@@ -37,6 +37,20 @@ export function App({ nodes, toc, fileLabel }: Props) {
   }, [])
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
 
+  const hasToc = toc.length > 0
+  const { width: termWidth } = useTerminalDimensions()
+  // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
+  const TOC_PADDING = 3
+  // Size the TOC to its content, but never below 16 cols nor above 40% of the terminal.
+  const tocWidth = Math.min(
+    Math.floor(termWidth * 0.4),
+    Math.max(16, tocContentWidth(toc) + TOC_PADDING),
+  )
+  // Viewer reserves 1 col for the vertical scrollbar and the inner box adds paddingRight={1}.
+  const VIEWER_OVERHEAD = 2
+  const viewerColumnWidth = Math.max(1, (hasToc ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD)
+  const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewerColumnWidth)
+
   const state = useMemo<AppState>(
     () => ({
       focus,
@@ -54,6 +68,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
       toggleMouse,
       visibleHeadingIds,
       setVisibleHeadingIds,
+      contentWidth,
     }),
     [
       focus,
@@ -65,6 +80,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
       toggleExpanded,
       toggleMouse,
       visibleHeadingIds,
+      contentWidth,
     ],
   )
 
@@ -81,16 +97,6 @@ export function App({ nodes, toc, fileLabel }: Props) {
     const action = mapKey(ev, focus, { searchActive: !!search })
     dispatch(action, state, toc, renderer.height, () => renderer.destroy())
   })
-
-  const hasToc = toc.length > 0
-  const { width: termWidth } = useTerminalDimensions()
-  // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
-  const TOC_PADDING = 3
-  // Size the TOC to its content, but never below 16 cols nor above 40% of the terminal.
-  const tocWidth = Math.min(
-    Math.floor(termWidth * 0.4),
-    Math.max(16, tocContentWidth(toc) + TOC_PADDING),
-  )
 
   return (
     <AppStateContext.Provider value={state}>
