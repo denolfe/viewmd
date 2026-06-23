@@ -29,7 +29,6 @@ export function findCurrent(toc: TocEntry[], id: string | null): TocEntry | null
   return null
 }
 
-
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {
   const out: TocEntry[] = []
   walk(toc, expanded, out)
