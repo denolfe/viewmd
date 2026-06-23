@@ -115,7 +115,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
         <StickyHeader toc={toc} fileLabel={fileLabel} />
-        <box flexDirection="row" flexGrow={1}>
+        <box flexDirection="row" flexGrow={1} overflow="hidden">
           <Viewer nodes={nodes} />
           {hasToc && (
             <box width={tocWidth} border={false}>

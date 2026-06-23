@@ -23,7 +23,16 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
     : false
 
   return (
-    <box flexDirection="column" flexShrink={0} paddingX={1} backgroundColor={theme.stickyBg}>
+    <box
+      flexDirection="column"
+      flexShrink={0}
+      height={2}
+      overflow="hidden"
+      paddingX={1}
+      backgroundColor={theme.stickyBg}
+      position="relative"
+      zIndex={10}
+    >
       <box height={1} overflow="hidden">
         <text fg={theme.foregroundMuted} bg={theme.stickyBg}>
           {topInline && !topHidden ? <MutedInline nodes={topInline} /> : ' '}

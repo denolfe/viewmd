@@ -38,7 +38,13 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
   }, [viewerRef])
 
   return (
-    <scrollbox ref={localRef} focusable={false} width={contentWidth + VIEWER_OVERHEAD}>
+    <scrollbox
+      ref={localRef}
+      focusable={false}
+      width={contentWidth + VIEWER_OVERHEAD}
+      height="100%"
+      overflow="hidden"
+    >
       <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1}>
         <NodeList nodes={nodes} />
       </box>
