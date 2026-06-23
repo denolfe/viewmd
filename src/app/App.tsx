@@ -26,7 +26,11 @@ export function App({ nodes, toc, fileLabel }: Props) {
   const [tocCursorId, setTocCursorId] = useState<string | null>(null)
   const [search, setSearch] = useState<AppState['search']>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
-  const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() => new Set())
+  const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
+    // At startup the H1 (if any) sits at the top of the viewport — seed it so
+    // the breadcrumb's hide-when-visible rule fires on the first paint.
+    toc[0]?.level === 1 ? new Set([toc[0].id]) : new Set(),
+  )
 
   const toggleExpanded = useCallback((id: string) => {
     setExpanded(prev => {
