@@ -92,6 +92,19 @@ export function App({ nodes, toc, fileLabel }: Props) {
     if (headingId) viewerRef.current?.scrollChildIntoView(headingId)
   }, [search?.index, search?.pattern])
 
+  // Populate visibleHeadingIds once after first layout so the breadcrumb's
+  // hide-when-visible rule fires before the user touches a key.
+  useEffect(() => {
+    const ids = collectHeadingIds(toc)
+    if (ids.length === 0) return
+    const tid = setTimeout(() => {
+      const v = viewerRef.current
+      if (!v) return
+      setVisibleHeadingIds(v.getVisibleHeadingIds(ids))
+    }, 0)
+    return () => clearTimeout(tid)
+  }, [toc])
+
   useKeyboard(ev => {
     if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
@@ -114,4 +127,16 @@ export function App({ nodes, toc, fileLabel }: Props) {
       </box>
     </AppStateContext.Provider>
   )
+}
+
+function collectHeadingIds(toc: TocEntry[]): string[] {
+  const out: string[] = []
+  const walk = (entries: TocEntry[]): void => {
+    for (const e of entries) {
+      out.push(e.id)
+      walk(e.children)
+    }
+  }
+  walk(toc)
+  return out
 }
