@@ -28,7 +28,7 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
       flexShrink={0}
       height={2}
       overflow="hidden"
-      paddingX={1}
+      paddingX={2}
       backgroundColor={theme.stickyBg}
       position="relative"
       zIndex={10}
