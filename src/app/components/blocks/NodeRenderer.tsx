@@ -1,6 +1,7 @@
 import { useTerminalDimensions } from '@opentui/react'
 import { TextAttributes } from '@opentui/core'
 import type { Node } from '../../lib/ast'
+import { stripHtml } from '../../lib/html'
 import { theme } from '../../styles/theme'
 import { Heading } from './Heading'
 import { Paragraph } from './Paragraph'
@@ -32,7 +33,13 @@ export function NodeRenderer({ node }: { node: Node }) {
     case 'html': {
       const img = parseImgTag(node.value)
       if (img) return <ImageBlock alt={img.alt} src={img.src} />
-      return <text>{node.value}</text>
+      const text = stripHtml(node.value)
+      if (!text) return null
+      return (
+        <box marginBottom={1} paddingX={2}>
+          <text fg={theme.foregroundMuted}>{text}</text>
+        </box>
+      )
     }
     case 'space':
       return <box height={1} />

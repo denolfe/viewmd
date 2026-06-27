@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import type { Tokens } from 'marked'
+import { stripHtml } from './html'
 
 export type InlineNode =
   | { kind: 'text'; value: string }
@@ -165,6 +166,11 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
     }
     case 'br':
       return [{ kind: 'br' }]
+    case 'html': {
+      const raw = (t as { raw?: string }).raw ?? ''
+      const stripped = stripHtml(raw)
+      return stripped ? [{ kind: 'text', value: stripped }] : []
+    }
     default: {
       const raw = (t as { raw?: string }).raw ?? ''
       return raw ? [{ kind: 'text', value: raw }] : []
