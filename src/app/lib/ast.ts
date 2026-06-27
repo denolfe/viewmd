@@ -47,11 +47,11 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
 }
 
-export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } {
+export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[]; headingIds: string[] } {
   const tokens = marked.lexer(markdown)
   const usedSlugs = new Set<string>()
   const nodes: Node[] = []
-  const tocFlat: { id: string; level: number; text: string; inline: InlineNode[] }[] = []
+  const tocFlat: TocFlat = []
 
   for (const t of tokens) {
     const node = blockToNode(t, usedSlugs, tocFlat)
@@ -59,7 +59,20 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
   }
 
   const lifted = liftHtmlBlocks(wrapDetails(nodes), usedSlugs, tocFlat)
-  return { nodes: lifted, toc: nestToc(tocFlat) }
+  return { nodes: lifted, toc: nestToc(tocFlat), headingIds: collectHeadingIds(lifted) }
+}
+
+function collectHeadingIds(nodes: Node[]): string[] {
+  const out: string[] = []
+  const walk = (ns: Node[]) => {
+    for (const n of ns) {
+      if (n.kind === 'heading') out.push(n.id)
+      else if (n.kind === 'blockquote' || n.kind === 'details') walk(n.children)
+      else if (n.kind === 'list') for (const it of n.items) walk(it.children)
+    }
+  }
+  walk(nodes)
+  return out
 }
 
 type TocFlat = { id: string; level: number; text: string; inline: InlineNode[] }[]
@@ -136,11 +149,7 @@ function extractSummary(openerHtml: string): InlineNode[] {
   return [{ kind: 'text', value: m[1]!.trim() }]
 }
 
-function blockToNode(
-  t: Tokens.Generic,
-  usedSlugs: Set<string>,
-  tocFlat: { id: string; level: number; text: string; inline: InlineNode[] }[],
-): Node | null {
+function blockToNode(t: Tokens.Generic, usedSlugs: Set<string>, tocFlat: TocFlat): Node | null {
   switch (t.type) {
     case 'heading': {
       const h = t as Tokens.Heading
@@ -268,9 +277,7 @@ function parseKbd(text: string): InlineNode[] {
   return out
 }
 
-function nestToc(
-  flat: { id: string; level: number; text: string; inline: InlineNode[] }[],
-): TocEntry[] {
+function nestToc(flat: TocFlat): TocEntry[] {
   const root: TocEntry[] = []
   const stack: TocEntry[] = []
   for (const h of flat) {

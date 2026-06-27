@@ -53,25 +53,26 @@ const toc: TocEntry[] = [
   },
   { id: 'b', level: 1, text: 'B', inline: [], children: [] },
 ]
+const headingIds = ['a', 'a1', 'b']
 
 describe('dispatch', () => {
   test('focusSidebar sets cursor to first when null', () => {
     const state = makeState()
-    dispatch({ kind: 'focusSidebar' }, state, toc, 24, () => {})
+    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 24, () => {})
     expect(state.setTocCursorId).toHaveBeenCalledWith('a')
     expect(state.setFocus).toHaveBeenCalledWith('sidebar')
   })
 
   test('focusSidebar no-op when toc empty', () => {
     const state = makeState()
-    dispatch({ kind: 'focusSidebar' }, state, [], 24, () => {})
+    dispatch({ kind: 'focusSidebar' }, state, [], [], 24, () => {})
     expect(state.setTocCursorId).not.toHaveBeenCalled()
     expect(state.setFocus).not.toHaveBeenCalled()
   })
 
   test('focusSidebar does not reset cursor when already set', () => {
     const state = makeState({ tocCursorId: 'b' })
-    dispatch({ kind: 'focusSidebar' }, state, toc, 24, () => {})
+    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 24, () => {})
     expect(state.setTocCursorId).not.toHaveBeenCalled()
     expect(state.setFocus).toHaveBeenCalledWith('sidebar')
   })
@@ -79,7 +80,7 @@ describe('dispatch', () => {
   test('tocSelect scrolls to cursor heading and focuses viewer', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, tocCursorId: 'a1' })
-    dispatch({ kind: 'tocSelect' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocSelect' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
     expect(state.setFocus).toHaveBeenCalledWith('viewer')
@@ -88,40 +89,40 @@ describe('dispatch', () => {
   test('tocSelect is no-op when no cursor', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, tocCursorId: null })
-    dispatch({ kind: 'tocSelect' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocSelect' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toHaveLength(0)
     expect(state.setCurrentHeadingId).not.toHaveBeenCalled()
   })
 
   test('tocDown advances cursor through visible entries', () => {
     const state = makeState({ tocCursorId: 'a' })
-    dispatch({ kind: 'tocDown' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocDown' }, state, toc, headingIds, 24, () => {})
     // a1 is visible because level 2 entries are expanded by default
     expect(state.setTocCursorId).toHaveBeenCalledWith('a1')
   })
 
   test('tocUp moves cursor backward', () => {
     const state = makeState({ tocCursorId: 'a1' })
-    dispatch({ kind: 'tocUp' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocUp' }, state, toc, headingIds, 24, () => {})
     expect(state.setTocCursorId).toHaveBeenCalledWith('a')
   })
 
   test('tocToggle calls toggleExpanded with cursor id', () => {
     const state = makeState({ tocCursorId: 'a' })
-    dispatch({ kind: 'tocToggle' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocToggle' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleExpanded).toHaveBeenCalledWith('a')
   })
 
   test('tocToggle is no-op when no cursor', () => {
     const state = makeState({ tocCursorId: null })
-    dispatch({ kind: 'tocToggle' }, state, toc, 24, () => {})
+    dispatch({ kind: 'tocToggle' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleExpanded).not.toHaveBeenCalled()
   })
 
   test('nextHeading advances to next in doc order', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
-    dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
@@ -129,7 +130,7 @@ describe('dispatch', () => {
   test('nextHeading goes to first when no current', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
@@ -137,7 +138,7 @@ describe('dispatch', () => {
   test('nextHeading clamps at last heading', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
-    dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(b)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
@@ -145,7 +146,7 @@ describe('dispatch', () => {
   test('prevHeading goes backward from currentHeadingId', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
-    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
@@ -154,7 +155,7 @@ describe('dispatch', () => {
     // User scrolled past `a1` with j/k; pressing N should go back to `a1`'s predecessor.
     const vref = makeViewerRef({ nearTop: 'a1' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
@@ -162,7 +163,7 @@ describe('dispatch', () => {
   test('nextHeading seeds from viewport heading when current is null', () => {
     const vref = makeViewerRef({ nearTop: 'a' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'nextHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
@@ -170,7 +171,7 @@ describe('dispatch', () => {
   test('prevHeading with no current and no viewport heading goes to last', () => {
     const vref = makeViewerRef({ nearTop: null })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(b)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
@@ -178,7 +179,7 @@ describe('dispatch', () => {
   test('prevHeading clamps at first heading', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
-    dispatch({ kind: 'prevHeading' }, state, toc, 24, () => {})
+    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
@@ -188,7 +189,7 @@ describe('dispatch', () => {
       focus: 'search',
       search: { pattern: 'x', matches: [], index: -1, dir: 'forward' },
     })
-    dispatch({ kind: 'clearSearch' }, state, toc, 24, () => {})
+    dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
     expect(state.setSearch).toHaveBeenCalledWith(null)
     expect(state.setFocus).toHaveBeenCalledWith('viewer')
   })
@@ -198,7 +199,7 @@ describe('dispatch', () => {
       focus: 'viewer',
       search: { pattern: 'x', matches: [], index: -1, dir: 'forward' },
     })
-    dispatch({ kind: 'clearSearch' }, state, toc, 24, () => {})
+    dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
     expect(state.setSearch).toHaveBeenCalledWith(null)
     expect(state.setFocus).not.toHaveBeenCalled()
   })
@@ -206,7 +207,7 @@ describe('dispatch', () => {
   test('quit calls onQuit', () => {
     const state = makeState()
     let quit = false
-    dispatch({ kind: 'quit' }, state, toc, 24, () => {
+    dispatch({ kind: 'quit' }, state, toc, headingIds, 24, () => {
       quit = true
     })
     expect(quit).toBe(true)
@@ -215,34 +216,34 @@ describe('dispatch', () => {
   test('scrollLine calls scrollBy with delta', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'scrollLine', delta: 3 }, state, toc, 24, () => {})
+    dispatch({ kind: 'scrollLine', delta: 3 }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollBy(3)')
   })
 
   test('scrollPage multiplies by viewport height minus 2', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'scrollPage', delta: 1 }, state, toc, 24, () => {})
+    dispatch({ kind: 'scrollPage', delta: 1 }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollBy(22)')
   })
 
   test('top scrolls to 0', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'top' }, state, toc, 24, () => {})
+    dispatch({ kind: 'top' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollTo(0)')
   })
 
   test('bottom calls scrollToBottom', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'bottom' }, state, toc, 24, () => {})
+    dispatch({ kind: 'bottom' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollToBottom')
   })
 
   test('toggleMouse calls toggleMouse on state', () => {
     const state = makeState()
-    dispatch({ kind: 'toggleMouse' }, state, toc, 24, () => {})
+    dispatch({ kind: 'toggleMouse' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleMouse).toHaveBeenCalled()
   })
 })

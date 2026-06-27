@@ -7,6 +7,7 @@ export function dispatch(
   action: Action,
   state: AppState,
   toc: TocEntry[],
+  headingIds: string[],
   viewportHeight: number,
   onQuit: () => void,
 ): void {
@@ -17,29 +18,29 @@ export function dispatch(
       return
     case 'scrollLine':
       v?.scrollBy(action.delta)
-      syncCurrentHeading(state, toc)
+      syncCurrentHeading(state, headingIds)
       return
     case 'scrollPage':
       v?.scrollBy(action.delta * Math.max(1, viewportHeight - 2))
-      syncCurrentHeading(state, toc)
+      syncCurrentHeading(state, headingIds)
       return
     case 'scrollHalf':
       v?.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2)))
-      syncCurrentHeading(state, toc)
+      syncCurrentHeading(state, headingIds)
       return
     case 'top':
       v?.scrollTo(0)
-      syncCurrentHeading(state, toc)
+      syncCurrentHeading(state, headingIds)
       return
     case 'bottom':
       v?.scrollToBottom()
-      syncCurrentHeading(state, toc)
+      syncCurrentHeading(state, headingIds)
       return
     case 'nextHeading':
-      jumpHeading(state, toc, 1)
+      jumpHeading(state, headingIds, 1)
       return
     case 'prevHeading':
-      jumpHeading(state, toc, -1)
+      jumpHeading(state, headingIds, -1)
       return
     case 'focusSidebar':
       if (toc.length === 0) return
@@ -99,50 +100,37 @@ export function dispatch(
   }
 }
 
-function jumpHeading(state: AppState, toc: TocEntry[], dir: 1 | -1): void {
-  const ids: string[] = []
-  collect(toc, ids)
-  if (ids.length === 0) return
+function jumpHeading(state: AppState, headingIds: string[], dir: 1 | -1): void {
+  if (headingIds.length === 0) return
   // Seed current heading from scroll position so n/N walk relative to the
   // viewport when the user scrolled with j/k rather than via heading nav.
-  const cur = state.currentHeadingId ?? state.viewerRef.current?.getHeadingNearTop(ids) ?? null
-  const idx = cur ? ids.indexOf(cur) : -1
+  const cur =
+    state.currentHeadingId ?? state.viewerRef.current?.getHeadingNearTop(headingIds) ?? null
+  const idx = cur ? headingIds.indexOf(cur) : -1
   let nextIdx: number
-  if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(ids.length - 1, idx + 1)
-  else if (idx < 0) nextIdx = ids.length - 1
+  if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(headingIds.length - 1, idx + 1)
+  else if (idx < 0) nextIdx = headingIds.length - 1
   else nextIdx = Math.max(0, idx - 1)
-  const next = ids[nextIdx]
+  const next = headingIds[nextIdx]
   if (!next) return
   state.viewerRef.current?.scrollChildToTop(next)
   state.setCurrentHeadingId(next)
-  refreshVisibleAfterJump(state, toc)
+  refreshVisible(state, headingIds)
 }
 
-function syncCurrentHeading(state: AppState, toc: TocEntry[]): void {
-  const ids: string[] = []
-  collect(toc, ids)
-  if (ids.length === 0) return
+function syncCurrentHeading(state: AppState, headingIds: string[]): void {
+  if (headingIds.length === 0) return
   const v = state.viewerRef.current
   if (!v) return
-  const id = v.getHeadingNearTop(ids) ?? null
+  const id = v.getHeadingNearTop(headingIds) ?? null
   if (id && id !== state.currentHeadingId) state.setCurrentHeadingId(id)
-  refreshVisible(state, v, ids)
+  refreshVisible(state, headingIds)
 }
 
-function refreshVisibleAfterJump(state: AppState, toc: TocEntry[]): void {
-  const ids: string[] = []
-  collect(toc, ids)
+function refreshVisible(state: AppState, headingIds: string[]): void {
   const v = state.viewerRef.current
-  if (!v || ids.length === 0) return
-  refreshVisible(state, v, ids)
-}
-
-function refreshVisible(
-  state: AppState,
-  v: NonNullable<AppState['viewerRef']['current']>,
-  ids: string[],
-): void {
-  const next = v.getVisibleHeadingIds(ids)
+  if (!v || headingIds.length === 0) return
+  const next = v.getVisibleHeadingIds(headingIds)
   if (setsEqual(state.visibleHeadingIds, next)) return
   state.setVisibleHeadingIds(next)
 }
@@ -151,11 +139,4 @@ function setsEqual(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false
   for (const v of a) if (!b.has(v)) return false
   return true
-}
-
-function collect(entries: TocEntry[], out: string[]): void {
-  for (const e of entries) {
-    out.push(e.id)
-    collect(e.children, out)
-  }
 }

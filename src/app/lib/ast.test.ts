@@ -28,6 +28,17 @@ describe('buildTree', () => {
     ])
   })
 
+  test('returns headingIds in document order', () => {
+    const { headingIds } = buildTree('# A\n## B\n## C\n# D')
+    expect(headingIds).toEqual(['a', 'b', 'c', 'd'])
+  })
+
+  test('headingIds includes ids from lifted html blocks', () => {
+    const md = '# A\n\n<h2>Lifted</h2>\n\n## B'
+    const { headingIds } = buildTree(md)
+    expect(headingIds).toEqual(['a', 'lifted', 'b'])
+  })
+
   test('heading codespan captured as inline node', () => {
     const { toc } = buildTree('## Use `foo` now')
     expect(toc[0]?.text).toBe('Use `foo` now')

@@ -14,9 +14,9 @@ import { StatusLine } from './components/StatusLine'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 
-type Props = { nodes: Node[]; toc: TocEntry[]; fileLabel?: string }
+type Props = { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
 
-export function App({ nodes, toc, fileLabel }: Props) {
+export function App({ nodes, toc, headingIds, fileLabel }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
@@ -102,20 +102,19 @@ export function App({ nodes, toc, fileLabel }: Props) {
   // Populate visibleHeadingIds once after first layout so the breadcrumb's
   // hide-when-visible rule fires before the user touches a key.
   useEffect(() => {
-    const ids = collectHeadingIds(toc)
-    if (ids.length === 0) return
+    if (headingIds.length === 0) return
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      setVisibleHeadingIds(v.getVisibleHeadingIds(ids))
+      setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
     }, 0)
     return () => clearTimeout(tid)
-  }, [toc])
+  }, [headingIds])
 
   useKeyboard(ev => {
     if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(action, state, toc, renderer.height, () => renderer.destroy())
+    dispatch(action, state, toc, headingIds, renderer.height, () => renderer.destroy())
   })
 
   return (
@@ -136,14 +135,3 @@ export function App({ nodes, toc, fileLabel }: Props) {
   )
 }
 
-function collectHeadingIds(toc: TocEntry[]): string[] {
-  const out: string[] = []
-  const walk = (entries: TocEntry[]): void => {
-    for (const e of entries) {
-      out.push(e.id)
-      walk(e.children)
-    }
-  }
-  walk(toc)
-  return out
-}

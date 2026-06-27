@@ -14,10 +14,12 @@ if (!process.stdout.isTTY) {
 
 const md = await readInput(filePath)
 const processed = replaceKbdTags(replaceMermaidBlocks(md))
-const { nodes, toc } = buildTree(processed)
+const { nodes, toc, headingIds } = buildTree(processed)
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
-createRoot(renderer).render(<App nodes={nodes} toc={toc} fileLabel={fileLabel(filePath)} />)
+createRoot(renderer).render(
+  <App nodes={nodes} toc={toc} headingIds={headingIds} fileLabel={fileLabel(filePath)} />,
+)
 
 function fileLabel(p?: string): string | undefined {
   if (!p) return undefined
