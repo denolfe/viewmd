@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { findCurrent, flattenVisible, inlineVisibleWidth, tocContentWidth } from './toc-util'
+import { findCurrent, findToc, flattenVisible, inlineVisibleWidth, tocContentWidth, walkToc } from './toc-util'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [
@@ -96,6 +96,29 @@ describe('flattenVisible', () => {
     // b (L2) default-expanded -> c visible
     // c is a leaf; d (L1) default-expanded but has no children
     expect(flattenVisible(toc, exp).map(e => e.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('walkToc', () => {
+  test('pre-order traversal with depths', () => {
+    const seen: Array<[string, number]> = []
+    walkToc(toc, (e, d) => seen.push([e.id, d]))
+    expect(seen).toEqual([
+      ['a', 0],
+      ['b', 1],
+      ['c', 2],
+      ['d', 0],
+    ])
+  })
+})
+
+describe('findToc', () => {
+  test('returns the first match in pre-order', () => {
+    expect(findToc(toc, e => e.id === 'c')?.id).toBe('c')
+    expect(findToc(toc, e => e.level === 1)?.id).toBe('a')
+  })
+  test('returns null when no match', () => {
+    expect(findToc(toc, () => false)).toBeNull()
   })
 })
 
