@@ -20,11 +20,15 @@ export type HtmlSegment =
   | { kind: 'image'; alt: string; src: string }
   | { kind: 'link'; href: string; children: HtmlSegment[] }
 
+// <script>/<style> are the only tags whose contents must die with them.
+function stripDangerousAndComments(s: string): string {
+  return s
+    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+    .replace(/<!--[\s\S]*?-->/g, '')
+}
+
 export function stripHtml(input: string): string {
-  let s = input
-  // <script>/<style> are the only tags whose contents must die with them.
-  s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-  s = s.replace(/<!--[\s\S]*?-->/g, '')
+  let s = stripDangerousAndComments(input)
   // Leading `[a-zA-Z]` anchor avoids gobbling `a < b` style comparisons.
   s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '')
   s = decodeEntities(s)
@@ -33,9 +37,7 @@ export function stripHtml(input: string): string {
 }
 
 export function parseHtmlSegments(input: string): HtmlSegment[] {
-  let s = input
-  s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-  s = s.replace(/<!--[\s\S]*?-->/g, '')
+  let s = stripDangerousAndComments(input)
 
   // Block-tag boundaries become sentinels so adjacent <p>/<h*>/<hr> chunks
   // in one html token don't flow into a single line.
@@ -78,9 +80,7 @@ export function parseHtmlSegments(input: string): HtmlSegment[] {
 // re-parse (headings, lists, paragraphs). Inline conversions run first so
 // nested cases like <a><strong>X</strong></a> survive.
 export function htmlToMarkdown(html: string): string {
-  let s = html
-  s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-  s = s.replace(/<!--[\s\S]*?-->/g, '')
+  let s = stripDangerousAndComments(html)
 
   s = s.replace(/<img\b([^>]*?)\/?>/gi, (_m, attrs: string) => {
     const alt = getAttr(attrs, 'alt')
