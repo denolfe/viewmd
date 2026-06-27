@@ -2,6 +2,27 @@ import { marked } from 'marked'
 import type { Tokens } from 'marked'
 import { htmlContainsBlockMarkdown, htmlToMarkdown, stripHtml } from './html'
 
+marked.use({
+  extensions: [
+    {
+      name: 'kbd',
+      level: 'inline',
+      start(src: string) {
+        const i = src.search(/<kbd>/i)
+        return i < 0 ? undefined : i
+      },
+      tokenizer(src: string) {
+        const m = /^<kbd>([^<]*)<\/kbd>/i.exec(src)
+        if (!m) return undefined
+        return { type: 'kbd', raw: m[0], text: m[1] ?? '' }
+      },
+      renderer() {
+        return ''
+      },
+    },
+  ],
+})
+
 export type InlineNode =
   | { kind: 'text'; value: string }
   | { kind: 'strong'; children: InlineNode[] }
@@ -47,7 +68,11 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
 }
 
-export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[]; headingIds: string[] } {
+export function buildTree(markdown: string): {
+  nodes: Node[]
+  toc: TocEntry[]
+  headingIds: string[]
+} {
   const tokens = marked.lexer(markdown)
   const usedSlugs = new Set<string>()
   const nodes: Node[] = []
@@ -223,7 +248,11 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
       const tx = t as Tokens.Text
       // If text contains nested tokens (e.g. inside strong), recurse
       if ('tokens' in tx && tx.tokens) return tx.tokens.flatMap(inlineToNode)
-      return parseKbd(tx.text)
+      return [{ kind: 'text', value: tx.text }]
+    }
+    case 'kbd': {
+      const k = t as Tokens.Generic & { text: string }
+      return [{ kind: 'kbd', value: k.text }]
     }
     case 'strong': {
       const s = t as Tokens.Strong
@@ -261,20 +290,6 @@ function inlineToNode(t: Tokens.Generic): InlineNode[] {
       return raw ? [{ kind: 'text', value: raw }] : []
     }
   }
-}
-
-function parseKbd(text: string): InlineNode[] {
-  const KBD = /\x02KBD\x02(.*?)\x02\/KBD\x02/g
-  const out: InlineNode[] = []
-  let last = 0
-  let m: RegExpExecArray | null
-  while ((m = KBD.exec(text)) !== null) {
-    if (m.index > last) out.push({ kind: 'text', value: text.slice(last, m.index) })
-    out.push({ kind: 'kbd', value: m[1] ?? '' })
-    last = m.index + m[0].length
-  }
-  if (last < text.length) out.push({ kind: 'text', value: text.slice(last) })
-  return out
 }
 
 function nestToc(flat: TocFlat): TocEntry[] {

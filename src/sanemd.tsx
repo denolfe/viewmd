@@ -4,7 +4,7 @@ import { createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
 import { buildTree } from './app/lib/ast'
-import { replaceMermaidBlocks, replaceKbdTags } from './app/lib/preprocess'
+import { replaceMermaidBlocks } from './app/lib/preprocess'
 
 const { filePath } = parseArgs(process.argv.slice(2))
 if (!process.stdout.isTTY) {
@@ -13,7 +13,7 @@ if (!process.stdout.isTTY) {
 }
 
 const md = await readInput(filePath)
-const processed = replaceKbdTags(replaceMermaidBlocks(md))
+const processed = replaceMermaidBlocks(md)
 const { nodes, toc, headingIds } = buildTree(processed)
 
 const renderer = await createCliRenderer({ exitOnCtrlC: false })

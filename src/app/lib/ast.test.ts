@@ -28,6 +28,15 @@ describe('buildTree', () => {
     ])
   })
 
+  test('<kbd> renders as a kbd inline node', () => {
+    const { nodes } = buildTree('Press <kbd>Ctrl+C</kbd> to quit.')
+    const para = nodes.find(n => n.kind === 'paragraph')
+    expect(para && para.kind === 'paragraph').toBe(true)
+    if (para?.kind !== 'paragraph') throw new Error('expected paragraph')
+    const kbd = para.inline.find(i => i.kind === 'kbd')
+    expect(kbd && kbd.kind === 'kbd' && kbd.value).toBe('Ctrl+C')
+  })
+
   test('returns headingIds in document order', () => {
     const { headingIds } = buildTree('# A\n## B\n## C\n# D')
     expect(headingIds).toEqual(['a', 'b', 'c', 'd'])
