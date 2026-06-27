@@ -50,7 +50,7 @@ function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): vo
       case 'list':
         for (let j = 0; j < n.items.length; j++) {
           const item = n.items[j]
-          if (item) walkBlocks(item, [...p, j], re, out)
+          if (item) walkBlocks(item.children, [...p, j], re, out)
         }
         break
       case 'blockquote':

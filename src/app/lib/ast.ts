@@ -16,12 +16,18 @@ export type Node =
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; id: string; text: InlineNode[] }
   | { kind: 'paragraph'; inline: InlineNode[] }
   | { kind: 'code'; lang?: string; value: string }
-  | { kind: 'list'; ordered: boolean; items: Node[][] }
+  | { kind: 'list'; ordered: boolean; items: ListItem[] }
   | { kind: 'blockquote'; children: Node[] }
   | { kind: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
   | { kind: 'hr' }
   | { kind: 'html'; value: string }
   | { kind: 'space' }
+
+export type ListItem = {
+  task: boolean
+  checked: boolean
+  children: Node[]
+}
 
 export type TocEntry = {
   id: string
@@ -82,11 +88,13 @@ function blockToNode(
     }
     case 'list': {
       const l = t as Tokens.List
-      const items = l.items.map(item =>
-        (item.tokens ?? [])
+      const items: ListItem[] = l.items.map(item => ({
+        task: item.task === true,
+        checked: item.checked === true,
+        children: (item.tokens ?? [])
           .map(it => blockToNode(it as Tokens.Generic, usedSlugs, tocFlat))
           .filter((n): n is Node => n !== null),
-      )
+      }))
       return { kind: 'list', ordered: l.ordered, items }
     }
     case 'blockquote': {
