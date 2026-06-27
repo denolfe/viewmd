@@ -28,6 +28,12 @@ export function stripHtml(input: string): string {
 
   s = s.replace(/<!--[\s\S]*?-->/g, '')
 
+  // Reshape <details> before the generic tag-strip so we can keep the
+  // summary/body structure. Output is "▾ summary\n  body" (always expanded —
+  // we can't actually collapse anything in the TUI). Nested <details>
+  // flatten to a single level; the inner content is preserved.
+  s = expandDetails(s)
+
   // Match any opening or closing tag and its attributes. The leading
   // `[a-zA-Z]` anchor avoids gobbling literal `<` followed by punctuation
   // (e.g. `a < b` in code paragraphs that slipped past markdown).
@@ -41,6 +47,20 @@ export function stripHtml(input: string): string {
   // wrapper elements like <div align="center">.
   s = s.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n')
   return s.trim()
+}
+
+// Replaces every <details>...</details> with "▾ summary\n  body". Summary
+// and body retain their HTML — they'll be stripped by the regular passes
+// once expansion is done.
+function expandDetails(s: string): string {
+  return s.replace(/<details\b[^>]*>([\s\S]*?)<\/details>/gi, (_match, inner: string) => {
+    const sumRe = /<summary\b[^>]*>([\s\S]*?)<\/summary>/i
+    const sumMatch = sumRe.exec(inner)
+    const summary = sumMatch ? sumMatch[1]!.trim() : ''
+    const body = (sumMatch ? inner.replace(sumMatch[0], '') : inner).trim()
+    const indented = body.replace(/^/gm, '  ')
+    return summary ? `▾ ${summary}\n${indented}\n` : `▾\n${indented}\n`
+  })
 }
 
 // Decodes the named entities listed above plus any numeric reference.

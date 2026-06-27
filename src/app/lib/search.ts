@@ -63,6 +63,10 @@ function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): vo
       case 'html':
         scanText(n.value, p, [], re, out)
         break
+      case 'details':
+        walkInline(n.summary, p, [], re, out)
+        walkBlocks(n.children, p, re, out)
+        break
     }
   }
 }

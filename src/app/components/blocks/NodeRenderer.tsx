@@ -9,6 +9,7 @@ import { CodeBlock } from './CodeBlock'
 import { List } from './List'
 import { Blockquote } from './Blockquote'
 import { Table } from './Table'
+import { Details } from './Details'
 
 export function NodeRenderer({ node }: { node: Node }) {
   switch (node.kind) {
@@ -28,6 +29,8 @@ export function NodeRenderer({ node }: { node: Node }) {
       return <Blockquote node={node} />
     case 'table':
       return <Table node={node} />
+    case 'details':
+      return <Details node={node} />
     case 'hr':
       return <Hr />
     case 'html': {

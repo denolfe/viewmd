@@ -22,6 +22,7 @@ export type Node =
   | { kind: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
   | { kind: 'hr' }
   | { kind: 'html'; value: string }
+  | { kind: 'details'; summary: InlineNode[]; children: Node[] }
   | { kind: 'space' }
 
 export type ListItem = {
@@ -57,7 +58,55 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
     if (node) nodes.push(node)
   }
 
-  return { nodes, toc: nestToc(tocFlat) }
+  return { nodes: wrapDetails(nodes), toc: nestToc(tocFlat) }
+}
+
+// Marked splits multi-block <details> across html opener, body nodes, and
+// html closer (whenever the body contains a blank line). Roll those triples
+// back up into a single details node so the renderer can keep the markdown
+// structure of the body while showing a "▾ summary" header and indenting.
+function wrapDetails(nodes: Node[]): Node[] {
+  const out: Node[] = []
+  let i = 0
+  while (i < nodes.length) {
+    const n = nodes[i]!
+    if (n.kind === 'html' && /^\s*<details\b/i.test(n.value)) {
+      const closer = findCloser(nodes, i + 1)
+      if (closer !== -1) {
+        const summary = extractSummary(n.value)
+        const between = nodes.slice(i + 1, closer)
+        out.push({ kind: 'details', summary, children: wrapDetails(between) })
+        i = closer + 1
+        continue
+      }
+    }
+    out.push(n)
+    i++
+  }
+  return out
+}
+
+function findCloser(nodes: Node[], start: number): number {
+  let depth = 1
+  for (let j = start; j < nodes.length; j++) {
+    const n = nodes[j]!
+    if (n.kind !== 'html') continue
+    const opens = (n.value.match(/<details\b/gi) ?? []).length
+    const closes = (n.value.match(/<\/details>/gi) ?? []).length
+    depth += opens - closes
+    if (depth <= 0) return j
+  }
+  return -1
+}
+
+function extractSummary(openerHtml: string): InlineNode[] {
+  const m = /<summary\b[^>]*>([\s\S]*?)<\/summary>/i.exec(openerHtml)
+  if (!m) return []
+  const sub = marked.lexer(m[1]!.trim())[0]
+  if (sub && 'tokens' in sub && sub.tokens) {
+    return (sub.tokens as Tokens.Generic[]).flatMap(inlineToNode)
+  }
+  return [{ kind: 'text', value: m[1]!.trim() }]
 }
 
 function blockToNode(
