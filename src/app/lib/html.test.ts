@@ -225,9 +225,7 @@ describe('parseHtmlSegments — anchors and images', () => {
 
   test('unclosed anchor still emits link with following content as children', () => {
     const segs = parseHtmlSegments('<a href="x">tail')
-    expect(segs).toEqual([
-      { kind: 'link', href: 'x', children: [{ kind: 'text', value: 'tail' }] },
-    ])
+    expect(segs).toEqual([{ kind: 'link', href: 'x', children: [{ kind: 'text', value: 'tail' }] }])
   })
 
   test('adjacent block-level chunks break onto separate lines', () => {

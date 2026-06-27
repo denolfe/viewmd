@@ -126,6 +126,54 @@ describe('buildTree — details wrapping', () => {
     expect(detailsNodes).toHaveLength(2)
   })
 
+  test('html <h3> + <ul> lifts to real heading and list nodes', () => {
+    const md = [
+      '<h3>Benefits</h3>',
+      '<ul>',
+      '  <li>One</li>',
+      '  <li>Two with <code>code</code></li>',
+      '</ul>',
+    ].join('\n')
+    const { nodes, toc } = buildTree(md)
+    expect(nodes.map(n => n.kind)).toEqual(['heading', 'list'])
+    const heading = nodes[0]
+    if (heading?.kind !== 'heading') throw new Error('expected heading')
+    expect(heading.level).toBe(3)
+    expect(toc[0]?.id).toBe('benefits')
+    const list = nodes[1]
+    if (list?.kind !== 'list') throw new Error('expected list')
+    expect(list.ordered).toBe(false)
+    expect(list.items).toHaveLength(2)
+  })
+
+  test('html <ol> lifts to ordered list', () => {
+    const md = '<ol><li>A</li><li>B</li></ol>'
+    const { nodes } = buildTree(md)
+    const list = nodes.find(n => n.kind === 'list')
+    if (list?.kind !== 'list') throw new Error('not list')
+    expect(list.ordered).toBe(true)
+    expect(list.items).toHaveLength(2)
+  })
+
+  test('lifted html inserts a space before a following markdown block', () => {
+    const md = ['<h3>X</h3>', '<ul><li>A</li></ul>', '', '## After'].join('\n')
+    const { nodes } = buildTree(md)
+    expect(nodes.map(n => n.kind)).toEqual(['heading', 'list', 'space', 'heading'])
+  })
+
+  test('lifted html does not duplicate a space when one already follows', () => {
+    const md = ['<h3>X</h3>', '', '## After'].join('\n')
+    const { nodes } = buildTree(md)
+    const spaceCount = nodes.filter(n => n.kind === 'space').length
+    expect(spaceCount).toBe(1)
+  })
+
+  test('html block without headings/lists stays as html', () => {
+    const md = '<p align="center"><strong>just text</strong></p>'
+    const { nodes } = buildTree(md)
+    expect(nodes[0]?.kind).toBe('html')
+  })
+
   test('nested <details> nest in the AST', () => {
     const md = [
       '<details>',

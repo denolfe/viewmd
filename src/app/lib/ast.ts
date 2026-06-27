@@ -1,6 +1,6 @@
 import { marked } from 'marked'
 import type { Tokens } from 'marked'
-import { stripHtml } from './html'
+import { htmlContainsBlockMarkdown, htmlToMarkdown, stripHtml } from './html'
 
 export type InlineNode =
   | { kind: 'text'; value: string }
@@ -58,13 +58,40 @@ export function buildTree(markdown: string): { nodes: Node[]; toc: TocEntry[] } 
     if (node) nodes.push(node)
   }
 
-  return { nodes: wrapDetails(nodes), toc: nestToc(tocFlat) }
+  const lifted = liftHtmlBlocks(wrapDetails(nodes), usedSlugs, tocFlat)
+  return { nodes: lifted, toc: nestToc(tocFlat) }
 }
 
-// Marked splits multi-block <details> across html opener, body nodes, and
-// html closer (whenever the body contains a blank line). Roll those triples
-// back up into a single details node so the renderer can keep the markdown
-// structure of the body while showing a "▾ summary" header and indenting.
+type TocFlat = { id: string; level: number; text: string; inline: InlineNode[] }[]
+
+// Replace html nodes containing headings/lists with real AST nodes by
+// re-lexing the markdownified html. Synthesizes a trailing space because
+// marked folds the html token's trailing blank line into its raw.
+function liftHtmlBlocks(nodes: Node[], usedSlugs: Set<string>, tocFlat: TocFlat): Node[] {
+  const out: Node[] = []
+  for (let i = 0; i < nodes.length; i++) {
+    const n = nodes[i]!
+    if (n.kind === 'html' && htmlContainsBlockMarkdown(n.value)) {
+      const sub = marked.lexer(htmlToMarkdown(n.value))
+      for (const t of sub) {
+        const node = blockToNode(t, usedSlugs, tocFlat)
+        if (node) out.push(node)
+      }
+      const next = nodes[i + 1]
+      if (next && next.kind !== 'space') out.push({ kind: 'space' })
+      continue
+    }
+    if (n.kind === 'details') {
+      out.push({ ...n, children: liftHtmlBlocks(n.children, usedSlugs, tocFlat) })
+      continue
+    }
+    out.push(n)
+  }
+  return out
+}
+
+// Marked splits multi-block <details> across opener/body/closer html tokens.
+// Roll them back into a single node so the body keeps full markdown rendering.
 function wrapDetails(nodes: Node[]): Node[] {
   const out: Node[] = []
   let i = 0

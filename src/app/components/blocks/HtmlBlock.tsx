@@ -34,11 +34,7 @@ function SegmentOne({ seg, inLink }: { seg: HtmlSegment; inLink: boolean }) {
     // When wrapped in a link, the surrounding <a> carries the click target;
     // suppress the redundant " → src" tail so the label reads cleanly.
     if (inLink) {
-      return (
-        <em>
-          [Image: {label}]
-        </em>
-      )
+      return <em>[Image: {label}]</em>
     }
     return (
       <em>
