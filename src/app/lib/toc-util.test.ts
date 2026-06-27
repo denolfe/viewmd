@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { findCurrent, findToc, flattenVisible, inlineVisibleWidth, tocContentWidth, walkToc } from './toc-util'
+import {
+  findCurrent,
+  findToc,
+  flattenVisible,
+  inlineVisibleWidth,
+  tocContentWidth,
+  walkToc,
+} from './toc-util'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [

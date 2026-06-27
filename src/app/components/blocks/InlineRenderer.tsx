@@ -117,4 +117,3 @@ function HighlightedText({ value }: { value: string }) {
   if (last < value.length) parts.push(value.slice(last))
   return <>{parts}</>
 }
-

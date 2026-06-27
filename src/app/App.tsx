@@ -134,4 +134,3 @@ export function App({ nodes, toc, headingIds, fileLabel }: Props) {
     </AppStateContext.Provider>
   )
 }
-

@@ -27,7 +27,9 @@ export function dispatch(
     case 'scrollPage':
       return scroll(v => v.scrollBy(action.delta * Math.max(1, viewportHeight - 2)))
     case 'scrollHalf':
-      return scroll(v => v.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2))))
+      return scroll(v =>
+        v.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2))),
+      )
     case 'top':
       return scroll(v => v.scrollTo(0))
     case 'bottom':

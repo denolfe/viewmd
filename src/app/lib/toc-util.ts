@@ -6,10 +6,7 @@ const INDENT_PER_LEVEL = 2
 
 export { inlineVisibleWidth }
 
-export function walkToc(
-  toc: TocEntry[],
-  visit: (e: TocEntry, depth: number) => void,
-): void {
+export function walkToc(toc: TocEntry[], visit: (e: TocEntry, depth: number) => void): void {
   const go = (entries: TocEntry[], depth: number) => {
     for (const e of entries) {
       visit(e, depth)
@@ -19,10 +16,7 @@ export function walkToc(
   go(toc, 0)
 }
 
-export function findToc(
-  toc: TocEntry[],
-  pred: (e: TocEntry) => boolean,
-): TocEntry | null {
+export function findToc(toc: TocEntry[], pred: (e: TocEntry) => boolean): TocEntry | null {
   for (const e of toc) {
     if (pred(e)) return e
     const sub = findToc(e.children, pred)
