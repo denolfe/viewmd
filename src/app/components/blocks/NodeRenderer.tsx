@@ -1,7 +1,7 @@
 import { useTerminalDimensions } from '@opentui/react'
 import { TextAttributes } from '@opentui/core'
 import type { Node } from '../../lib/ast'
-import { stripHtml } from '../../lib/html'
+import { parseHtmlSegments } from '../../lib/html'
 import { theme } from '../../styles/theme'
 import { Heading } from './Heading'
 import { Paragraph } from './Paragraph'
@@ -10,6 +10,7 @@ import { List } from './List'
 import { Blockquote } from './Blockquote'
 import { Table } from './Table'
 import { Details } from './Details'
+import { HtmlBlock } from './HtmlBlock'
 
 export function NodeRenderer({ node }: { node: Node }) {
   switch (node.kind) {
@@ -36,13 +37,9 @@ export function NodeRenderer({ node }: { node: Node }) {
     case 'html': {
       const img = parseImgTag(node.value)
       if (img) return <ImageBlock alt={img.alt} src={img.src} />
-      const text = stripHtml(node.value)
-      if (!text) return null
-      return (
-        <box marginBottom={1} paddingX={2}>
-          <text fg={theme.foregroundMuted}>{text}</text>
-        </box>
-      )
+      const segments = parseHtmlSegments(node.value)
+      if (segments.length === 0) return null
+      return <HtmlBlock segments={segments} />
     }
     case 'space':
       return <box height={1} />

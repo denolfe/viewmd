@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { stripHtml } from './html'
+import { parseHtmlSegments, stripHtml } from './html'
 
 describe('stripHtml — common README HTML', () => {
   test('drops a wrapper div, keeps inner text', () => {
@@ -154,5 +154,122 @@ describe('stripHtml — should NOT swallow text that merely looks tag-ish', () =
 
   test('lone less-than before a digit stays intact', () => {
     expect(stripHtml('temperature < 0')).toBe('temperature < 0')
+  })
+})
+
+describe('parseHtmlSegments — anchors and images', () => {
+  test('clickable banner: link wrapping image', () => {
+    expect(parseHtmlSegments('<a href="https://x"><img alt="Banner" src="b.jpg" /></a>')).toEqual([
+      {
+        kind: 'link',
+        href: 'https://x',
+        children: [{ kind: 'image', alt: 'Banner', src: 'b.jpg' }],
+      },
+    ])
+  })
+
+  test('badge row inside <p>: text separator preserved as single space', () => {
+    const input =
+      '<p align="left"><a href="https://a"><img alt="A" src="a.svg"></a>&nbsp;<a href="https://b"><img alt="B" src="b.svg" /></a></p>'
+    const segs = parseHtmlSegments(input)
+    expect(segs).toHaveLength(3)
+    expect(segs[0]).toMatchObject({ kind: 'link', href: 'https://a' })
+    expect(segs[1]).toEqual({ kind: 'text', value: ' ' })
+    expect(segs[2]).toMatchObject({ kind: 'link', href: 'https://b' })
+  })
+
+  test('nav row: link-wrapped <strong> becomes link with plain text inside', () => {
+    const input =
+      '<h4><a href="https://docs"><strong>Explore the Docs</strong></a>&nbsp;·&nbsp;<a href="https://com"><strong>Community</strong></a></h4>'
+    const segs = parseHtmlSegments(input)
+    expect(segs).toHaveLength(3)
+    expect(segs[0]).toEqual({
+      kind: 'link',
+      href: 'https://docs',
+      children: [{ kind: 'text', value: 'Explore the Docs' }],
+    })
+    expect(segs[1]).toEqual({ kind: 'text', value: ' · ' })
+    expect(segs[2]).toEqual({
+      kind: 'link',
+      href: 'https://com',
+      children: [{ kind: 'text', value: 'Community' }],
+    })
+  })
+
+  test('whitespace between elements collapses to a single space', () => {
+    const input = '<p>\n  <a href="x">A</a>\n  <a href="y">B</a>\n</p>'
+    const segs = parseHtmlSegments(input)
+    expect(segs).toEqual([
+      { kind: 'link', href: 'x', children: [{ kind: 'text', value: 'A' }] },
+      { kind: 'text', value: ' ' },
+      { kind: 'link', href: 'y', children: [{ kind: 'text', value: 'B' }] },
+    ])
+  })
+
+  test('standalone image without link emits image segment', () => {
+    expect(parseHtmlSegments('<img alt="X" src="x.png" />')).toEqual([
+      { kind: 'image', alt: 'X', src: 'x.png' },
+    ])
+  })
+
+  test('script/style contents removed before parsing', () => {
+    expect(parseHtmlSegments('<script>alert(1)</script>')).toEqual([])
+    expect(parseHtmlSegments('<style>body{x:1}</style>')).toEqual([])
+  })
+
+  test('anchor with single-quoted attributes', () => {
+    expect(parseHtmlSegments("<a href='https://x'>text</a>")).toEqual([
+      { kind: 'link', href: 'https://x', children: [{ kind: 'text', value: 'text' }] },
+    ])
+  })
+
+  test('unclosed anchor still emits link with following content as children', () => {
+    const segs = parseHtmlSegments('<a href="x">tail')
+    expect(segs).toEqual([
+      { kind: 'link', href: 'x', children: [{ kind: 'text', value: 'tail' }] },
+    ])
+  })
+
+  test('adjacent block-level chunks break onto separate lines', () => {
+    const input = '<p><a href="a">A</a></p><h4><a href="b">B</a></h4>'
+    const segs = parseHtmlSegments(input)
+    expect(segs).toEqual([
+      { kind: 'link', href: 'a', children: [{ kind: 'text', value: 'A' }] },
+      { kind: 'text', value: '\n' },
+      { kind: 'link', href: 'b', children: [{ kind: 'text', value: 'B' }] },
+    ])
+  })
+
+  test('<br> forces a line break inside otherwise-inline content', () => {
+    expect(parseHtmlSegments('one<br>two<br />three')).toEqual([
+      { kind: 'text', value: 'one\ntwo\nthree' },
+    ])
+  })
+
+  test('<hr> renders as a line break between siblings', () => {
+    const segs = parseHtmlSegments('<a href="a">A</a><hr/><a href="b">B</a>')
+    expect(segs).toEqual([
+      { kind: 'link', href: 'a', children: [{ kind: 'text', value: 'A' }] },
+      { kind: 'text', value: '\n' },
+      { kind: 'link', href: 'b', children: [{ kind: 'text', value: 'B' }] },
+    ])
+  })
+
+  test('badge row + nav row from a single HTML chunk produce a real break', () => {
+    const input =
+      '<p align="left">' +
+      '<a href="https://b1"><img alt="Build" src="b.svg"></a>&nbsp;' +
+      '<a href="https://d"><img alt="Discord" src="d.svg" /></a>' +
+      '</p>' +
+      '<hr/>' +
+      '<h4>' +
+      '<a href="https://docs"><strong>Docs</strong></a>&nbsp;·&nbsp;' +
+      '<a href="https://com"><strong>Community</strong></a>' +
+      '</h4>'
+    const segs = parseHtmlSegments(input)
+    const newlineCount = segs.filter(s => s.kind === 'text' && s.value.includes('\n')).length
+    expect(newlineCount).toBeGreaterThanOrEqual(1)
+    expect(segs.some(s => s.kind === 'link' && s.href === 'https://docs')).toBe(true)
+    expect(segs.some(s => s.kind === 'link' && s.href === 'https://b1')).toBe(true)
   })
 })
