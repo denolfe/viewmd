@@ -66,7 +66,18 @@ function InlineOne({ node }: { node: InlineNode }) {
     case 'image':
       return (
         <em>
-          <span fg={theme.foregroundMuted}>[Image: {node.alt || node.src}]</span>
+          <span fg={theme.foregroundMuted}>[Image: {node.alt || node.src}</span>
+          {node.alt && node.src ? (
+            <>
+              <span fg={theme.foregroundMuted}>{' → '}</span>
+              <a href={node.src}>
+                <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
+                  {node.src}
+                </span>
+              </a>
+            </>
+          ) : null}
+          <span fg={theme.foregroundMuted}>]</span>
         </em>
       )
     case 'br':

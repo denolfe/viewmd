@@ -1,4 +1,5 @@
 import { useTerminalDimensions } from '@opentui/react'
+import { TextAttributes } from '@opentui/core'
 import type { Node } from '../../lib/ast'
 import { theme } from '../../styles/theme'
 import { Heading } from './Heading'
@@ -39,11 +40,23 @@ export function NodeRenderer({ node }: { node: Node }) {
 }
 
 function ImageBlock({ alt, src }: { alt: string; src: string }) {
-  const label = alt || src
   return (
     <box marginBottom={1} paddingX={2}>
       <text fg={theme.foregroundMuted}>
-        <em>[Image: {label}]</em>
+        <em>
+          [Image: {alt || src}
+          {alt && src ? (
+            <>
+              {' → '}
+              <a href={src}>
+                <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
+                  {src}
+                </span>
+              </a>
+            </>
+          ) : null}
+          ]
+        </em>
       </text>
     </box>
   )
