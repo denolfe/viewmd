@@ -1,5 +1,4 @@
 import { useTerminalDimensions } from '@opentui/react'
-import { TextAttributes } from '@opentui/core'
 import type { Node } from '../../lib/ast'
 import { parseHtmlSegments } from '../../lib/html'
 import { theme } from '../../styles/theme'
@@ -11,16 +10,13 @@ import { Blockquote } from './Blockquote'
 import { Table } from './Table'
 import { Details } from './Details'
 import { HtmlBlock } from './HtmlBlock'
+import { ImageBlock } from './ImageBlock'
 
 export function NodeRenderer({ node }: { node: Node }) {
   switch (node.kind) {
     case 'heading':
       return <Heading node={node} />
     case 'paragraph':
-      if (node.inline.length === 1 && node.inline[0]?.kind === 'image') {
-        const img = node.inline[0]
-        return <ImageBlock alt={img.alt} src={img.src} />
-      }
       return <Paragraph node={node} />
     case 'code':
       return <CodeBlock node={node} />
@@ -34,49 +30,15 @@ export function NodeRenderer({ node }: { node: Node }) {
       return <Details node={node} />
     case 'hr':
       return <Hr />
+    case 'image':
+      return <ImageBlock alt={node.alt} src={node.src} />
     case 'html': {
-      const img = parseImgTag(node.value)
-      if (img) return <ImageBlock alt={img.alt} src={img.src} />
       const segments = parseHtmlSegments(node.value)
       if (segments.length === 0) return null
       return <HtmlBlock segments={segments} />
     }
     case 'space':
       return <box height={1} />
-  }
-}
-
-function ImageBlock({ alt, src }: { alt: string; src: string }) {
-  return (
-    <box marginBottom={1} paddingX={2}>
-      <text fg={theme.foregroundMuted}>
-        <em>
-          [Image: {alt || src}
-          {alt && src ? (
-            <>
-              {' → '}
-              <a href={src}>
-                <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
-                  {src}
-                </span>
-              </a>
-            </>
-          ) : null}
-          ]
-        </em>
-      </text>
-    </box>
-  )
-}
-
-function parseImgTag(html: string): { alt: string; src: string } | null {
-  const trimmed = html.trim()
-  if (!/^<img\b[^>]*\/?>(\s*<\/img>)?$/i.test(trimmed)) return null
-  const alt = /\balt\s*=\s*("([^"]*)"|'([^']*)')/i.exec(trimmed)
-  const src = /\bsrc\s*=\s*("([^"]*)"|'([^']*)')/i.exec(trimmed)
-  return {
-    alt: alt ? (alt[2] ?? alt[3] ?? '') : '',
-    src: src ? (src[2] ?? src[3] ?? '') : '',
   }
 }
 

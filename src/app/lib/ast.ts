@@ -43,6 +43,7 @@ export type Node =
   | { kind: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
   | { kind: 'hr' }
   | { kind: 'html'; value: string }
+  | { kind: 'image'; alt: string; src: string }
   | { kind: 'details'; summary: InlineNode[]; children: Node[] }
   | { kind: 'space' }
 
@@ -87,8 +88,53 @@ export function buildTree(markdown: string): {
     if (node) nodes.push(node)
   }
 
-  const lifted = liftHtmlBlocks(wrapDetails(nodes), ctx)
+  const lifted = liftSingleImageHtml(
+    liftSingleImageParagraphs(liftHtmlBlocks(wrapDetails(nodes), ctx)),
+  )
   return { nodes: lifted, toc: nestToc(ctx.tocFlat), headingIds: collectHeadingIds(lifted) }
+}
+
+const IMG_ONLY_HTML = /^<img\b[^>]*\/?>(\s*<\/img>)?$/i
+
+function liftSingleImageParagraphs(nodes: Node[]): Node[] {
+  return nodes.map((n): Node => {
+    if (n.kind === 'paragraph' && n.inline.length === 1 && n.inline[0]?.kind === 'image') {
+      const img = n.inline[0]
+      return { kind: 'image', alt: img.alt, src: img.src }
+    }
+    if (n.kind === 'blockquote') return { ...n, children: liftSingleImageParagraphs(n.children) }
+    if (n.kind === 'details') return { ...n, children: liftSingleImageParagraphs(n.children) }
+    if (n.kind === 'list') {
+      return {
+        ...n,
+        items: n.items.map(it => ({ ...it, children: liftSingleImageParagraphs(it.children) })),
+      }
+    }
+    return n
+  })
+}
+
+function liftSingleImageHtml(nodes: Node[]): Node[] {
+  return nodes.map((n): Node => {
+    if (n.kind === 'html' && IMG_ONLY_HTML.test(n.value.trim())) {
+      const altM = /\balt\s*=\s*("([^"]*)"|'([^']*)')/i.exec(n.value)
+      const srcM = /\bsrc\s*=\s*("([^"]*)"|'([^']*)')/i.exec(n.value)
+      return {
+        kind: 'image',
+        alt: altM ? (altM[2] ?? altM[3] ?? '') : '',
+        src: srcM ? (srcM[2] ?? srcM[3] ?? '') : '',
+      }
+    }
+    if (n.kind === 'blockquote') return { ...n, children: liftSingleImageHtml(n.children) }
+    if (n.kind === 'details') return { ...n, children: liftSingleImageHtml(n.children) }
+    if (n.kind === 'list') {
+      return {
+        ...n,
+        items: n.items.map(it => ({ ...it, children: liftSingleImageHtml(it.children) })),
+      }
+    }
+    return n
+  })
 }
 
 function collectHeadingIds(nodes: Node[]): string[] {

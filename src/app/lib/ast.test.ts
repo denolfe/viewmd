@@ -28,6 +28,16 @@ describe('buildTree', () => {
     ])
   })
 
+  test('paragraph with single image is lifted to image block', () => {
+    const { nodes } = buildTree('![alt](src.png)')
+    expect(nodes[0]).toEqual({ kind: 'image', alt: 'alt', src: 'src.png' })
+  })
+
+  test('<img>-only html block is lifted to image block', () => {
+    const { nodes } = buildTree('<img alt="a" src="b.png" />')
+    expect(nodes[0]).toEqual({ kind: 'image', alt: 'a', src: 'b.png' })
+  })
+
   test('<kbd> renders as a kbd inline node', () => {
     const { nodes } = buildTree('Press <kbd>Ctrl+C</kbd> to quit.')
     const para = nodes.find(n => n.kind === 'paragraph')
