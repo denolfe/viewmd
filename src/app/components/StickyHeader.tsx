@@ -18,6 +18,9 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
 
   const current = findCurrent(toc, currentHeadingId)
   // Suppress row 2 when it would duplicate row 1 (current heading is the H1).
+  // The `current.id === topId` clause is defensive insurance for the frame
+  // between a heading-jump dispatch and the next visibleHeadingIds refresh —
+  // without it, row 2 briefly duplicates row 1 after a TOC select onto H1.
   const currentHidden = current ? visibleHeadingIds.has(current.id) || current.id === topId : false
 
   return (
