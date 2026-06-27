@@ -64,6 +64,9 @@ function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): vo
       case 'html':
         scanText(n.value, p, [], re, out)
         break
+      case 'image':
+        scanText(n.alt, p, [], re, out)
+        break
       case 'details':
         walkInline(n.summary, p, [], re, out)
         walkBlocks(n.children, p, re, out)
@@ -102,6 +105,12 @@ function walkInline(
       case 'link':
         walkInline(n.children, blockPath, ip, re, out)
         break
+      case 'image':
+        scanText(n.alt, blockPath, ip, re, out)
+        break
+      case 'br':
+        // No textual content; intentionally skipped.
+        break
     }
   }
 }
@@ -119,4 +128,3 @@ function scanText(
     out.push({ blockPath, inlinePath, offset: m.index, length: m[0].length })
   }
 }
-

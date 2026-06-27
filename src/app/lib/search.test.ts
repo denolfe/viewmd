@@ -46,6 +46,16 @@ describe('findMatches', () => {
     expect(m.length).toBe(1)
   })
 
+  test('matches alt text on image blocks', () => {
+    const { nodes } = buildTree('![cat picture](cat.png)')
+    expect(findMatches(nodes, 'cat').length).toBeGreaterThan(0)
+  })
+
+  test('matches alt text on inline images inside paragraphs', () => {
+    const { nodes } = buildTree('See ![the cat](cat.png) in action')
+    expect(findMatches(nodes, 'the cat').length).toBeGreaterThan(0)
+  })
+
   test('searches inside table header and body with row sentinel', () => {
     const md = '| H1 | H2 |\n|---|---|\n| body target | x |'
     const { nodes } = buildTree(md)
