@@ -68,23 +68,27 @@ export function slugify(text: string): string {
     .replace(/\s+/g, '-')
 }
 
+type ParseContext = {
+  usedSlugs: Set<string>
+  tocFlat: TocFlat
+}
+
 export function buildTree(markdown: string): {
   nodes: Node[]
   toc: TocEntry[]
   headingIds: string[]
 } {
+  const ctx: ParseContext = { usedSlugs: new Set(), tocFlat: [] }
   const tokens = marked.lexer(markdown)
-  const usedSlugs = new Set<string>()
   const nodes: Node[] = []
-  const tocFlat: TocFlat = []
 
   for (const t of tokens) {
-    const node = blockToNode(t, usedSlugs, tocFlat)
+    const node = blockToNode(t, ctx)
     if (node) nodes.push(node)
   }
 
-  const lifted = liftHtmlBlocks(wrapDetails(nodes), usedSlugs, tocFlat)
-  return { nodes: lifted, toc: nestToc(tocFlat), headingIds: collectHeadingIds(lifted) }
+  const lifted = liftHtmlBlocks(wrapDetails(nodes), ctx)
+  return { nodes: lifted, toc: nestToc(ctx.tocFlat), headingIds: collectHeadingIds(lifted) }
 }
 
 function collectHeadingIds(nodes: Node[]): string[] {
@@ -105,14 +109,14 @@ type TocFlat = { id: string; level: number; text: string; inline: InlineNode[] }
 // Replace html nodes containing headings/lists with real AST nodes by
 // re-lexing the markdownified html. Synthesizes a trailing space because
 // marked folds the html token's trailing blank line into its raw.
-function liftHtmlBlocks(nodes: Node[], usedSlugs: Set<string>, tocFlat: TocFlat): Node[] {
+function liftHtmlBlocks(nodes: Node[], ctx: ParseContext): Node[] {
   const out: Node[] = []
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i]!
     if (n.kind === 'html' && htmlContainsBlockMarkdown(n.value)) {
       const sub = marked.lexer(htmlToMarkdown(n.value))
       for (const t of sub) {
-        const node = blockToNode(t, usedSlugs, tocFlat)
+        const node = blockToNode(t, ctx)
         if (node) out.push(node)
       }
       const next = nodes[i + 1]
@@ -120,7 +124,7 @@ function liftHtmlBlocks(nodes: Node[], usedSlugs: Set<string>, tocFlat: TocFlat)
       continue
     }
     if (n.kind === 'details') {
-      out.push({ ...n, children: liftHtmlBlocks(n.children, usedSlugs, tocFlat) })
+      out.push({ ...n, children: liftHtmlBlocks(n.children, ctx) })
       continue
     }
     out.push(n)
@@ -174,7 +178,7 @@ function extractSummary(openerHtml: string): InlineNode[] {
   return [{ kind: 'text', value: m[1]!.trim() }]
 }
 
-function blockToNode(t: Tokens.Generic, usedSlugs: Set<string>, tocFlat: TocFlat): Node | null {
+function blockToNode(t: Tokens.Generic, ctx: ParseContext): Node | null {
   switch (t.type) {
     case 'heading': {
       const h = t as Tokens.Heading
@@ -184,9 +188,9 @@ function blockToNode(t: Tokens.Generic, usedSlugs: Set<string>, tocFlat: TocFlat
       let id = slugify(plain) || 'section'
       const base = id
       let n = 2
-      while (usedSlugs.has(id)) id = `${base}-${n++}`
-      usedSlugs.add(id)
-      tocFlat.push({ id, level, text: plain, inline: text })
+      while (ctx.usedSlugs.has(id)) id = `${base}-${n++}`
+      ctx.usedSlugs.add(id)
+      ctx.tocFlat.push({ id, level, text: plain, inline: text })
       return { kind: 'heading', level, id, text }
     }
     case 'paragraph': {
@@ -203,7 +207,7 @@ function blockToNode(t: Tokens.Generic, usedSlugs: Set<string>, tocFlat: TocFlat
         task: item.task === true,
         checked: item.checked === true,
         children: (item.tokens ?? [])
-          .map(it => blockToNode(it as Tokens.Generic, usedSlugs, tocFlat))
+          .map(it => blockToNode(it as Tokens.Generic, ctx))
           .filter((n): n is Node => n !== null),
       }))
       return { kind: 'list', ordered: l.ordered, items }
@@ -211,7 +215,7 @@ function blockToNode(t: Tokens.Generic, usedSlugs: Set<string>, tocFlat: TocFlat
     case 'blockquote': {
       const b = t as Tokens.Blockquote
       const children = (b.tokens ?? [])
-        .map(c => blockToNode(c as Tokens.Generic, usedSlugs, tocFlat))
+        .map(c => blockToNode(c as Tokens.Generic, ctx))
         .filter((n): n is Node => n !== null)
       return { kind: 'blockquote', children }
     }
