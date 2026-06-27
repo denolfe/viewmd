@@ -34,10 +34,6 @@ function parseArgs(args: string[]): { filePath?: string } {
 }
 
 async function readInput(filePath?: string): Promise<string> {
-  if (filePath) {
-    const f = Bun.file(filePath)
-    if (!(await f.exists())) throw new Error(`File not found: ${filePath}`)
-    return f.text()
-  }
-  throw new Error('Usage: sanemd <file.md>')
+  if (!filePath) throw new Error('Usage: sanemd <file.md>')
+  return Bun.file(filePath).text()
 }
