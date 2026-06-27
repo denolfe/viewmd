@@ -28,3 +28,74 @@ export function inlineVisibleWidth(nodes: InlineNode[]): number {
   }
   return total
 }
+
+/**
+ * Wraps a sequence of inline nodes into lines, each ≤ `maxWidth` columns where possible.
+ * Breaks text at whitespace; atomic nodes (codespan/kbd/image) move to a new line if they
+ * would overflow the current one. Atomic nodes wider than `maxWidth` get their own line.
+ */
+export function wrapInline(nodes: InlineNode[], maxWidth: number): InlineNode[][] {
+  if (maxWidth <= 0) return [nodes]
+  const lines: InlineNode[][] = [[]]
+  let used = 0
+
+  const startNewLine = () => {
+    lines.push([])
+    used = 0
+  }
+
+  const pushAtomic = (node: InlineNode, w: number) => {
+    if (used > 0 && used + w > maxWidth) startNewLine()
+    lines[lines.length - 1]!.push(node)
+    used += w
+  }
+
+  const pushTextChunk = (value: string) => {
+    if (!value.length) return
+    lines[lines.length - 1]!.push({ kind: 'text', value })
+    used += value.length
+  }
+
+  const pushText = (value: string) => {
+    const parts = value.split(/(\s+)/) // keeps separators
+    for (const part of parts) {
+      if (!part) continue
+      const isSpace = /^\s+$/.test(part)
+      if (isSpace) {
+        if (used === 0) continue // drop leading whitespace on new lines
+        if (used + part.length > maxWidth) {
+          startNewLine()
+          continue
+        }
+        pushTextChunk(part)
+        continue
+      }
+      if (used + part.length <= maxWidth) {
+        pushTextChunk(part)
+        continue
+      }
+      if (used > 0) startNewLine()
+      if (part.length <= maxWidth) {
+        pushTextChunk(part)
+        continue
+      }
+      // word longer than maxWidth: hard-break
+      for (let i = 0; i < part.length; i += maxWidth) {
+        const chunk = part.slice(i, i + maxWidth)
+        pushTextChunk(chunk)
+        if (i + maxWidth < part.length) startNewLine()
+      }
+    }
+  }
+
+  for (const n of nodes) {
+    if (n.kind === 'text') {
+      pushText(n.value)
+    } else if (n.kind === 'br') {
+      startNewLine()
+    } else {
+      pushAtomic(n, inlineVisibleWidth([n]))
+    }
+  }
+  return lines
+}
