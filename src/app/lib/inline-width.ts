@@ -2,30 +2,28 @@ import type { InlineNode } from './ast'
 
 export const PILL_GLYPH_WIDTH = 2 // ▐ and ▌ edge characters
 
+export function nodeVisibleWidth(n: InlineNode): number {
+  switch (n.kind) {
+    case 'text':
+      return n.value.length
+    case 'codespan':
+    case 'kbd':
+      return n.value.length + PILL_GLYPH_WIDTH
+    case 'strong':
+    case 'em':
+    case 'link':
+    case 'del':
+      return inlineVisibleWidth(n.children)
+    case 'image':
+      return (n.alt || n.src).length
+    case 'br':
+      return 0
+  }
+}
+
 export function inlineVisibleWidth(nodes: InlineNode[]): number {
   let total = 0
-  for (const n of nodes) {
-    switch (n.kind) {
-      case 'text':
-        total += n.value.length
-        break
-      case 'codespan':
-      case 'kbd':
-        total += n.value.length + PILL_GLYPH_WIDTH
-        break
-      case 'strong':
-      case 'em':
-      case 'link':
-      case 'del':
-        total += inlineVisibleWidth(n.children)
-        break
-      case 'image':
-        total += (n.alt || n.src).length
-        break
-      case 'br':
-        break
-    }
-  }
+  for (const n of nodes) total += nodeVisibleWidth(n)
   return total
 }
 
@@ -94,7 +92,7 @@ export function wrapInline(nodes: InlineNode[], maxWidth: number): InlineNode[][
     } else if (n.kind === 'br') {
       startNewLine()
     } else {
-      pushAtomic(n, inlineVisibleWidth([n]))
+      pushAtomic(n, nodeVisibleWidth(n))
     }
   }
   return lines
