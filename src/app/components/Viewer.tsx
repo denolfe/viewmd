@@ -1,18 +1,22 @@
 import { useEffect, useRef } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
+import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
+import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 
 // Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
 const VIEWER_OVERHEAD = 2
 
+const PIN_TOP_OFFSET = 1
+
 export function Viewer({ nodes }: { nodes: Node[] }) {
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
-  const localRef = useRef<any>(null)
+  const localRef = useRef<ScrollBoxRenderable | null>(null)
   const tailSpace = Math.max(0, height - 4)
   const tailRef = useRef(tailSpace)
   tailRef.current = tailSpace
@@ -53,22 +57,14 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
   )
 }
 
-type ScrollBoxLike = {
-  viewport: { y: number; height: number }
-  content: { findDescendantById: (id: string) => { y: number; height: number } | undefined }
-  scrollBy: (delta: number) => void
-}
-
-const PIN_TOP_OFFSET = 1
-
-function scrollChildToTop(box: ScrollBoxLike, id: string): void {
+function scrollChildToTop(box: ScrollBoxRenderable, id: string): void {
   const child = box.content.findDescendantById(id)
   if (!child) return
   const delta = child.y - box.viewport.y - PIN_TOP_OFFSET
   if (delta !== 0) box.scrollBy(delta)
 }
 
-function findHeadingNearTop(box: ScrollBoxLike, ids: string[]): string | null {
+function findHeadingNearTop(box: ScrollBoxRenderable, ids: string[]): string | null {
   const viewportTop = box.viewport.y
   let bestId: string | null = null
   let bestY = -Infinity
@@ -94,7 +90,7 @@ function findHeadingNearTop(box: ScrollBoxLike, ids: string[]): string | null {
   return firstBelowId
 }
 
-function findVisibleHeadingIds(box: ScrollBoxLike, ids: string[]): Set<string> {
+function findVisibleHeadingIds(box: ScrollBoxRenderable, ids: string[]): Set<string> {
   const top = box.viewport.y
   const bottom = top + box.viewport.height
   const out = new Set<string>()
@@ -106,53 +102,4 @@ function findVisibleHeadingIds(box: ScrollBoxLike, ids: string[]): Set<string> {
     if (childBottom > top && childTop < bottom) out.add(id)
   }
   return out
-}
-
-/**
- * Make the scrollbar thumb size reflect the real content rather than
- * the inflated content (real + tail-space). We intercept the underlying
- * scrollbar's viewportSize/scrollSize setters and, after each layout
- * update, set slider.viewPortSize = viewport * scrollSize / realContent.
- * That keeps the thumb sized to viewport/realContent. Scrolling into the
- * tail walks the thumb past the track bottom, where opentui clips it.
- */
-function installRealisticThumb(box: any, tailRef: { current: number }): () => void {
-  const sb = box?.verticalScrollBar
-  if (!sb) return () => {}
-  const proto = Object.getPrototypeOf(sb)
-  const vpDesc = Object.getOwnPropertyDescriptor(proto, 'viewportSize')
-  const ssDesc = Object.getOwnPropertyDescriptor(proto, 'scrollSize')
-  if (!vpDesc?.get || !vpDesc?.set || !ssDesc?.get || !ssDesc?.set) return () => {}
-
-  const recompute = () => {
-    const scrollSize = ssDesc.get!.call(sb) as number
-    const viewport = vpDesc.get!.call(sb) as number
-    const real = Math.max(1, scrollSize - tailRef.current)
-    if (real <= viewport || scrollSize <= 0) return
-    const desired = Math.max(1, Math.round((viewport * scrollSize) / real))
-    sb.slider.viewPortSize = desired
-  }
-
-  Object.defineProperty(sb, 'viewportSize', {
-    configurable: true,
-    get: () => vpDesc.get!.call(sb),
-    set: v => {
-      vpDesc.set!.call(sb, v)
-      recompute()
-    },
-  })
-  Object.defineProperty(sb, 'scrollSize', {
-    configurable: true,
-    get: () => ssDesc.get!.call(sb),
-    set: v => {
-      ssDesc.set!.call(sb, v)
-      recompute()
-    },
-  })
-  recompute()
-
-  return () => {
-    delete sb.viewportSize
-    delete sb.scrollSize
-  }
 }
