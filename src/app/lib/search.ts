@@ -1,4 +1,5 @@
 import type { InlineNode, Node } from './ast'
+import { escapeRegex } from './regex-util'
 
 /**
  * Identifies a single search match's position in the AST.
@@ -119,6 +120,3 @@ function scanText(
   }
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}

@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
 import { useAppState } from '../../state'
+import { escapeRegex } from '../../lib/regex-util'
 import { theme } from '../../styles/theme'
 
 // Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
@@ -117,6 +118,3 @@ function HighlightedText({ value }: { value: string }) {
   return <>{parts}</>
 }
 
-function escapeRegex(s: string): string {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
