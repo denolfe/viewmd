@@ -1,5 +1,5 @@
 import type { Action } from './keys'
-import type { AppState } from '../state'
+import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import { flattenVisible } from './toc-util'
 
@@ -11,31 +11,27 @@ export function dispatch(
   viewportHeight: number,
   onQuit: () => void,
 ): void {
+  const scroll = (fn: (v: ScrollboxHandle) => void): void => {
+    const v = state.viewerRef.current
+    if (!v) return
+    fn(v)
+    syncCurrentHeading(state, headingIds)
+  }
   const v = state.viewerRef.current
   switch (action.kind) {
     case 'quit':
       onQuit()
       return
     case 'scrollLine':
-      v?.scrollBy(action.delta)
-      syncCurrentHeading(state, headingIds)
-      return
+      return scroll(v => v.scrollBy(action.delta))
     case 'scrollPage':
-      v?.scrollBy(action.delta * Math.max(1, viewportHeight - 2))
-      syncCurrentHeading(state, headingIds)
-      return
+      return scroll(v => v.scrollBy(action.delta * Math.max(1, viewportHeight - 2)))
     case 'scrollHalf':
-      v?.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2)))
-      syncCurrentHeading(state, headingIds)
-      return
+      return scroll(v => v.scrollBy(action.delta * Math.max(1, Math.floor((viewportHeight - 2) / 2))))
     case 'top':
-      v?.scrollTo(0)
-      syncCurrentHeading(state, headingIds)
-      return
+      return scroll(v => v.scrollTo(0))
     case 'bottom':
-      v?.scrollToBottom()
-      syncCurrentHeading(state, headingIds)
-      return
+      return scroll(v => v.scrollToBottom())
     case 'nextHeading':
       jumpHeading(state, headingIds, 1)
       return
