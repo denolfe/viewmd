@@ -18,9 +18,7 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
 
   const current = findCurrent(toc, currentHeadingId)
   // Suppress row 2 when it would duplicate row 1 (current heading is the H1).
-  const currentHidden = current
-    ? visibleHeadingIds.has(current.id) || current.id === topId
-    : false
+  const currentHidden = current ? visibleHeadingIds.has(current.id) || current.id === topId : false
 
   return (
     <box

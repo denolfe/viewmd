@@ -16,7 +16,7 @@ Deeper section text.
 
 ## Inline Styles
 
-This paragraph mixes **bold**, *italic*, ***bold italic***, ~~strikethrough~~, `inline code`, and a [link to example.com](https://example.com). Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy.
+This paragraph mixes **bold**, _italic_, **_bold italic_**, ~~strikethrough~~, `inline code`, and a [link to example.com](https://example.com). Press <kbd>Ctrl</kbd>+<kbd>C</kbd> to copy.
 
 A line break appears here:
 this text follows a hard break.
@@ -81,11 +81,11 @@ multiple lines
 
 ## Table
 
-| Column A | Column B  | Column C |
-| -------- | --------- | -------- |
-| alpha    | one       | x        |
-| bravo    | two       | y        |
-| charlie  | three     | z        |
+| Column A | Column B | Column C |
+| -------- | -------- | -------- |
+| alpha    | one      | x        |
+| bravo    | two      | y        |
+| charlie  | three    | z        |
 
 ## Horizontal Rule
 

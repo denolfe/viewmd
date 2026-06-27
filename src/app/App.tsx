@@ -52,7 +52,10 @@ export function App({ nodes, toc, fileLabel }: Props) {
   )
   // Viewer reserves 1 col for the vertical scrollbar and the inner box adds paddingRight={1}.
   const VIEWER_OVERHEAD = 2
-  const viewerColumnWidth = Math.max(1, (hasToc ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD)
+  const viewerColumnWidth = Math.max(
+    1,
+    (hasToc ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
+  )
   const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewerColumnWidth)
 
   const state = useMemo<AppState>(

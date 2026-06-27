@@ -68,15 +68,15 @@ Heading blocks render a `<box id={node.id} ...>` so `Viewer` can locate them via
 
 ## Ubiquitous Language
 
-| Term                | Definition                                                                                  |
-| ------------------- | ------------------------------------------------------------------------------------------- |
-| Viewer              | The scrollable content area (`<scrollbox>`)                                                 |
-| Viewport            | The currently visible region of the Viewer (`box.viewport.{y,height}`)                      |
-| TOC                 | Table-of-contents sidebar; collapsible tree of `TocEntry`                                   |
-| Current heading     | `currentHeadingId` — heading at/just-above viewport top, or last-jumped-to                  |
-| Visible headings    | `visibleHeadingIds` — set of heading ids whose box intersects the viewport                  |
-| Breadcrumb          | Ancestor chain of `currentHeadingId`, rendered in `StickyHeader`                            |
-| Synth root          | Filename label substituted as the first breadcrumb when the doc has no H1                   |
-| Crumb               | One row in the breadcrumb; `{ id, inline, indent }`. Hidden while `id ∈ visibleHeadingIds`. |
-| Focus               | `'viewer' | 'sidebar' | 'search'` — drives key dispatch                                     |
-| Scrollbox tail      | Empty `<box height={tailSpace}>` after content so the last heading can scroll to top        |
+| Term             | Definition                                                                                  |
+| ---------------- | ------------------------------------------------------------------------------------------- |
+| Viewer           | The scrollable content area (`<scrollbox>`)                                                 |
+| Viewport         | The currently visible region of the Viewer (`box.viewport.{y,height}`)                      |
+| TOC              | Table-of-contents sidebar; collapsible tree of `TocEntry`                                   |
+| Current heading  | `currentHeadingId` — heading at/just-above viewport top, or last-jumped-to                  |
+| Visible headings | `visibleHeadingIds` — set of heading ids whose box intersects the viewport                  |
+| Breadcrumb       | Ancestor chain of `currentHeadingId`, rendered in `StickyHeader`                            |
+| Synth root       | Filename label substituted as the first breadcrumb when the doc has no H1                   |
+| Crumb            | One row in the breadcrumb; `{ id, inline, indent }`. Hidden while `id ∈ visibleHeadingIds`. |
+| Focus            | `'viewer' \| 'sidebar' \| 'search'` — drives key dispatch                                   |
+| Scrollbox tail   | Empty `<box height={tailSpace}>` after content so the last heading can scroll to top        |
