@@ -2,6 +2,8 @@
 // or convert back to markdown so AST lifting can restore styling.
 // Inputs are hand-written README HTML; regex-based parsing is intentional.
 
+// High-frequency entities only; numeric refs (&#nnn; / &#xhh;) handled fully
+// in decodeEntities below. Hand-written README HTML rarely needs more.
 const NAMED_ENTITIES: Record<string, string> = {
   amp: '&',
   lt: '<',
@@ -22,9 +24,7 @@ export type HtmlSegment =
 
 // <script>/<style> are the only tags whose contents must die with them.
 function stripDangerousAndComments(s: string): string {
-  return s
-    .replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  return s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '').replace(/<!--[\s\S]*?-->/g, '')
 }
 
 export function stripHtml(input: string): string {
