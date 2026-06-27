@@ -14,7 +14,7 @@ export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
   const botRule = '└' + cellWidths.map(w => '─'.repeat(w)).join('┴') + '┘'
 
   return (
-    <box flexDirection="column" alignSelf="flex-start" marginY={1} marginX={2}>
+    <box flexDirection="column" alignSelf="flex-start" marginX={2}>
       <text fg={theme.border}>{topRule}</text>
       <Row cells={node.header} cellWidths={cellWidths} isHeader />
       <text fg={theme.border}>{midRule}</text>

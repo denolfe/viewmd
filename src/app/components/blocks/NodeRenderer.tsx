@@ -63,7 +63,7 @@ function parseImgTag(html: string): { alt: string; src: string } | null {
 function Hr() {
   const { width } = useTerminalDimensions()
   return (
-    <box height={1} marginY={1}>
+    <box height={1}>
       <text fg={theme.border}>{'─'.repeat(Math.max(0, width))}</text>
     </box>
   )

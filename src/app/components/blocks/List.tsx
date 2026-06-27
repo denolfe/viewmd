@@ -4,7 +4,7 @@ import type { Node } from '../../lib/ast'
 
 export function List({ node }: { node: Extract<Node, { kind: 'list' }> }) {
   return (
-    <box marginBottom={1} paddingLeft={2}>
+    <box paddingLeft={2}>
       {node.items.map((item, i) => (
         <box key={i} flexDirection="row">
           <text>{node.ordered ? `${i + 1}. ` : '- '}</text>

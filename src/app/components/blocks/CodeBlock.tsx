@@ -13,7 +13,7 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
   // Mermaid ASCII already carries its own frame; render it bare.
   if (node.lang === 'mermaid') {
     return (
-      <box marginY={1} marginX={MARGIN_X}>
+      <box marginX={MARGIN_X}>
         <text>{node.value}</text>
       </box>
     )
@@ -33,7 +33,6 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
       borderColor={theme.border}
       title={title}
       width={Math.min(frameWidth, maxFrameWidth)}
-      marginY={1}
       marginX={MARGIN_X}
       paddingX={PADDING_X}
       paddingY={1}

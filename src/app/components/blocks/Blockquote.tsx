@@ -20,7 +20,7 @@ const PIPE_BORDER_CHARS = {
 
 export function Blockquote({ node }: { node: Extract<Node, { kind: 'blockquote' }> }) {
   return (
-    <box flexDirection="row" marginY={1} paddingX={2}>
+    <box flexDirection="row" paddingX={2}>
       <box
         border={['left']}
         borderColor={theme.blockquotePipe}
