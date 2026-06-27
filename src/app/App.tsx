@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
-import type { AppState, ScrollboxHandle } from './state'
+import type { AppState, ScrollboxHandle, SearchState } from './state'
 import type { Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
@@ -24,7 +24,7 @@ export function App({ nodes, toc, fileLabel }: Props) {
   const [currentHeadingId, setCurrentHeadingId] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Map<string, boolean>>(() => new Map())
   const [tocCursorId, setTocCursorId] = useState<string | null>(null)
-  const [search, setSearch] = useState<AppState['search']>(null)
+  const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
     // At startup the H1 (if any) sits at the top of the viewport — seed it so

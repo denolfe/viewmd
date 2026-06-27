@@ -24,6 +24,13 @@ export type ScrollboxHandle = {
   getVisibleHeadingIds: (headingIds: string[]) => Set<string>
 }
 
+export type SearchState = {
+  pattern: string
+  matches: Match[]
+  index: number
+  dir: 'forward' | 'backward'
+}
+
 export type AppState = {
   focus: Focus
   setFocus: (f: Focus) => void
@@ -43,8 +50,8 @@ export type AppState = {
   tocCursorId: string | null
   setTocCursorId: (id: string | null) => void
 
-  search: { pattern: string; matches: Match[]; index: number; dir: 'forward' | 'backward' } | null
-  setSearch: (s: AppState['search']) => void
+  search: SearchState | null
+  setSearch: (s: SearchState | null) => void
 
   mouseEnabled: boolean
   toggleMouse: () => void
