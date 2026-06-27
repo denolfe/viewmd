@@ -6,41 +6,6 @@ describe('stripHtml — common README HTML', () => {
     expect(stripHtml('<div align="center">Centered text</div>')).toBe('Centered text')
   })
 
-  test('details renders as expanded with arrow and indented body', () => {
-    expect(stripHtml('<details><summary>Toggle</summary>Hidden body</details>')).toBe(
-      '▾ Toggle\n  Hidden body',
-    )
-  })
-
-  test('details with open attribute renders the same (always expanded)', () => {
-    expect(stripHtml('<details open><summary>S</summary>B</details>')).toBe('▾ S\n  B')
-  })
-
-  test('details without summary uses bare arrow', () => {
-    expect(stripHtml('<details>just body</details>')).toBe('▾\n  just body')
-  })
-
-  test('multi-line details body keeps every line indented', () => {
-    expect(stripHtml('<details><summary>S</summary>\nline1\nline2\n</details>')).toBe(
-      '▾ S\n  line1\n  line2',
-    )
-  })
-
-  test('sequential details blocks each expand independently', () => {
-    expect(
-      stripHtml('<details><summary>A</summary>1</details><details><summary>B</summary>2</details>'),
-    ).toBe('▾ A\n  1\n▾ B\n  2')
-  })
-
-  test('nested details flatten — inner content preserved', () => {
-    const out = stripHtml(
-      '<details><summary>Outer</summary><details><summary>Inner</summary>X</details></details>',
-    )
-    expect(out).toContain('Outer')
-    expect(out).toContain('Inner')
-    expect(out).toContain('X')
-  })
-
   test('sub/sup unwrap inner text', () => {
     expect(stripHtml('H<sub>2</sub>O')).toBe('H2O')
     expect(stripHtml('E=mc<sup>2</sup>')).toBe('E=mc2')

@@ -25,7 +25,6 @@ export function stripHtml(input: string): string {
   // <script>/<style> are the only tags whose contents must die with them.
   s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
   s = s.replace(/<!--[\s\S]*?-->/g, '')
-  s = expandDetails(s)
   // Leading `[a-zA-Z]` anchor avoids gobbling `a < b` style comparisons.
   s = s.replace(/<\/?[a-zA-Z][^>]*>/g, '')
   s = decodeEntities(s)
@@ -37,7 +36,6 @@ export function parseHtmlSegments(input: string): HtmlSegment[] {
   let s = input
   s = s.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
   s = s.replace(/<!--[\s\S]*?-->/g, '')
-  s = expandDetails(s)
 
   // Block-tag boundaries become sentinels so adjacent <p>/<h*>/<hr> chunks
   // in one html token don't flow into a single line.
@@ -134,18 +132,6 @@ export function htmlToMarkdown(html: string): string {
 
 export function htmlContainsBlockMarkdown(html: string): boolean {
   return /<(h[1-6]|ul|ol|li)\b/i.test(html)
-}
-
-// Replaces each <details>...</details> with "▾ summary\n  body" — always
-// expanded since the TUI can't actually collapse. Nested details flatten.
-function expandDetails(s: string): string {
-  return s.replace(/<details\b[^>]*>([\s\S]*?)<\/details>/gi, (_match, inner: string) => {
-    const sumMatch = /<summary\b[^>]*>([\s\S]*?)<\/summary>/i.exec(inner)
-    const summary = sumMatch ? sumMatch[1]!.trim() : ''
-    const body = (sumMatch ? inner.replace(sumMatch[0], '') : inner).trim()
-    const indented = body.replace(/^/gm, '  ')
-    return summary ? `▾ ${summary}\n${indented}\n` : `▾\n${indented}\n`
-  })
 }
 
 function finalize(segs: HtmlSegment[]): HtmlSegment[] {
