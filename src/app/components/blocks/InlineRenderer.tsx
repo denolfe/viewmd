@@ -92,9 +92,16 @@ function InlineOne({ node }: { node: InlineNode }) {
   }
 }
 
-// v1 highlight: re-scans each text leaf for the pattern. All matches share one
-// color — distinguishing the "current" match across leaf boundaries would require
-// threading Match objects + offsets through the render tree, deferred to v2.
+// Document-order counter assigned to each rendered match. Relies on React
+// rendering function-component bodies top-down in tree order so the nth match
+// rendered here lines up with `search.matches[n]` from `findMatches` (which
+// walks the AST in the same order). Viewer calls `resetMatchCounter()` before
+// the tree renders.
+let matchCounter = 0
+export function resetMatchCounter(): void {
+  matchCounter = 0
+}
+
 function HighlightedText({ value }: { value: string }) {
   const { search } = useAppState()
   if (!search?.pattern || !search.matches.length) return <>{value}</>
@@ -106,8 +113,13 @@ function HighlightedText({ value }: { value: string }) {
   let keyIdx = 0
   while ((m = re.exec(value)) !== null) {
     if (m.index > last) parts.push(value.slice(last, m.index))
+    const isActive = matchCounter++ === search.index
     parts.push(
-      <span key={`m${keyIdx++}`} bg={theme.searchMatchBg} fg={theme.searchMatchFg}>
+      <span
+        key={`m${keyIdx++}`}
+        bg={isActive ? theme.searchCurrentBg : theme.searchMatchBg}
+        fg={theme.searchMatchFg}
+      >
         {m[0]}
       </span>,
     )

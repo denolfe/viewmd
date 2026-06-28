@@ -58,9 +58,9 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
       return { kind: 'focusSidebar' }
     case 'm':
       return { kind: 'toggleMouse' }
-    case 'slash':
+    case '/':
       return { kind: 'startSearch', dir: 'forward' }
-    case 'question':
+    case '?':
       return { kind: 'startSearch', dir: 'backward' }
     case 'n':
       if (ev.shift) return ctx.searchActive ? { kind: 'prevMatch' } : { kind: 'prevHeading' }

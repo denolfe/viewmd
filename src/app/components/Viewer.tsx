@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
+import { resetMatchCounter } from './blocks/InlineRenderer'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
@@ -41,6 +42,7 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
     }
   }, [viewerRef])
 
+  resetMatchCounter()
   return (
     <scrollbox
       ref={localRef}

@@ -30,7 +30,9 @@ export function SearchInput({ nodes }: { nodes: Node[] }) {
   return (
     <box flexDirection="row" height={1} paddingX={1}>
       <text fg={theme.foregroundMuted}>{prompt}</text>
-      <input focused value={value} onChange={setValue} />
+      <box flexGrow={1}>
+        <input focused value={value} onInput={setValue} />
+      </box>
     </box>
   )
 }
