@@ -3,25 +3,37 @@ import { basename, dirname, resolve } from 'node:path'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
+import { parseArgs } from './app/lib/args'
 import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
+import { renderAnsi } from './app/lib/renderAnsi'
 
-const { filePath } = parseArgs(process.argv.slice(2))
-if (!process.stdout.isTTY) {
-  console.error('sanemd: requires a TTY (piping is no longer supported)')
-  process.exit(1)
-}
+const MIN_WIDTH = 20
+const RENDER_MAX_HEIGHT = 2000
 
+const { filePath, forceRender } = parseArgs(process.argv.slice(2))
 const md = await readInput(filePath)
 const processed = replaceMermaidBlocks(md)
 const { nodes, toc, headingIds } = buildTree(processed)
+
+const renderMode = forceRender || !process.stdout.isTTY
+if (renderMode) {
+  const width = clampWidth(Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80)
+  const out = await renderAnsi({ nodes, width, maxHeight: RENDER_MAX_HEIGHT })
+  await Bun.write(Bun.stdout, out + '\n')
+  process.exit(0)
+}
 
 addDefaultParsers(extraParsers)
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 createRoot(renderer).render(
   <App nodes={nodes} toc={toc} headingIds={headingIds} fileLabel={fileLabel(filePath)} />,
 )
+
+function clampWidth(w: number): number {
+  return Number.isFinite(w) && w >= MIN_WIDTH ? Math.floor(w) : MIN_WIDTH
+}
 
 function fileLabel(p?: string): string | undefined {
   if (!p) return undefined
@@ -30,12 +42,9 @@ function fileLabel(p?: string): string | undefined {
   return parent ? `${parent}/${basename(abs)}` : basename(abs)
 }
 
-function parseArgs(args: string[]): { filePath?: string } {
-  for (const a of args) if (!a.startsWith('-')) return { filePath: a }
-  return {}
-}
-
 async function readInput(filePath?: string): Promise<string> {
-  if (!filePath) throw new Error('Usage: sanemd <file.md>')
-  return Bun.file(filePath).text()
+  if (filePath) return Bun.file(filePath).text()
+  if (!process.stdin.isTTY) return Bun.stdin.text()
+  console.error('Usage: sanemd <file.md>  (or pipe markdown via stdin)')
+  process.exit(1)
 }

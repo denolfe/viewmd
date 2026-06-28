@@ -23,15 +23,23 @@ bun link
 ## Usage
 
 ```sh
-# From file
+# Interactive viewer (requires a TTY)
 sanemd README.md
+```
+
+## Pipe / fzf preview
+
+When stdout is not a TTY (a pipe, a redirect, an fzf preview pane), `sanemd` skips the interactive viewer and prints a one-shot ANSI render instead. Force this in a TTY with `--render` / `-r`.
+
+```sh
+# Pipe to a pager
+sanemd README.md | less -R
 
 # From stdin
 cat README.md | sanemd
-echo "# Hello **world**" | sanemd
 
-# Bypass pager
-sanemd --no-pager README.md
+# fzf preview
+fzf --ansi --preview 'sanemd {}'
 ```
 
 ## Features

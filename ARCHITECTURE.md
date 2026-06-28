@@ -30,11 +30,13 @@ Entry: `src/sanemd.tsx`. Everything else lives under `src/app/`.
 
 ## 1. Entry pipeline (`src/sanemd.tsx`)
 
-1. **Parse argv** — first non-flag positional becomes `filePath`. No stdin: TTY is required (the renderer needs one to drive raw-mode input).
-2. **Read file** — `Bun.file(filePath).text()`.
+1. **Parse argv** — `parseArgs` (`src/app/lib/args.ts`) returns `{ filePath?, forceRender? }`. First non-flag positional becomes `filePath`; `--render`/`-r` sets `forceRender`.
+2. **Read input** — `Bun.file(filePath).text()` when a file path is given; otherwise `Bun.stdin.text()` when stdin is non-TTY; otherwise a usage error.
 3. **Preprocess** — `replaceMermaidBlocks` (see [Preprocessing](#preprocessing)).
 4. **Build AST** — `buildTree(markdown)` returns `{ nodes, toc, headingIds }`.
-5. **Render** — `createCliRenderer({ exitOnCtrlC: false })`, then `createRoot(renderer).render(<App ... />)`. `App` receives the AST plus a `fileLabel` derived from `<parentDir>/<basename>`.
+5. **Branch on mode**:
+   - **Render mode** (`forceRender || !process.stdout.isTTY`): `renderAnsi({ nodes, width, maxHeight })` mounts a body-only `<RenderView>` into OpenTUI's headless `createTestRenderer`, waits for visual idle (so async tree-sitter highlight commits), captures one frame via `captureSpans()`, converts spans → 24-bit SGR ANSI, trims trailing blank rows, and writes to stdout via `Bun.write`. Width is `FZF_PREVIEW_COLUMNS` → `process.stdout.columns` → 80, clamped to a minimum of 20. `maxHeight` defaults to 2000.
+   - **Interactive mode**: `createCliRenderer({ exitOnCtrlC: false })`, then `createRoot(renderer).render(<App ... />)`. `App` receives the AST plus a `fileLabel` derived from `<parentDir>/<basename>`.
 
 Exit on `Ctrl-C` is wired explicitly through the key dispatcher so the same path covers `q`, `Ctrl-C`, and forced teardown.
 
