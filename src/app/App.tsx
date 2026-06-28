@@ -114,7 +114,12 @@ export function App({ nodes, toc, headingIds, fileLabel }: Props) {
   useKeyboard(ev => {
     if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(action, state, toc, headingIds, renderer.height, () => renderer.destroy())
+    dispatch(action, state, toc, headingIds, renderer.height, () => {
+      // Silence the highlight-failed warning that tree-sitter logs when
+      // destroyTreeSitterClient rejects in-flight requests during shutdown.
+      console.warn = () => {}
+      renderer.destroy()
+    })
   })
 
   return (

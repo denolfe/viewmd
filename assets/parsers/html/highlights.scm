@@ -1,8 +1,14 @@
-; Query from: https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/html/highlights.scm
-; inherits: html_tags
-
+; Query from: https://raw.githubusercontent.com/tree-sitter/tree-sitter-html/master/queries/highlights.scm
+(tag_name) @tag
+(erroneous_end_tag_name) @tag.error
 (doctype) @constant
+(attribute_name) @attribute
+(attribute_value) @string
+(comment) @comment
 
-"<!" @tag.delimiter
-
-(entity) @character.special
+[
+  "<"
+  ">"
+  "</"
+  "/>"
+] @punctuation.bracket
