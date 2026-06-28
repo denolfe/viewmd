@@ -1,3 +1,4 @@
+import { infoStringToFiletype } from '@opentui/core'
 import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
@@ -19,8 +20,9 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
     )
   }
 
-  const lang = node.lang && node.lang !== 'text' ? node.lang : undefined
-  const title = lang ? ` ${lang} ` : undefined
+  const rawLang = node.lang && node.lang !== 'text' ? node.lang : undefined
+  const filetype = rawLang ? infoStringToFiletype(rawLang) : undefined
+  const title = rawLang ? ` ${rawLang} ` : undefined
 
   const lines = node.value.split('\n')
   const maxLineWidth = lines.reduce((max, l) => Math.max(max, l.length), title?.length ?? 0)
@@ -37,8 +39,8 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
       paddingX={PADDING_X}
       paddingY={1}
     >
-      {lang ? (
-        <code content={node.value} filetype={lang} syntaxStyle={syntaxStyle} wrapMode="char" />
+      {filetype ? (
+        <code content={node.value} filetype={filetype} syntaxStyle={syntaxStyle} wrapMode="char" />
       ) : (
         <text wrapMode="char">{node.value}</text>
       )}
