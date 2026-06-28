@@ -17,45 +17,16 @@ Piping/stdin is not supported — `sanemd` requires a TTY.
 
 ## Architecture
 
-Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@opentui/react`). Markdown is parsed once into an AST and rendered as a tree of React components inside a scrollable viewport with a TOC sidebar, sticky breadcrumb header, and status line.
+Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@opentui/react`). Markdown is parsed once into a typed AST, rendered as React components inside a scrollable viewport with a TOC sidebar, sticky breadcrumb header, and status line.
 
-### Pipeline (`src/sanemd.tsx`)
+**Full architecture: see [ARCHITECTURE.md](./ARCHITECTURE.md).** Read it before non-trivial changes touching the AST, dispatcher, viewer scroll surface, or sticky-header rules.
 
-1. **Parse args + read file** — TTY-only; no stdin.
-2. **Preprocess** (`src/app/lib/preprocess.ts`) — `replaceMermaidBlocks`, `replaceKbdTags`.
-3. **Build AST** (`src/app/lib/ast.ts`) — produces `{ nodes, toc }` from markdown.
-4. **Render** — `createCliRenderer` + `createRoot(renderer).render(<App ... />)`.
+Quick orientation:
 
-`App` owns reactive state; imperative scroll lives in a `ScrollboxHandle` exposed by `Viewer` via `viewerRef`.
-
-### Layout
-
-```
-StickyHeader      ← breadcrumb chrome (bg tint, hides crumbs of visible headings)
-Viewer | Toc      ← scrollable content + sidebar (sidebar width = content width, clamped)
-StatusLine        ← bottom row
-```
-
-### Key modules
-
-- **`src/app/App.tsx`** — top-level component; owns `AppState`, keyboard wiring (`useKeyboard` → `mapKey` → `dispatch`).
-- **`src/app/state.ts`** — `AppState` (React state) + `ScrollboxHandle` (imperative scroll API). `visibleHeadingIds: Set<string>` tracks which headings intersect the viewport for sticky-crumb hiding.
-- **`src/app/lib/ast.ts`** — markdown → typed AST (`Node`, `InlineNode`, `TocEntry`).
-- **`src/app/lib/dispatch.ts`** — action dispatcher; `syncCurrentHeading` refreshes `currentHeadingId` + `visibleHeadingIds` after every scroll; `jumpHeading` does the same after heading navigation.
-- **`src/app/lib/keys.ts`** — key event → `Action` mapping.
-- **`src/app/lib/toc-util.ts`** — `buildBreadcrumbs`, `flattenVisible`, `tocContentWidth`, etc.
-- **`src/app/lib/search.ts` / `match-nav.ts`** — pattern matching + match-to-heading mapping.
-- **`src/app/lib/preprocess.ts`** — mermaid → ASCII, `<kbd>` → styled placeholder.
-- **`src/app/components/Viewer.tsx`** — scrollbox wrapper; implements `getHeadingNearTop` and `getVisibleHeadingIds` against opentui's renderable tree (`box.viewport`, `box.content.findDescendantById`). Also patches the scrollbar thumb to ignore the synthetic tail spacer.
-- **`src/app/components/StickyHeader.tsx`** — breadcrumb chrome. Each row blanks while its heading is in `visibleHeadingIds`.
-- **`src/app/components/Toc.tsx`** — collapsible TOC sidebar.
-- **`src/app/components/blocks/*`** — per-AST-node renderers (`Heading`, `Paragraph`, `List`, `Table`, `CodeBlock`, `Blockquote`, `InlineRenderer`, `MutedInline`, `NodeRenderer`).
-- **`src/app/styles/theme.ts`** — VS Code Dark+ inspired color tokens.
-- **`src/app/styles/layout.ts`** — layout constants (e.g. `CONTENT_MAX_WIDTH`).
-
-### Block `id` convention
-
-Heading blocks render a `<box id={node.id} ...>` so `Viewer` can locate them via `box.content.findDescendantById(id)` for scroll-into-view, near-top detection, and visibility checks.
+- Entry: `src/sanemd.tsx` → `preprocess` → `buildTree` (AST + TOC + headingIds) → `createRoot(renderer).render(<App />)`.
+- `App` (`src/app/App.tsx`) owns all reactive state via `AppStateContext`; imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
+- Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (effectful, `src/app/lib/dispatch.ts`).
+- Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
 
 ## Conventions
 
