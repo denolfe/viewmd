@@ -44,6 +44,18 @@ export function wrapInline(nodes: InlineNode[], maxWidth: number): InlineNode[][
 
   const pushAtomic = (node: InlineNode, w: number) => {
     if (used > 0 && used + w > maxWidth) startNewLine()
+    if (w > maxWidth && (node.kind === 'codespan' || node.kind === 'kbd')) {
+      const chunkW = Math.max(1, maxWidth - PILL_GLYPH_WIDTH)
+      const value = node.value
+      for (let i = 0; i < value.length; i += chunkW) {
+        const chunk = value.slice(i, i + chunkW)
+        const piece = { ...node, value: chunk }
+        lines[lines.length - 1]!.push(piece)
+        used += chunk.length + PILL_GLYPH_WIDTH
+        if (i + chunkW < value.length) startNewLine()
+      }
+      return
+    }
     lines[lines.length - 1]!.push(node)
     used += w
   }

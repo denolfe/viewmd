@@ -93,7 +93,7 @@ function CellLines({ lines, totalLines }: { lines: InlineNode[][]; totalLines: n
 function Pipe({ height }: { height: number }) {
   const value = Array.from({ length: height }, () => '│').join('\n')
   return (
-    <box width={1}>
+    <box width={1} height={height}>
       <text fg={theme.border}>{value}</text>
     </box>
   )
