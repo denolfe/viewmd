@@ -1,0 +1,90 @@
+{
+  "parsers": [
+    {
+      "filetype": "bash",
+      "aliases": ["sh", "shell", "zsh"],
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-bash.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/bash/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "python",
+      "aliases": ["py"],
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-python.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/python/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "rust",
+      "aliases": ["rs"],
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-rust.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/rust/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "go",
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-go.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/go/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "json",
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-json.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/json/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "yaml",
+      "aliases": ["yml"],
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-yaml.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/yaml/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "toml",
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-toml.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/toml/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "html",
+      "aliases": ["htm"],
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-html.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/html/highlights.scm"
+        ]
+      }
+    },
+    {
+      "filetype": "css",
+      "wasm": "https://unpkg.com/tree-sitter-wasms/out/tree-sitter-css.wasm",
+      "queries": {
+        "highlights": [
+          "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/css/highlights.scm"
+        ]
+      }
+    }
+  ]
+}

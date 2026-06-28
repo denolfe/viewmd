@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 import { basename, dirname, resolve } from 'node:path'
-import { createCliRenderer } from '@opentui/core'
+import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
 import { buildTree } from './app/lib/ast'
+import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
 
 const { filePath } = parseArgs(process.argv.slice(2))
@@ -16,6 +17,7 @@ const md = await readInput(filePath)
 const processed = replaceMermaidBlocks(md)
 const { nodes, toc, headingIds } = buildTree(processed)
 
+addDefaultParsers(extraParsers)
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 createRoot(renderer).render(
   <App nodes={nodes} toc={toc} headingIds={headingIds} fileLabel={fileLabel(filePath)} />,

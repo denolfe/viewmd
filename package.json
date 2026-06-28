@@ -10,7 +10,8 @@
     "start": "bun index.ts",
     "test": "FORCE_COLOR=3 bun test",
     "typecheck": "tsc --noEmit",
-    "prepare": "husky"
+    "prepare": "husky",
+    "update-parsers": "bun ./node_modules/@opentui/core/lib/tree-sitter/update-assets.js --config ./parsers-config.json --assets ./assets/parsers --output /tmp/parsers-generated.ts"
   },
   "lint-staged": {
     "*": "prettier --write --ignore-unknown"
