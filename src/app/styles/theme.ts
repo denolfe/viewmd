@@ -12,6 +12,7 @@ export const theme = {
   cyan: '#11a8cd',
 
   heading: '#11a8cd',
+  headingMuted: '#19748a',
   h1Bg: '#2472c8',
   h1Fg: '#000000',
   codespanBg: '#3c3c3c',
