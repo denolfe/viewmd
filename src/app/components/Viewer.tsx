@@ -19,9 +19,11 @@ const PIN_TOP_OFFSET = 1
 export function Viewer({
   nodes,
   frontmatter = [],
+  onScroll,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
+  onScroll?: () => void
 }) {
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
@@ -29,6 +31,8 @@ export function Viewer({
   const tailSpace = Math.max(0, height - 4)
   const tailRef = useRef(tailSpace)
   tailRef.current = tailSpace
+  const onScrollRef = useRef(onScroll)
+  onScrollRef.current = onScroll
 
   useEffect(() => {
     const box = localRef.current
@@ -44,7 +48,9 @@ export function Viewer({
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
+    const restoreScroll = watchScroll(box, () => onScrollRef.current?.())
     return () => {
+      restoreScroll()
       restore()
       viewerRef.current = null
     }
@@ -66,6 +72,33 @@ export function Viewer({
       <box height={tailSpace} />
     </scrollbox>
   )
+}
+
+/**
+ * All vertical scroll paths (keyboard, wheel, scrollTo, scrollChildIntoView)
+ * funnel into `verticalScrollBar.scrollPosition`'s setter. Patch it so we
+ * notify after every change — keyboard goes through dispatch's own sync, but
+ * mouse wheel / drag mutate scrollTop directly and would otherwise leave the
+ * breadcrumb stale.
+ */
+function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
+  const sb = box.verticalScrollBar as unknown as { scrollPosition: number }
+  const proto = Object.getPrototypeOf(sb)
+  const desc = Object.getOwnPropertyDescriptor(proto, 'scrollPosition')
+  if (!desc?.get || !desc?.set) return () => {}
+  Object.defineProperty(sb, 'scrollPosition', {
+    configurable: true,
+    get: () => desc.get!.call(sb),
+    set: v => {
+      const prev = desc.get!.call(sb)
+      desc.set!.call(sb, v)
+      if (desc.get!.call(sb) !== prev) notify()
+    },
+  })
+  return () => {
+    // @ts-expect-error: restoring prototype lookup by deleting the override.
+    delete sb.scrollPosition
+  }
 }
 
 function scrollChildToTop(box: ScrollBoxRenderable, id: string): void {

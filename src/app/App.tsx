@@ -5,7 +5,7 @@ import type { AppState, ScrollboxHandle, SearchState } from './state'
 import type { Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
-import { dispatch } from './lib/dispatch'
+import { dispatch, syncHeadings } from './lib/dispatch'
 import { nearestPrecedingHeadingId } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
@@ -134,7 +134,11 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       <box flexDirection="column" height="100%">
         <StickyHeader toc={toc} fileLabel={fileLabel} />
         <box flexDirection="row" flexGrow={1} overflow="hidden">
-          <Viewer nodes={nodes} frontmatter={frontmatter} />
+          <Viewer
+            nodes={nodes}
+            frontmatter={frontmatter}
+            onScroll={() => syncHeadings(state, headingIds)}
+          />
           {hasToc && (
             <box width={tocWidth} border={false}>
               <Toc toc={toc} />

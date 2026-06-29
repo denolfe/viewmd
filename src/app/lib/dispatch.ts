@@ -116,6 +116,10 @@ function jumpHeading(state: AppState, headingIds: string[], dir: 1 | -1): void {
   refreshVisible(state, headingIds)
 }
 
+export function syncHeadings(state: AppState, headingIds: string[]): void {
+  syncCurrentHeading(state, headingIds)
+}
+
 function syncCurrentHeading(state: AppState, headingIds: string[]): void {
   if (headingIds.length === 0) return
   const v = state.viewerRef.current
