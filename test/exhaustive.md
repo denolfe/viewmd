@@ -1,3 +1,14 @@
+---
+title: Exhaustive Markdown
+date: 2026-06-28
+tags:
+  - markdown
+  - tui
+author:
+  name: Elliot
+  email: e@example.com
+---
+
 # Exhaustive Markdown Test
 
 A document exercising every element `sanemd` renders. Useful for spot-checking spacing, breadcrumbs, and inline styles.

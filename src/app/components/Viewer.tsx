@@ -2,19 +2,27 @@ import { useEffect, useRef } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
+import { Frontmatter } from './blocks/Frontmatter'
 import { resetMatchCounter } from './blocks/InlineRenderer'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
+import type { FrontmatterRow } from '../lib/frontmatter'
 
 // Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
 const VIEWER_OVERHEAD = 2
 
 const PIN_TOP_OFFSET = 1
 
-export function Viewer({ nodes }: { nodes: Node[] }) {
+export function Viewer({
+  nodes,
+  frontmatter = [],
+}: {
+  nodes: Node[]
+  frontmatter?: FrontmatterRow[]
+}) {
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
@@ -51,7 +59,8 @@ export function Viewer({ nodes }: { nodes: Node[] }) {
       height="100%"
       overflow="hidden"
     >
-      <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1}>
+      <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
+        <Frontmatter rows={frontmatter} />
         <NodeList nodes={nodes} />
       </box>
       <box height={tailSpace} />

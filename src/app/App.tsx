@@ -8,15 +8,22 @@ import { mapKey } from './lib/keys'
 import { dispatch } from './lib/dispatch'
 import { nearestPrecedingHeadingId } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
+import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import { tocContentWidth } from './lib/toc-util'
 import { StatusLine } from './components/StatusLine'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 
-type Props = { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
+type Props = {
+  nodes: Node[]
+  toc: TocEntry[]
+  headingIds: string[]
+  frontmatter: FrontmatterRow[]
+  fileLabel?: string
+}
 
-export function App({ nodes, toc, headingIds, fileLabel }: Props) {
+export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
@@ -127,7 +134,7 @@ export function App({ nodes, toc, headingIds, fileLabel }: Props) {
       <box flexDirection="column" height="100%">
         <StickyHeader toc={toc} fileLabel={fileLabel} />
         <box flexDirection="row" flexGrow={1} overflow="hidden">
-          <Viewer nodes={nodes} />
+          <Viewer nodes={nodes} frontmatter={frontmatter} />
           {hasToc && (
             <box width={tocWidth} border={false}>
               <Toc toc={toc} />

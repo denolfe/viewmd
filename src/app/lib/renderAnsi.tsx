@@ -10,6 +10,7 @@ import { createRoot } from '@opentui/react'
 import { RenderView } from '../RenderView'
 import { extraParsers } from '../parsers'
 import type { Node } from './ast'
+import type { FrontmatterRow } from './frontmatter'
 
 let parsersRegistered = false
 
@@ -17,8 +18,9 @@ export async function renderAnsi(opts: {
   nodes: Node[]
   width: number
   maxHeight: number
+  frontmatter?: FrontmatterRow[]
 }): Promise<string> {
-  const { nodes, width, maxHeight } = opts
+  const { nodes, width, maxHeight, frontmatter = [] } = opts
 
   if (!parsersRegistered) {
     addDefaultParsers(extraParsers)
@@ -41,7 +43,7 @@ export async function renderAnsi(opts: {
   setup.renderer.setMaxListeners(0)
 
   const root = createRoot(setup.renderer)
-  root.render(<RenderView nodes={nodes} width={width} />)
+  root.render(<RenderView nodes={nodes} width={width} frontmatter={frontmatter} />)
   // Give React's microtask-scheduled reconciler a chance to commit and call
   // requestRender() before we enter the visual-idle poll loop.
   await new Promise<void>(resolve => setTimeout(resolve, 0))

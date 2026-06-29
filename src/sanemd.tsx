@@ -7,6 +7,8 @@ import { parseArgs } from './app/lib/args'
 import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
+import { parseFrontmatter, splitFrontmatter } from './app/lib/frontmatter'
+import type { FrontmatterRow } from './app/lib/frontmatter'
 import { renderAnsi } from './app/lib/renderAnsi'
 
 const MIN_WIDTH = 20
@@ -14,13 +16,20 @@ const RENDER_MAX_HEIGHT = 2000
 
 const { filePath, forceRender } = parseArgs(process.argv.slice(2))
 const md = await readInput(filePath)
-const processed = replaceMermaidBlocks(md)
+const { frontmatter, body } = splitFrontmatter(md)
+const processed = replaceMermaidBlocks(body)
 const { nodes, toc, headingIds } = buildTree(processed)
+const frontmatterRows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
 
 const renderMode = forceRender || !process.stdout.isTTY
 if (renderMode) {
   const width = clampWidth(Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80)
-  const out = await renderAnsi({ nodes, width, maxHeight: RENDER_MAX_HEIGHT })
+  const out = await renderAnsi({
+    nodes,
+    frontmatter: frontmatterRows,
+    width,
+    maxHeight: RENDER_MAX_HEIGHT,
+  })
   await Bun.write(Bun.stdout, out + '\n')
   process.exit(0)
 }
@@ -28,7 +37,13 @@ if (renderMode) {
 addDefaultParsers(extraParsers)
 const renderer = await createCliRenderer({ exitOnCtrlC: false })
 createRoot(renderer).render(
-  <App nodes={nodes} toc={toc} headingIds={headingIds} fileLabel={fileLabel(filePath)} />,
+  <App
+    nodes={nodes}
+    toc={toc}
+    headingIds={headingIds}
+    frontmatter={frontmatterRows}
+    fileLabel={fileLabel(filePath)}
+  />,
 )
 
 function clampWidth(w: number): number {
