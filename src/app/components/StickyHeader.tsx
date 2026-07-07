@@ -35,9 +35,17 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
       zIndex={10}
     >
       <box height={1} overflow="hidden">
-        <text fg={theme.headingMuted} bg={theme.stickyBg}>
-          {topInline && !topHidden ? <MutedInline nodes={topInline} /> : ' '}
-        </text>
+        {topInline && !topHidden ? (
+          <text bg={theme.h1Bg} fg={theme.h1Fg}>
+            <strong>
+              {` `}
+              <MutedInline nodes={topInline} />
+              {` `}
+            </strong>
+          </text>
+        ) : (
+          <text bg={theme.stickyBg}> </text>
+        )}
       </box>
       <box height={1} overflow="hidden">
         <text fg={theme.headingMuted} bg={theme.stickyBg}>
