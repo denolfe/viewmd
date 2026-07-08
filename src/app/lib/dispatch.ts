@@ -1,7 +1,7 @@
 import type { Action } from './keys'
 import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
-import { flattenVisible } from './toc-util'
+import { ancestorChain, breadcrumbRows, flattenVisible } from './toc-util'
 
 export function dispatch(
   action: Action,
@@ -10,12 +10,13 @@ export function dispatch(
   headingIds: string[],
   viewportHeight: number,
   onQuit: () => void,
+  fileLabel?: string,
 ): void {
   const scroll = (fn: (v: ScrollboxHandle) => void): void => {
     const v = state.viewerRef.current
     if (!v) return
     fn(v)
-    syncCurrentHeading(state, headingIds)
+    resolveHeadings(state, toc, headingIds, fileLabel)
   }
   const v = state.viewerRef.current
   switch (action.kind) {
@@ -35,10 +36,10 @@ export function dispatch(
     case 'bottom':
       return scroll(v => v.scrollToBottom())
     case 'nextHeading':
-      jumpHeading(state, headingIds, 1)
+      jumpHeading(state, toc, headingIds, 1, fileLabel)
       return
     case 'prevHeading':
-      jumpHeading(state, headingIds, -1)
+      jumpHeading(state, toc, headingIds, -1, fileLabel)
       return
     case 'focusSidebar':
       if (toc.length === 0) return
@@ -68,8 +69,10 @@ export function dispatch(
     case 'tocSelect': {
       const id = state.tocCursorId
       if (!id) return
-      v?.scrollChildToTop(id)
+      const height = breadcrumbHeightAfterJump(toc, id, fileLabel)
+      v?.scrollChildToTop(id, height)
       state.setCurrentHeadingId(id)
+      refreshVisible(state, headingIds, height)
       state.setFocus('viewer')
       return
     }
@@ -98,7 +101,13 @@ export function dispatch(
   }
 }
 
-function jumpHeading(state: AppState, headingIds: string[], dir: 1 | -1): void {
+function jumpHeading(
+  state: AppState,
+  toc: TocEntry[],
+  headingIds: string[],
+  dir: 1 | -1,
+  fileLabel?: string,
+): void {
   if (headingIds.length === 0) return
   // Seed current heading from scroll position so n/N walk relative to the
   // viewport when the user scrolled with j/k rather than via heading nav.
@@ -111,28 +120,71 @@ function jumpHeading(state: AppState, headingIds: string[], dir: 1 | -1): void {
   else nextIdx = Math.max(0, idx - 1)
   const next = headingIds[nextIdx]
   if (!next) return
-  state.viewerRef.current?.scrollChildToTop(next)
+  const height = breadcrumbHeightAfterJump(toc, next, fileLabel)
+  state.viewerRef.current?.scrollChildToTop(next, height)
   state.setCurrentHeadingId(next)
-  refreshVisible(state, headingIds)
+  refreshVisible(state, headingIds, height)
 }
 
-export function syncHeadings(state: AppState, headingIds: string[]): void {
-  syncCurrentHeading(state, headingIds)
+export function syncHeadings(
+  state: AppState,
+  toc: TocEntry[],
+  headingIds: string[],
+  fileLabel?: string,
+): void {
+  resolveHeadings(state, toc, headingIds, fileLabel)
 }
 
-function syncCurrentHeading(state: AppState, headingIds: string[]): void {
-  if (headingIds.length === 0) return
-  const v = state.viewerRef.current
-  if (!v) return
-  const id = v.getHeadingNearTop(headingIds) ?? null
-  if (id && id !== state.currentHeadingId) state.setCurrentHeadingId(id)
-  refreshVisible(state, headingIds)
-}
-
-function refreshVisible(state: AppState, headingIds: string[]): void {
+// The breadcrumb overlay occludes the top rows of the viewport, so "near top"
+// and "visible" must be measured against the content below it. The fold offset is
+// the current heading's *ancestor stack* height (`breadcrumbHeightAfterJump`,
+// which excludes the heading itself) — the same offset a jump uses, so scrolling
+// to a heading lands identically to navigating to it. Excluding the heading's own
+// crumb is deliberate: including it makes the offset self-referential and lets two
+// states (crumb shown / not shown) both be consistent at the boundary, which is
+// the frame-to-frame blip. Resolve the remaining current↔offset dependency as a
+// fixed point; a shallow heading sitting at a deeper one's fold can cycle, so bail
+// deterministically if an offset repeats.
+function resolveHeadings(
+  state: AppState,
+  toc: TocEntry[],
+  headingIds: string[],
+  fileLabel?: string,
+): void {
   const v = state.viewerRef.current
   if (!v || headingIds.length === 0) return
-  const next = v.getVisibleHeadingIds(headingIds)
+  let offset = 0
+  let id: string | null = null
+  const seen = new Set<number>()
+  for (let pass = 0; pass < 8; pass++) {
+    id = v.getHeadingNearTop(headingIds, offset) ?? null
+    const next = id ? breadcrumbHeightAfterJump(toc, id, fileLabel) : 0
+    if (next === offset || seen.has(next)) break
+    seen.add(offset)
+    offset = next
+  }
+  const visible = v.getVisibleHeadingIds(headingIds, offset)
+  if (id && id !== state.currentHeadingId) state.setCurrentHeadingId(id)
+  if (!setsEqual(state.visibleHeadingIds, visible)) state.setVisibleHeadingIds(visible)
+}
+
+// Rows the breadcrumb will show once `id` is pinned as the current heading: `id`
+// itself lands below the overlay (visible, so filtered out); its ancestors stack
+// above. Used as the pin/visibility offset so a jump lands the target just below
+// its crumbs rather than hidden behind them.
+function breadcrumbHeightAfterJump(toc: TocEntry[], id: string, fileLabel?: string): number {
+  return breadcrumbRows({
+    chain: ancestorChain(toc, id),
+    visibleHeadingIds: new Set([id]),
+    hasH1: toc[0]?.level === 1,
+    fileLabel,
+  }).length
+}
+
+function refreshVisible(state: AppState, headingIds: string[], topOffset: number): void {
+  const v = state.viewerRef.current
+  if (!v || headingIds.length === 0) return
+  const next = v.getVisibleHeadingIds(headingIds, topOffset)
   if (setsEqual(state.visibleHeadingIds, next)) return
   state.setVisibleHeadingIds(next)
 }

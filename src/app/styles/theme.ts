@@ -22,7 +22,7 @@ export const theme = {
   blockquote: '#9d9d9d',
   blockquotePipe: '#d4d4d4',
   border: '#666666',
-  stickyBg: '#252525',
+  stickyBg: '#2d2d2d',
   searchMatchBg: '#f5f543',
   searchMatchFg: '#000000',
   searchCurrentBg: '#f59e1f',

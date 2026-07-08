@@ -83,8 +83,8 @@ Layout (rendered tree):
 
 ```
 <box flexDirection=column height=100%>
-  <StickyHeader />                  ← height 2; zIndex 10
-  <box flexDirection=row flexGrow=1 overflow=hidden>
+  <box flexDirection=row flexGrow=1 overflow=hidden position=relative>
+    <StickyHeader />                ← absolute overlay; top/left 0; zIndex 10
     <Viewer />                      ← scrollbox, contentWidth + overhead
     {hasToc && <box width=tocWidth><Toc /></box>}
   </box>
@@ -92,13 +92,20 @@ Layout (rendered tree):
 </box>
 ```
 
+`StickyHeader` is `position=absolute` inside the `position=relative` row, so it is
+out of flex flow — only the `StatusLine` (height 1) sits below the viewport, and
+`Viewer`'s `tailSpace = height - 2` reflects that.
+
 ## 5. State (`src/app/state.ts`)
 
 `AppState` is the context value. Notable fields:
 
 - `focus: 'viewer' | 'sidebar' | 'search'` — drives `mapKey` dispatch and the TOC cursor highlight.
-- `currentHeadingId: string | null` — heading at/just-above viewport top, or last-jumped-to. Re-synced after every scroll.
-- `visibleHeadingIds: Set<string>` — every heading whose box vertically intersects the viewport. Used by `StickyHeader` to blank crumbs while their heading is on-screen.
+- `currentHeadingId: string | null` — heading at/just-above the visible content top, or last-jumped-to. Re-synced after every scroll.
+- `visibleHeadingIds: Set<string>` — every heading whose box vertically intersects the visible content region. Used by `StickyHeader` to blank crumbs while their heading is on-screen.
+
+Both are measured against **the content below the breadcrumb overlay**, not the raw viewport top: `getHeadingNearTop`/`getVisibleHeadingIds` take a `topOffset`. The offset is the current heading's **ancestor-stack height** (`breadcrumbHeightAfterJump` — ancestors + synth root, excluding the heading itself), the same value a jump uses, so scrolling to a heading resolves identically to navigating to it. `resolveHeadings` (in `dispatch.ts`) finds it as a fixed point over the current heading, bailing if an offset repeats (a shallow heading at a deeper one's fold can cycle). Excluding the heading's own crumb from the offset is deliberate: including it (an earlier approach) made the offset self-referential, so at a boundary both "crumb shown" and "crumb hidden" were consistent and the breadcrumb flickered a frame as you scrolled past a header. Without any offset, a heading scrolling behind the overlay would count as "visible" (dropped from the breadcrumb) yet be hidden behind it — vanishing instead of becoming a crumb.
+
 - `expanded: Map<string, boolean>` — per-id TOC fold state. Default per entry is `level <= 2` (see `defaultExpanded`).
 - `tocCursorId: string | null` — TOC keyboard cursor (independent of `currentHeadingId`).
 - `search: SearchState | null` — `{ pattern, matches, index, dir }`.
@@ -151,12 +158,15 @@ It also installs `installRealisticThumb`, which patches the scrollbar slider's `
 
 ## 8. Sticky breadcrumb (`src/app/components/StickyHeader.tsx`)
 
-Two-row chrome above the viewer:
+An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `contentWidth`, `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — crumbs paint _over_ the top content lines rather than pushing content down, so the breadcrumb can grow from zero without the content region reflowing.
 
-- **Row 1**: H1 title (or `fileLabel` when the document has no H1). Suppressed while the H1 is in `visibleHeadingIds`.
-- **Row 2**: `#…#` prefix plus the _current_ heading's inline. Suppressed when (a) the current heading is itself visible in the viewport, or (b) the current heading _is_ the H1 (would duplicate row 1).
+Content is `breadcrumbRows({ chain, visibleHeadingIds, hasH1, fileLabel })` (in `toc-util.ts`), where `chain = ancestorChain(toc, currentHeadingId)` is the root→current lineage:
 
-Both rows blank to a single space rather than collapsing, so the layout doesn't jitter. The background uses `theme.stickyBg` and the box sits at `zIndex 10` to draw over the viewer.
+- Every crumb whose `id ∈ visibleHeadingIds` is dropped. At the top of the doc the H1 is on-screen, so the chain filters to empty and **nothing** is drawn — the breadcrumb starts empty and accumulates as headings scroll off the top.
+- **Row 1** is the H1 rendered as a bold pill (`theme.h1Bg`/`h1Fg`), or the `fileLabel` synth root when the doc has no H1 (shown only once a real crumb survives the filter).
+- **Deeper rows** render muted (`theme.headingMuted`) with a `#…#` level prefix.
+
+Jumps (`tocSelect`, `nextHeading`/`prevHeading`) call `scrollChildToTop(id, ancestorChain(toc, id).length - 1)` so the target lands just _below_ its ancestor crumb stack instead of hidden underneath it.
 
 ## 9. TOC (`src/app/components/Toc.tsx`)
 

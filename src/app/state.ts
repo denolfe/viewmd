@@ -16,12 +16,18 @@ export type ScrollboxHandle = {
   scrollTo: (y: number) => void
   scrollToBottom: () => void
   scrollChildIntoView: (childId: string) => void
-  /** Scrolls so the named child sits at the top of the viewport. */
-  scrollChildToTop: (childId: string) => void
-  /** Returns the id from `headingIds` whose box sits at or just above the current scrollTop, or null. */
-  getHeadingNearTop: (headingIds: string[]) => string | null
-  /** Returns the subset of `headingIds` whose box vertically intersects the current viewport. */
-  getVisibleHeadingIds: (headingIds: string[]) => Set<string>
+  /** Scrolls so the named child sits at the top of the viewport, offset `topOffset` rows down (default 0). */
+  scrollChildToTop: (childId: string, topOffset?: number) => void
+  /**
+   * Returns the id from `headingIds` whose box sits at or just above the visible
+   * content top, or null. `topOffset` shifts that top down past the breadcrumb overlay.
+   */
+  getHeadingNearTop: (headingIds: string[], topOffset?: number) => string | null
+  /**
+   * Returns the subset of `headingIds` whose box vertically intersects the visible
+   * content region. `topOffset` excludes the rows occluded by the breadcrumb overlay.
+   */
+  getVisibleHeadingIds: (headingIds: string[], topOffset?: number) => Set<string>
 }
 
 export type SearchState = {

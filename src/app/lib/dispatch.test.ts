@@ -1,5 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
-import { dispatch } from './dispatch'
+import { dispatch, syncHeadings } from './dispatch'
 import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
@@ -14,7 +14,7 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     scrollTo: y => calls.push(`scrollTo(${y})`),
     scrollToBottom: () => calls.push('scrollToBottom'),
     scrollChildIntoView: id => calls.push(`scrollChildIntoView(${id})`),
-    scrollChildToTop: id => calls.push(`scrollChildToTop(${id})`),
+    scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
     getHeadingNearTop: () => opts.nearTop ?? null,
     getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
   }
@@ -55,6 +55,55 @@ const toc: TocEntry[] = [
 ]
 const headingIds = ['a', 'a1', 'b']
 
+// Viewer mock driven by absolute heading y-positions (viewport top = 0), so
+// `topOffset` (the breadcrumb overlay height) actually changes what counts as
+// "near top" / "visible" — the raw-position mock ignores it.
+function makePositionalViewerRef(
+  positions: Record<string, number>,
+  viewportBottom = 20,
+): { ref: RefObject<ScrollboxHandle | null> } {
+  const handle: ScrollboxHandle = {
+    scrollBy: () => {},
+    scrollTo: () => {},
+    scrollToBottom: () => {},
+    scrollChildIntoView: () => {},
+    scrollChildToTop: () => {},
+    getHeadingNearTop: (ids, topOffset = 0) => {
+      let best: string | null = null
+      let bestY = -Infinity
+      for (const id of ids) {
+        const y = positions[id]
+        if (y === undefined) continue
+        if (y <= topOffset && y > bestY) {
+          bestY = y
+          best = id
+        }
+      }
+      if (best) return best
+      let firstBelow: string | null = null
+      let firstBelowY = Infinity
+      for (const id of ids) {
+        const y = positions[id]
+        if (y !== undefined && y < firstBelowY) {
+          firstBelowY = y
+          firstBelow = id
+        }
+      }
+      return firstBelow
+    },
+    getVisibleHeadingIds: (ids, topOffset = 0) => {
+      const out = new Set<string>()
+      for (const id of ids) {
+        const y = positions[id]
+        if (y === undefined) continue
+        if (y + 1 > topOffset && y < viewportBottom) out.add(id)
+      }
+      return out
+    },
+  }
+  return { ref: { current: handle } }
+}
+
 describe('dispatch', () => {
   test('focusSidebar sets cursor to first when null', () => {
     const state = makeState()
@@ -81,7 +130,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, tocCursorId: 'a1' })
     dispatch({ kind: 'tocSelect' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
     expect(state.setFocus).toHaveBeenCalledWith('viewer')
   })
@@ -123,7 +172,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
     dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -131,7 +180,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a,0)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
@@ -139,7 +188,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
     dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(b)')
+    expect(vref.calls).toContain('scrollChildToTop(b,0)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
 
@@ -147,7 +196,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -156,7 +205,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: 'a1' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a,0)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
@@ -164,7 +213,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: 'a' })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1)')
+    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
   })
 
@@ -172,7 +221,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef({ nearTop: null })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(b)')
+    expect(vref.calls).toContain('scrollChildToTop(b,0)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
   })
 
@@ -180,7 +229,7 @@ describe('dispatch', () => {
     const vref = makeViewerRef()
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a)')
+    expect(vref.calls).toContain('scrollChildToTop(a,0)')
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
@@ -245,5 +294,61 @@ describe('dispatch', () => {
     const state = makeState()
     dispatch({ kind: 'toggleMouse' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleMouse).toHaveBeenCalled()
+  })
+})
+
+const siblingToc: TocEntry[] = [
+  {
+    id: 'h1',
+    level: 1,
+    text: 'H1',
+    inline: [],
+    children: [
+      { id: 'sa', level: 2, text: 'SA', inline: [], children: [] },
+      { id: 'sb', level: 2, text: 'SB', inline: [], children: [] },
+    ],
+  },
+]
+const siblingIds = ['h1', 'sa', 'sb']
+
+describe('syncHeadings sibling handoff (blip fix)', () => {
+  test('previous section stays current while a blank line (not the new header) is at the fold', () => {
+    // sa scrolled above; a blank line sits at the fold (row 1) with sb one row
+    // below it (row 2). The handoff must NOT fire early — current stays sa.
+    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 })
+    const state = makeState({ viewerRef: ref, currentHeadingId: null })
+    syncHeadings(state, siblingToc, siblingIds)
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sa')
+    expect(state.setCurrentHeadingId).not.toHaveBeenCalledWith('sb')
+  })
+
+  test('handoff fires exactly when the new header reaches the fold', () => {
+    // sb now at the fold (row 1, = ancestor-stack height of 1). Current flips to sb.
+    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 1 })
+    const state = makeState({ viewerRef: ref, currentHeadingId: 'sa' })
+    syncHeadings(state, siblingToc, siblingIds)
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sb')
+  })
+})
+
+describe('syncHeadings breadcrumb-overlay offset', () => {
+  test('a heading behind the overlay becomes current and is excluded from visible', () => {
+    // a (H1) is scrolled off above; a1 (H2 under a) sits at row 0, behind the
+    // breadcrumb overlay; b is far below the fold. Without offset resolution a1
+    // would count as "visible" (filtered from the breadcrumb) yet be hidden
+    // behind the overlay — it would vanish. The fixed point must instead make a1
+    // current and exclude it from the visible set so it shows as a crumb.
+    const { ref } = makePositionalViewerRef({ a: -3, a1: 0, b: 50 })
+    const state = makeState({
+      viewerRef: ref,
+      currentHeadingId: null,
+      visibleHeadingIds: new Set(['a1']),
+    })
+    syncHeadings(state, toc, headingIds)
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+    const lastVisible = (state.setVisibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(
+      -1,
+    )?.[0]
+    expect(lastVisible?.has('a1')).toBe(false)
   })
 })

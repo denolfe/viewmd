@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  ancestorChain,
+  breadcrumbRows,
+  FILE_ROW_ID,
   findCurrent,
   findToc,
   flattenVisible,
@@ -148,5 +151,73 @@ describe('findCurrent', () => {
   })
   test('empty toc -> null', () => {
     expect(findCurrent([], 'a')).toBeNull()
+  })
+})
+
+describe('ancestorChain', () => {
+  test('null id -> empty', () => {
+    expect(ancestorChain(toc, null)).toEqual([])
+  })
+  test('unknown id -> empty', () => {
+    expect(ancestorChain(toc, 'nope')).toEqual([])
+  })
+  test('root id -> single entry', () => {
+    expect(ancestorChain(toc, 'a').map(e => e.id)).toEqual(['a'])
+  })
+  test('nested id -> full lineage root..target', () => {
+    expect(ancestorChain(toc, 'c').map(e => e.id)).toEqual(['a', 'b', 'c'])
+  })
+  test('sibling root -> just itself', () => {
+    expect(ancestorChain(toc, 'd').map(e => e.id)).toEqual(['d'])
+  })
+})
+
+describe('breadcrumbRows', () => {
+  const chainA = ancestorChain(toc, 'c') // [a(L1), b(L2), c(L3)]
+
+  test('all visible -> empty (start-empty rule)', () => {
+    const rows = breadcrumbRows({
+      chain: chainA,
+      visibleHeadingIds: new Set(['a', 'b', 'c']),
+      hasH1: true,
+    })
+    expect(rows).toEqual([])
+  })
+
+  test('H1 root -> pill, deeper -> muted with level', () => {
+    const rows = breadcrumbRows({
+      chain: chainA,
+      visibleHeadingIds: new Set(['c']),
+      hasH1: true,
+    })
+    expect(rows).toEqual([
+      { id: 'a', variant: 'pill', inline: [] },
+      { id: 'b', variant: 'muted', level: 2, inline: [] },
+    ])
+  })
+
+  test('no H1: synth root pill prepended when a crumb survives', () => {
+    const rows = breadcrumbRows({
+      chain: chainA,
+      visibleHeadingIds: new Set(['c']),
+      hasH1: false,
+      fileLabel: 'README.md',
+    })
+    expect(rows[0]).toEqual({
+      id: FILE_ROW_ID,
+      variant: 'pill',
+      inline: [{ kind: 'text', value: 'README.md' }],
+    })
+    expect(rows.slice(1).map(r => r.id)).toEqual(['a', 'b'])
+  })
+
+  test('no H1: synth root suppressed when nothing survives', () => {
+    const rows = breadcrumbRows({
+      chain: chainA,
+      visibleHeadingIds: new Set(['a', 'b', 'c']),
+      hasH1: false,
+      fileLabel: 'README.md',
+    })
+    expect(rows).toEqual([])
   })
 })

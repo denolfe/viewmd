@@ -121,23 +121,31 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   useKeyboard(ev => {
     if (focus === 'search') return // Search overlay handles its own keys in Task 11
     const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(action, state, toc, headingIds, renderer.height, () => {
-      // Silence the highlight-failed warning that tree-sitter logs when
-      // destroyTreeSitterClient rejects in-flight requests during shutdown.
-      console.warn = () => {}
-      renderer.destroy()
-    })
+    dispatch(
+      action,
+      state,
+      toc,
+      headingIds,
+      renderer.height,
+      () => {
+        // Silence the highlight-failed warning that tree-sitter logs when
+        // destroyTreeSitterClient rejects in-flight requests during shutdown.
+        console.warn = () => {}
+        renderer.destroy()
+      },
+      fileLabel,
+    )
   })
 
   return (
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
-        <StickyHeader toc={toc} fileLabel={fileLabel} />
-        <box flexDirection="row" flexGrow={1} overflow="hidden">
+        <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
+          <StickyHeader toc={toc} fileLabel={fileLabel} />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
-            onScroll={() => syncHeadings(state, headingIds)}
+            onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
           {hasToc && (
             <box width={tocWidth} border={false}>

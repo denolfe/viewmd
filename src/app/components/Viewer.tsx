@@ -28,7 +28,10 @@ export function Viewer({
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
-  const tailSpace = Math.max(0, height - 4)
+  // Only the status line (1 row) sits below the viewport now — the breadcrumb
+  // overlays the viewer instead of consuming column rows. Tail = viewport - 1
+  // so the last heading can still scroll to the top.
+  const tailSpace = Math.max(0, height - 2)
   const tailRef = useRef(tailSpace)
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
@@ -42,9 +45,9 @@ export function Viewer({
       scrollTo: y => box.scrollTo(y),
       scrollToBottom: () => box.scrollTo(box.scrollHeight),
       scrollChildIntoView: id => box.scrollChildIntoView(id),
-      scrollChildToTop: id => scrollChildToTop(box, id),
-      getHeadingNearTop: ids => findHeadingNearTop(box, ids),
-      getVisibleHeadingIds: ids => findVisibleHeadingIds(box, ids),
+      scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
+      getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
+      getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
@@ -101,15 +104,19 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
   }
 }
 
-function scrollChildToTop(box: ScrollBoxRenderable, id: string): void {
+function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): void {
   const child = box.content.findDescendantById(id)
   if (!child) return
-  const delta = child.y - box.viewport.y - PIN_TOP_OFFSET
+  const delta = child.y - box.viewport.y - PIN_TOP_OFFSET - topOffset
   if (delta !== 0) box.scrollBy(delta)
 }
 
-function findHeadingNearTop(box: ScrollBoxRenderable, ids: string[]): string | null {
-  const viewportTop = box.viewport.y
+function findHeadingNearTop(
+  box: ScrollBoxRenderable,
+  ids: string[],
+  topOffset: number,
+): string | null {
+  const viewportTop = box.viewport.y + topOffset
   let bestId: string | null = null
   let bestY = -Infinity
   for (const id of ids) {
@@ -134,9 +141,13 @@ function findHeadingNearTop(box: ScrollBoxRenderable, ids: string[]): string | n
   return firstBelowId
 }
 
-function findVisibleHeadingIds(box: ScrollBoxRenderable, ids: string[]): Set<string> {
-  const top = box.viewport.y
-  const bottom = top + box.viewport.height
+function findVisibleHeadingIds(
+  box: ScrollBoxRenderable,
+  ids: string[],
+  topOffset: number,
+): Set<string> {
+  const top = box.viewport.y + topOffset
+  const bottom = box.viewport.y + box.viewport.height
   const out = new Set<string>()
   for (const id of ids) {
     const child = box.content.findDescendantById(id)
