@@ -1,6 +1,6 @@
 # Architecture
 
-How `sanemd` turns a markdown file into an interactive terminal viewer.
+How `viewmd` turns a markdown file into an interactive terminal viewer.
 
 ## Bird's-eye view
 
@@ -26,9 +26,9 @@ App owns reactive state ──▶ <StickyHeader> <Viewer> <Toc> <StatusLine>
                             OpenTUI renderables
 ```
 
-Entry: `src/sanemd.tsx`. Everything else lives under `src/app/`.
+Entry: `src/index.tsx`. Everything else lives under `src/app/`.
 
-## 1. Entry pipeline (`src/sanemd.tsx`)
+## 1. Entry pipeline (`src/index.tsx`)
 
 1. **Parse argv** — `parseArgs` (`src/app/lib/args.ts`) returns `{ filePath?, forceRender? }`. First non-flag positional becomes `filePath`; `--render`/`-r` sets `forceRender`.
 2. **Read input** — `Bun.file(filePath).text()` when a file path is given; otherwise `Bun.stdin.text()` when stdin is non-TTY; otherwise a usage error.

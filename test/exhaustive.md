@@ -11,7 +11,7 @@ author:
 
 # Exhaustive Markdown Test
 
-A document exercising every element `sanemd` renders. Useful for spot-checking spacing, breadcrumbs, and inline styles.
+A document exercising every element `viewmd` renders. Useful for spot-checking spacing, breadcrumbs, and inline styles.
 
 ## Headings
 

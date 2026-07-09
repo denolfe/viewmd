@@ -1,4 +1,4 @@
-# sanemd
+# viewmd
 
 Terminal markdown renderer with mermaid diagram support.
 
@@ -7,15 +7,15 @@ Terminal markdown renderer with mermaid diagram support.
 - Syntax-highlighted code blocks with box borders
 - Less-style pager with search and sticky headers
 
-<img src="preview.png" alt="Preview of sanemd rendering a markdown document with various features" width="600"/>
+<img src="preview.png" alt="Preview of viewmd rendering a markdown document with various features" width="600"/>
 
 ## Installation
 
 _Prerequisites: Bun_
 
 ```sh
-git clone git@github.com:denolfe/sanemd.git
-cd sanemd
+git clone git@github.com:denolfe/viewmd.git
+cd viewmd
 bun install
 bun link
 ```
@@ -24,22 +24,22 @@ bun link
 
 ```sh
 # Interactive viewer (requires a TTY)
-sanemd README.md
+viewmd README.md
 ```
 
 ## Pipe / fzf preview
 
-When stdout is not a TTY (a pipe, a redirect, an fzf preview pane), `sanemd` skips the interactive viewer and prints a one-shot ANSI render instead. Force this in a TTY with `--render` / `-r`.
+When stdout is not a TTY (a pipe, a redirect, an fzf preview pane), `viewmd` skips the interactive viewer and prints a one-shot ANSI render instead. Force this in a TTY with `--render` / `-r`.
 
 ```sh
 # Pipe to a pager
-sanemd README.md | less -R
+viewmd README.md | less -R
 
 # From stdin
-cat README.md | sanemd
+cat README.md | viewmd
 
 # fzf preview
-fzf --ansi --preview 'sanemd {}'
+fzf --ansi --preview 'viewmd {}'
 ```
 
 ## Features
@@ -56,7 +56,7 @@ Renders images directly in the terminal using [terminal-image](https://github.co
 
 When scrolled past a heading, ancestor headers appear dimmed at the top of the viewport, showing your position in the document hierarchy. For example, when reading content under an H3, the parent H2 and H1 are displayed above with a separator line.
 
-<img src="sticky-headers.png" alt="Screenshot showing sticky headers in sanemd, with H1 and H2 displayed at the top of the viewport while reading an H3 section" width="600"/>
+<img src="sticky-headers.png" alt="Screenshot showing sticky headers in viewmd, with H1 and H2 displayed at the top of the viewport while reading an H3 section" width="600"/>
 
 ### Keyboard Shortcuts
 

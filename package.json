@@ -1,10 +1,10 @@
 {
-  "name": "sanemd",
-  "module": "src/sanemd.tsx",
+  "name": "viewmd",
+  "module": "src/index.tsx",
   "type": "module",
   "private": true,
   "bin": {
-    "sanemd": "./src/sanemd.tsx"
+    "viewmd": "./src/index.tsx"
   },
   "scripts": {
     "start": "bun index.ts",

@@ -60,6 +60,6 @@ function fileLabel(p?: string): string | undefined {
 async function readInput(filePath?: string): Promise<string> {
   if (filePath) return Bun.file(filePath).text()
   if (!process.stdin.isTTY) return Bun.stdin.text()
-  console.error('Usage: sanemd <file.md>  (or pipe markdown via stdin)')
+  console.error('Usage: viewmd <file.md>  (or pipe markdown via stdin)')
   process.exit(1)
 }

@@ -1,6 +1,6 @@
 # Language Parsers
 
-Code blocks for every language sanemd ships a parser for.
+Code blocks for every language viewmd ships a parser for.
 
 ## JavaScript
 
@@ -62,7 +62,7 @@ func main() {
 
 ```json
 {
-  "name": "sanemd",
+  "name": "viewmd",
   "version": "0.1.0",
   "dependencies": {
     "@opentui/core": "*"
@@ -73,7 +73,7 @@ func main() {
 ## YAML
 
 ```yaml
-name: sanemd
+name: viewmd
 runtime: bun
 features:
   - syntax-highlighting
@@ -84,7 +84,7 @@ features:
 
 ```toml
 [package]
-name = "sanemd"
+name = "viewmd"
 version = "0.1.0"
 
 [dependencies]

@@ -10,11 +10,11 @@ bun test --watch                      # Watch mode
 bun test src/app/lib/ast.test.ts      # Single test file
 bun run typecheck                     # tsc --noEmit
 
-./src/sanemd.tsx README.md            # Run CLI (interactive — requires a TTY)
-./src/sanemd.tsx --render README.md   # One-shot ANSI render to stdout
+./src/index.tsx README.md            # Run CLI (interactive — requires a TTY)
+./src/index.tsx --render README.md   # One-shot ANSI render to stdout
 ```
 
-`sanemd` auto-renders a one-shot ANSI dump when stdout is not a TTY (pipe / fzf preview). Use `--render`/`-r` to force render mode in a TTY. The interactive viewer still requires a TTY.
+`viewmd` auto-renders a one-shot ANSI dump when stdout is not a TTY (pipe / fzf preview). Use `--render`/`-r` to force render mode in a TTY. The interactive viewer still requires a TTY.
 
 ## Architecture
 
@@ -24,7 +24,7 @@ Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@o
 
 Quick orientation:
 
-- Entry: `src/sanemd.tsx` → `preprocess` → `buildTree` (AST + TOC + headingIds) → `createRoot(renderer).render(<App />)`.
+- Entry: `src/index.tsx` → `preprocess` → `buildTree` (AST + TOC + headingIds) → `createRoot(renderer).render(<App />)`.
 - `App` (`src/app/App.tsx`) owns all reactive state via `AppStateContext`; imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
 - Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (effectful, `src/app/lib/dispatch.ts`).
 - Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
