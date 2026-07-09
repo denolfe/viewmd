@@ -10,7 +10,7 @@ import { nearestPrecedingHeadingId } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import { tocContentWidth } from './lib/toc-util'
+import { breadcrumbHeightForHeading, tocContentWidth } from './lib/toc-util'
 import { StatusLine } from './components/StatusLine'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
@@ -64,6 +64,14 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     (hasToc ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
   )
   const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewerColumnWidth)
+
+  // At the bottom the last heading is current, so its ancestor crumbs occlude the
+  // top rows. Reserve that height in the scrollbox tail so the final content lands
+  // just below the overlay instead of sliding up behind it.
+  const lastHeadingId = headingIds.at(-1)
+  const tailReserve = lastHeadingId
+    ? breadcrumbHeightForHeading({ toc, id: lastHeadingId, fileLabel })
+    : 0
 
   const state = useMemo<AppState>(
     () => ({
@@ -145,6 +153,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
+            tailReserve={tailReserve}
             onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
           {hasToc && (

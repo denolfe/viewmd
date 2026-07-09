@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   ancestorChain,
+  breadcrumbHeightForHeading,
   breadcrumbRows,
   FILE_ROW_ID,
   findCurrent,
@@ -219,5 +220,30 @@ describe('breadcrumbRows', () => {
       fileLabel: 'README.md',
     })
     expect(rows).toEqual([])
+  })
+})
+
+describe('breadcrumbHeightForHeading', () => {
+  test('deepest heading: ancestor crumbs, self excluded', () => {
+    // c(L3) under b(L2) under a(L1); a is a pill, b muted -> 2 rows, c filtered.
+    expect(breadcrumbHeightForHeading({ toc, id: 'c' })).toBe(2)
+  })
+
+  test('top-level H1 heading: no ancestors -> 0', () => {
+    expect(breadcrumbHeightForHeading({ toc, id: 'a' })).toBe(0)
+  })
+
+  test('no H1: synth file row counts toward ancestor height', () => {
+    // No H1, so the file label prepends a row: z gains file + y(L2) = 2.
+    const noH1Toc: TocEntry[] = [
+      {
+        id: 'y',
+        level: 2,
+        text: 'Y',
+        inline: [],
+        children: [{ id: 'z', level: 3, text: 'Z', inline: [], children: [] }],
+      },
+    ]
+    expect(breadcrumbHeightForHeading({ toc: noH1Toc, id: 'z', fileLabel: 'README.md' })).toBe(2)
   })
 })

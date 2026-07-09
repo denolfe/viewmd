@@ -19,10 +19,12 @@ const PIN_TOP_OFFSET = 1
 export function Viewer({
   nodes,
   frontmatter = [],
+  tailReserve = 0,
   onScroll,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
+  tailReserve?: number
   onScroll?: () => void
 }) {
   const { viewerRef, contentWidth } = useAppState()
@@ -30,8 +32,10 @@ export function Viewer({
   const localRef = useRef<ScrollBoxRenderable | null>(null)
   // Only the status line (1 row) sits below the viewport now — the breadcrumb
   // overlays the viewer instead of consuming column rows. Tail = viewport - 1
-  // so the last heading can still scroll to the top.
-  const tailSpace = Math.max(0, height - 2)
+  // so the last heading can still scroll to the top, minus `tailReserve` (the
+  // last heading's crumb height) so its content stops just below the overlay
+  // rather than sliding up behind it.
+  const tailSpace = Math.max(0, height - 2 - tailReserve)
   const tailRef = useRef(tailSpace)
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)

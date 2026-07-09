@@ -81,6 +81,24 @@ export function breadcrumbRows(params: {
   return rows
 }
 
+// Rows the breadcrumb shows once `id` is the current heading: `id` itself is
+// visible (filtered out); only its ancestor stack remains. This is the overlay
+// height a jump pins below, and the tail reserve that keeps the last heading's
+// content from scrolling up behind the overlay.
+export function breadcrumbHeightForHeading(params: {
+  toc: TocEntry[]
+  id: string
+  fileLabel?: string
+}): number {
+  const { toc, id, fileLabel } = params
+  return breadcrumbRows({
+    chain: ancestorChain(toc, id),
+    visibleHeadingIds: new Set([id]),
+    hasH1: toc[0]?.level === 1,
+    fileLabel,
+  }).length
+}
+
 // Not built on walkToc: prunes collapsed subtrees, so its traversal differs
 // from the unconditional pre-order primitive.
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {

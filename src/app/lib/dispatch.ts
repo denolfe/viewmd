@@ -1,7 +1,7 @@
 import type { Action } from './keys'
 import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
-import { ancestorChain, breadcrumbRows, flattenVisible } from './toc-util'
+import { breadcrumbHeightForHeading, flattenVisible } from './toc-util'
 
 export function dispatch(
   action: Action,
@@ -173,12 +173,7 @@ function resolveHeadings(
 // above. Used as the pin/visibility offset so a jump lands the target just below
 // its crumbs rather than hidden behind them.
 function breadcrumbHeightAfterJump(toc: TocEntry[], id: string, fileLabel?: string): number {
-  return breadcrumbRows({
-    chain: ancestorChain(toc, id),
-    visibleHeadingIds: new Set([id]),
-    hasH1: toc[0]?.level === 1,
-    fileLabel,
-  }).length
+  return breadcrumbHeightForHeading({ toc, id, fileLabel })
 }
 
 function refreshVisible(state: AppState, headingIds: string[], topOffset: number): void {
