@@ -1,8 +1,29 @@
 {
   "name": "viewmd",
+  "version": "0.1.0",
+  "description": "Interactive terminal markdown viewer with mermaid diagrams, syntax highlighting, and a less-style pager.",
+  "license": "MIT",
+  "author": "Elliot DeNolf",
+  "homepage": "https://github.com/denolfe/viewmd",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denolfe/viewmd.git"
+  },
+  "bugs": {
+    "url": "https://github.com/denolfe/viewmd/issues"
+  },
+  "keywords": [
+    "markdown",
+    "terminal",
+    "tui",
+    "cli",
+    "viewer",
+    "pager",
+    "mermaid",
+    "opentui"
+  ],
   "module": "src/index.tsx",
   "type": "module",
-  "private": true,
   "bin": {
     "viewmd": "./src/index.tsx"
   },
@@ -11,6 +32,10 @@
     "test": "FORCE_COLOR=3 bun test",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
+    "build:bin": "bun run scripts/build-bin.ts",
+    "build:npm": "bun run scripts/build-npm.ts",
+    "stage:prebuilt": "bun run scripts/stage-prebuilt-npm.ts",
+    "smoke": "bun run scripts/smoke-prebuilt.ts",
     "update-parsers": "bun ./node_modules/@opentui/core/lib/tree-sitter/update-assets.js --config ./parsers-config.json --assets ./assets/parsers --output /tmp/parsers-generated.ts"
   },
   "lint-staged": {
@@ -22,9 +47,6 @@
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
     "prettier": "^3.8.1"
-  },
-  "peerDependencies": {
-    "typescript": "^5"
   },
   "dependencies": {
     "@opentui/core": "^0.4.1",
