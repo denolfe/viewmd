@@ -6,7 +6,7 @@ import {
 } from '@opentui/core'
 import type { BaseRenderable, CapturedLine, CapturedSpan } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
-import { createRoot } from '@opentui/react'
+import { createRoot, flushSync } from '@opentui/react'
 import { RenderView } from '../RenderView'
 import { extraParsers } from '../parsers'
 import type { Node } from './ast'
@@ -43,10 +43,14 @@ export async function renderAnsi(opts: {
   setup.renderer.setMaxListeners(0)
 
   const root = createRoot(setup.renderer)
-  root.render(<RenderView nodes={nodes} width={width} frontmatter={frontmatter} />)
-  // Give React's microtask-scheduled reconciler a chance to commit and call
-  // requestRender() before we enter the visual-idle poll loop.
-  await new Promise<void>(resolve => setTimeout(resolve, 0))
+  // createRoot uses a ConcurrentRoot, so root.render commits asynchronously.
+  // Without a synchronous flush the visual-idle poll below can observe an idle
+  // scheduler (hasScheduledRender: false) before React commits and capture the
+  // empty, U+0A00-filled buffer. flushSync forces the first commit so
+  // requestRender() is scheduled before we wait.
+  flushSync(() => {
+    root.render(<RenderView nodes={nodes} width={width} frontmatter={frontmatter} />)
+  })
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
   await waitForHighlights(setup.renderer.root)
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
