@@ -1,0 +1,70 @@
+name: Release Prebuilt npm
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        type: boolean
+        default: true
+      npm_tag:
+        type: string
+        default: latest
+
+jobs:
+  build:
+    uses: ./.github/workflows/build-binaries.yml
+    with:
+      publish: true
+
+  publish:
+    needs: build
+    if: ${{ github.event_name == 'push' || inputs.publish }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - uses: actions/download-artifact@v4
+        with:
+          name: staged-npm
+          path: dist/release/npm
+      - name: Verify tag matches staged version
+        if: github.event_name == 'push'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG=$(node -e "console.log(require('./dist/release/npm/viewmd/package.json').version)")
+          test "$TAG" = "$PKG" || { echo "tag $TAG != package $PKG"; exit 1; }
+      - name: Publish platform packages then root
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_TAG: ${{ inputs.npm_tag || 'latest' }}
+        run: |
+          set -e
+          for dir in dist/release/npm/viewmd-*; do
+            (cd "$dir" && bun publish --access public --tag "$NPM_TAG" --tolerate-republish)
+          done
+          (cd dist/release/npm/viewmd && bun publish --access public --tag "$NPM_TAG" --tolerate-republish)
+
+  github-release:
+    needs: build
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: viewmd-*
+          path: artifacts
+      - name: Package binaries
+        run: |
+          mkdir -p release-assets
+          for d in artifacts/viewmd-*; do
+            id=$(basename "$d")
+            tar -czf "release-assets/${id}.tar.gz" -C "$d" .
+          done
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release-assets/*
