@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+import './compiled-runtime'
 import { basename, dirname, resolve } from 'node:path'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'

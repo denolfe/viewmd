@@ -77,3 +77,11 @@ When scrolled past a heading, ancestor headers appear dimmed at the top of the v
 | `m`           | Toggle mouse scroll (off = select text) |
 | `=`           | Show position info                      |
 | `q`           | Quit                                    |
+
+## Releasing
+
+1. Bump `version` in `package.json`.
+2. `git commit -am "chore(release): vX.Y.Z" && git tag vX.Y.Z && git push --follow-tags`
+3. CI builds all platforms, stages, and publishes `viewmd` + `viewmd-*` to npm, and creates a GitHub Release.
+
+Requires the `NPM_TOKEN` repository secret (npm automation token).
