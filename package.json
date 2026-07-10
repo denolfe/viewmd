@@ -25,7 +25,7 @@
   "module": "src/index.tsx",
   "type": "module",
   "bin": {
-    "viewmd": "./src/index.tsx"
+    "viewmd": "./bin/viewmd.cjs"
   },
   "scripts": {
     "start": "bun index.ts",
