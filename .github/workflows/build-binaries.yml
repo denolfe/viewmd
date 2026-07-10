@@ -1,0 +1,56 @@
+name: Build Binaries
+
+on:
+  workflow_call:
+    inputs:
+      publish:
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: darwin-arm64
+            runs-on: macos-14
+          - id: darwin-x64
+            runs-on: macos-15-intel
+          - id: linux-x64
+            runs-on: ubuntu-latest
+          - id: linux-arm64
+            runs-on: ubuntu-24.04-arm
+          - id: win32-x64
+            runs-on: windows-latest
+    runs-on: ${{ matrix.runs-on }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - run: bun run build:bin
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viewmd-${{ matrix.id }}
+          path: dist/bin/
+          if-no-files-found: error
+
+  stage:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: viewmd-*
+          path: artifacts
+      - run: bun run build:npm
+      - run: bun run stage:prebuilt --artifact-root artifacts
+      - run: bun run smoke
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staged-npm
+          path: dist/release/npm/
+          if-no-files-found: error
