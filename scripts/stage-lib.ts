@@ -29,12 +29,26 @@ export function buildRootManifest(params: {
   version: string
 }): Record<string, unknown> {
   const { source, version } = params
-  const { private: _p, peerDependencies: _pd, devDependencies: _dd, scripts: _s, ...rest } = source
+  // Runtime deps are bundled into the prebuilt binaries and dist/npm/main.js,
+  // so the published root ships none of them. module/lint-staged reference
+  // files that aren't published; drop them too.
+  const {
+    private: _private,
+    peerDependencies: _peer,
+    devDependencies: _dev,
+    dependencies: _deps,
+    scripts: _scripts,
+    module: _module,
+    'lint-staged': _lintStaged,
+    ...rest
+  } = source
   return {
     ...rest,
     version,
     bin: { viewmd: './bin/viewmd.cjs' },
+    engines: { node: '>=18' },
     files: ['bin', 'dist/npm', 'assets/parsers', 'README.md', 'LICENSE'],
+    publishConfig: { access: 'public' },
     optionalDependencies: buildOptionalDependencyMap(version),
   }
 }

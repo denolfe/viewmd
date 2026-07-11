@@ -11,6 +11,15 @@ Terminal markdown renderer with mermaid diagram support.
 
 ## Installation
 
+```sh
+npm install -g viewmd
+```
+
+Ships prebuilt binaries for macOS, Linux, and Windows (x64/arm64) — no Bun or build step required.
+
+<details>
+<summary>From source</summary>
+
 _Prerequisites: Bun_
 
 ```sh
@@ -19,6 +28,8 @@ cd viewmd
 bun install
 bun link
 ```
+
+</details>
 
 ## Usage
 

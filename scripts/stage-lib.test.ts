@@ -19,7 +19,7 @@ describe('stage-lib', () => {
     expect(map['viewmd-win32-x64']).toBe('1.2.3')
   })
 
-  test('root manifest strips private/peer/dev/scripts and injects fields', () => {
+  test('root manifest strips deps/private/peer/dev/scripts and injects fields', () => {
     const root = buildRootManifest({
       source: {
         name: 'viewmd',
@@ -27,14 +27,20 @@ describe('stage-lib', () => {
         peerDependencies: { typescript: '^5' },
         scripts: { x: 'y' },
         dependencies: { marked: '15' },
+        module: 'src/index.tsx',
+        'lint-staged': { '*': 'prettier' },
       },
       version: '1.2.3',
     })
     expect(root.private).toBeUndefined()
     expect(root.peerDependencies).toBeUndefined()
     expect(root.scripts).toBeUndefined()
-    expect(root.dependencies).toEqual({ marked: '15' })
+    expect(root.dependencies).toBeUndefined()
+    expect(root.module).toBeUndefined()
+    expect(root['lint-staged']).toBeUndefined()
     expect(root.bin).toEqual({ viewmd: './bin/viewmd.cjs' })
+    expect(root.engines).toEqual({ node: '>=18' })
+    expect(root.publishConfig).toEqual({ access: 'public' })
     expect(Object.keys(root.optionalDependencies as object).length).toBe(5)
   })
 })
