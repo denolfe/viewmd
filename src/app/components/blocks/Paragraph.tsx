@@ -6,7 +6,7 @@ export function Paragraph({
   id,
 }: {
   node: Extract<Node, { kind: 'paragraph' }>
-  id?: string
+  id: string
 }) {
   return (
     <box id={id} paddingX={2}>

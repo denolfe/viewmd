@@ -8,7 +8,7 @@ const BORDER = 2 // left + right border cells
 const PADDING_X = 2
 const MARGIN_X = 2
 
-export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>; id?: string }) {
+export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>; id: string }) {
   const { contentWidth } = useAppState()
 
   // Mermaid ASCII already carries its own frame; render it bare.

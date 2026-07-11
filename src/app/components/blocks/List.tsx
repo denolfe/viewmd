@@ -40,6 +40,7 @@ function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }
         <text id={blockId([...pathPrefix, 0])}>
           <InlineRenderer nodes={first.inline} />
         </text>
+        {/* rest[i] is nodes[i+1] since the first child was destructured off index 0 */}
         {rest.map((n, i) => (
           <NodeRenderer key={i + 1} node={n} path={[...pathPrefix, i + 1]} />
         ))}

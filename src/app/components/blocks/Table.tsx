@@ -10,7 +10,7 @@ const CELL_PADDING_X = 1
 const TABLE_MARGIN_X = 2
 const MIN_COL_WIDTH = 3
 
-export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id?: string }) {
+export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id: string }) {
   const { contentWidth } = useAppState()
   const available = (contentWidth || CONTENT_MAX_WIDTH) - TABLE_MARGIN_X * 2
   const desired = computeColumnWidths(node.header, node.rows)
