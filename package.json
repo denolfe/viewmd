@@ -32,6 +32,7 @@
     "test": "FORCE_COLOR=3 bun test",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
+    "release": "bun run scripts/release.ts",
     "build:bin": "bun run scripts/build-bin.ts",
     "build:npm": "bun run scripts/build-npm.ts",
     "stage:prebuilt": "bun run scripts/stage-prebuilt-npm.ts",
