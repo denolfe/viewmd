@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { buildTree } from './ast'
+import { blockId } from './scroll-marks'
 import { findMatches } from './search'
 
 describe('findMatches', () => {
@@ -65,5 +66,14 @@ describe('findMatches', () => {
     expect(headerMatch[0]?.inlinePath[0]).toBe(-1) // header row sentinel
     expect(bodyMatch.length).toBe(1)
     expect(bodyMatch[0]?.inlinePath[0]).toBe(0) // first body row
+  })
+
+  test('stamps blockElementId: heading slug for headings, blockId otherwise', () => {
+    const { nodes } = buildTree('# Alpha bravo\n\nalpha bravo\n')
+    const matches = findMatches(nodes, 'bravo')
+    const heading = nodes[0]
+    expect(heading?.kind).toBe('heading')
+    expect(matches[0]?.blockElementId).toBe(heading?.kind === 'heading' ? heading.id : '')
+    expect(matches[1]?.blockElementId).toBe(blockId([1]))
   })
 })

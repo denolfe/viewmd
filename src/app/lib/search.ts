@@ -1,5 +1,6 @@
 import type { InlineNode, Node } from './ast'
 import { escapeRegex } from './regex-util'
+import { blockId } from './scroll-marks'
 
 /**
  * Identifies a single search match's position in the AST.
@@ -23,6 +24,8 @@ export type Match = {
   inlinePath: number[]
   offset: number
   length: number
+  /** DOM id of the block box this match lives in: heading slug, else `blockId(blockPath)`. */
+  blockElementId: string
 }
 
 export function findMatches(nodes: Node[], pattern: string): Match[] {
@@ -38,15 +41,16 @@ function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): vo
     const p = [...path, i]
     const n = nodes[i]
     if (!n) continue
+    const elementId = n.kind === 'heading' ? n.id : blockId(p)
     switch (n.kind) {
       case 'heading':
-        walkInline(n.text, p, [], re, out)
+        walkInline(n.text, p, [], re, out, elementId)
         break
       case 'paragraph':
-        walkInline(n.inline, p, [], re, out)
+        walkInline(n.inline, p, [], re, out, elementId)
         break
       case 'code':
-        scanText(n.value, p, [], re, out)
+        scanText(n.value, p, [], re, out, elementId)
         break
       case 'list':
         for (let j = 0; j < n.items.length; j++) {
@@ -58,17 +62,19 @@ function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): vo
         walkBlocks(n.children, p, re, out)
         break
       case 'table':
-        n.header.forEach((cell, j) => walkInline(cell, p, [-1, j], re, out))
-        n.rows.forEach((row, ri) => row.forEach((cell, j) => walkInline(cell, p, [ri, j], re, out)))
+        n.header.forEach((cell, j) => walkInline(cell, p, [-1, j], re, out, elementId))
+        n.rows.forEach((row, ri) =>
+          row.forEach((cell, j) => walkInline(cell, p, [ri, j], re, out, elementId)),
+        )
         break
       case 'html':
-        scanText(n.value, p, [], re, out)
+        scanText(n.value, p, [], re, out, elementId)
         break
       case 'image':
-        scanText(n.alt, p, [], re, out)
+        scanText(n.alt, p, [], re, out, elementId)
         break
       case 'details':
-        walkInline(n.summary, p, [], re, out)
+        walkInline(n.summary, p, [], re, out, elementId)
         walkBlocks(n.children, p, re, out)
         break
     }
@@ -81,6 +87,7 @@ function walkInline(
   inlinePath: number[],
   re: RegExp,
   out: Match[],
+  elementId: string,
 ): void {
   for (let i = 0; i < inlines.length; i++) {
     const ip = [...inlinePath, i]
@@ -88,25 +95,25 @@ function walkInline(
     if (!n) continue
     switch (n.kind) {
       case 'text':
-        scanText(n.value, blockPath, ip, re, out)
+        scanText(n.value, blockPath, ip, re, out, elementId)
         break
       case 'codespan':
-        scanText(n.value, blockPath, ip, re, out)
+        scanText(n.value, blockPath, ip, re, out, elementId)
         break
       case 'kbd':
-        scanText(n.value, blockPath, ip, re, out)
+        scanText(n.value, blockPath, ip, re, out, elementId)
         break
       case 'strong':
-        walkInline(n.children, blockPath, ip, re, out)
+        walkInline(n.children, blockPath, ip, re, out, elementId)
         break
       case 'em':
-        walkInline(n.children, blockPath, ip, re, out)
+        walkInline(n.children, blockPath, ip, re, out, elementId)
         break
       case 'link':
-        walkInline(n.children, blockPath, ip, re, out)
+        walkInline(n.children, blockPath, ip, re, out, elementId)
         break
       case 'image':
-        scanText(n.alt, blockPath, ip, re, out)
+        scanText(n.alt, blockPath, ip, re, out, elementId)
         break
       case 'br':
         // No textual content; intentionally skipped.
@@ -121,10 +128,17 @@ function scanText(
   inlinePath: number[],
   re: RegExp,
   out: Match[],
+  elementId: string,
 ): void {
   re.lastIndex = 0
   let m: RegExpExecArray | null
   while ((m = re.exec(text)) !== null) {
-    out.push({ blockPath, inlinePath, offset: m.index, length: m[0].length })
+    out.push({
+      blockPath,
+      inlinePath,
+      offset: m.index,
+      length: m[0].length,
+      blockElementId: elementId,
+    })
   }
 }
