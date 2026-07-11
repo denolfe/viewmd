@@ -23,6 +23,11 @@ jobs:
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
     environment: npm
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      # workflow_dispatch honors the chosen dist-tag; tag pushes route
+      # prerelease tags (-alpha/-beta/-rc) to the `beta` tag, else `latest`.
+      NPM_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag || ((contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc')) && 'beta' || 'latest') }}
     steps:
       # setup-node with registry-url writes an authenticated ~/.npmrc from
       # NODE_AUTH_TOKEN so `npm publish` can authenticate.
@@ -41,22 +46,14 @@ jobs:
           PKG=$(node -e "console.log(require('./dist/release/npm/viewmd/package.json').version)")
           test "$TAG" = "$PKG" || { echo "tag $TAG != package $PKG"; exit 1; }
       - name: Verify npm auth
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm whoami
       - name: Dry-run publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TAG: ${{ inputs.npm_tag || 'latest' }}
         run: |
           set -e
           for dir in dist/release/npm/viewmd-* dist/release/npm/viewmd; do
             (cd "$dir" && npm publish --dry-run --tag "$NPM_TAG")
           done
       - name: Publish platform packages then root
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NPM_TAG: ${{ inputs.npm_tag || 'latest' }}
         run: |
           set -e
           publish() {
@@ -93,3 +90,4 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: release-assets/*
+          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
