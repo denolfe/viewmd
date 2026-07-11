@@ -38,6 +38,23 @@ Quick orientation:
 - No fossil comments. No comments describing what removed code used to do.
 - Conventional Commits. First commit on a branch carries the scope; subsequent commits prefer `chore` (squashed).
 
+## Releasing
+
+```bash
+bun run release 0.1.0-beta.2   # version without a leading `v`
+```
+
+`scripts/release.ts` cuts a release from the current branch:
+
+1. Guards: version arg present (no leading `v`), clean working tree, tag `v<version>` doesn't already exist.
+2. Bumps `version` in `package.json`.
+3. Builds a changelog of commits since the last tag (`git log <lastTag>..HEAD --no-merges`).
+4. Commits `chore(release): v<version>` with the changelog as the body.
+5. Creates annotated tag `v<version>` whose message is `v<version>` + the changelog.
+6. `git push --follow-tags`.
+
+The tag push triggers `.github/workflows/release.yml`, which builds binaries, publishes to npm (prerelease → `beta` dist-tag), and creates the GitHub Release. The release body is the tag's changelog: the `github-release` job extracts `%(contents:body)` from the tag into `NOTES.md` and passes it as `body_path`. So the changelog surfaces in the GitHub Release **only because CI reads it off the tag** — annotated tag messages are not auto-used by the release API.
+
 ## Ubiquitous Language
 
 | Term             | Definition                                                                                  |
