@@ -8,9 +8,6 @@ on:
       publish:
         type: boolean
         default: true
-      npm_tag:
-        type: string
-        default: latest
 
 jobs:
   build:
@@ -24,8 +21,6 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      # dispatch honors the chosen tag; -beta tag pushes route to `beta`, else `latest`.
-      NPM_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag || (contains(github.ref_name, '-beta') && 'beta' || 'latest') }}
     steps:
       # setup-node with registry-url writes an authenticated ~/.npmrc from
       # NODE_AUTH_TOKEN so `npm publish` can authenticate.
@@ -43,6 +38,16 @@ jobs:
           TAG="${GITHUB_REF_NAME#v}"
           PKG=$(node -e "console.log(require('./dist/release/npm/viewmd/package.json').version)")
           test "$TAG" = "$PKG" || { echo "tag $TAG != package $PKG"; exit 1; }
+      - name: Resolve npm dist-tag from version
+        run: |
+          VERSION=$(node -p "require('./dist/release/npm/viewmd/package.json').version")
+          # A semver prerelease (0.1.0-beta.0) has a hyphen; publish it under beta.
+          case "$VERSION" in
+            *-*) NPM_TAG=beta ;;
+            *) NPM_TAG=latest ;;
+          esac
+          echo "NPM_TAG=$NPM_TAG" >> "$GITHUB_ENV"
+          echo "Publishing $VERSION under dist-tag: $NPM_TAG"
       - name: Verify npm auth
         run: npm whoami
       - name: Dry-run publish
@@ -88,4 +93,4 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: release-assets/*
-          prerelease: ${{ contains(github.ref_name, '-beta') }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
