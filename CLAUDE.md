@@ -29,6 +29,21 @@ Quick orientation:
 - Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (effectful, `src/app/lib/dispatch.ts`).
 - Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
 
+## Testing features
+
+The `mapKey → Action → dispatch` split is the testable seam — lean on it for any new
+keyboard-driven feature:
+
+- **`mapKey` (`keys.ts`) is pure** — assert `mapKey(k({ name: 'x' }), focus)` returns the
+  expected `Action`. Use the existing `k()` helper in `keys.test.ts`. One test per focus the
+  key is bound in.
+- **`dispatch` (`dispatch.ts`) is effectful but unit-testable** — drive it with the
+  `makeState` (mock `AppState`) and `makeViewerRef` helpers in `dispatch.test.ts`. Assert on
+  the mocked setters / recorded scroll calls. `makeState` casts `as AppState`, so adding a new
+  `AppState` field doesn't break existing tests — add a default there when you extend the type.
+- **Layout / interactive behavior needs a TTY** — it can't be unit-tested. Verify by hand with
+  `./src/index.tsx README.md` (interactive) or `./src/index.tsx --render README.md` (one-shot).
+
 ## Conventions
 
 - Tests use `bun:test` (not vitest, not jest). Mocks via `mock()` from `bun:test`.
