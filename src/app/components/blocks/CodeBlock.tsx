@@ -15,7 +15,7 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
   if (node.lang === 'mermaid') {
     return (
       <box marginX={MARGIN_X}>
-        <text>{node.value}</text>
+        <text wrapMode="none">{node.value}</text>
       </box>
     )
   }
