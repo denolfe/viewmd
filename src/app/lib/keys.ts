@@ -17,6 +17,7 @@ export type Action =
   | { kind: 'tocToggle' }
   | { kind: 'tocUp' }
   | { kind: 'tocDown' }
+  | { kind: 'toggleTocVisible' }
   | { kind: 'startSearch'; dir: 'forward' | 'backward' }
   | { kind: 'nextMatch' }
   | { kind: 'prevMatch' }
@@ -58,6 +59,8 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
       return { kind: 'focusSidebar' }
     case 'm':
       return { kind: 'toggleMouse' }
+    case 't':
+      return { kind: 'toggleTocVisible' }
     case '/':
       return { kind: 'startSearch', dir: 'forward' }
     case '?':
@@ -88,6 +91,8 @@ function mapSidebar(ev: KeyEvent): Action {
       return { kind: 'tocToggle' }
     case 'return':
       return { kind: 'tocSelect' }
+    case 't':
+      return { kind: 'toggleTocVisible' }
     case 'escape':
       return { kind: 'focusViewer' }
     default:

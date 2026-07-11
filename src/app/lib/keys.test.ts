@@ -53,6 +53,9 @@ describe('mapKey (viewer focus)', () => {
   test('shift-g -> bottom', () => {
     expect(mapKey(k({ name: 'g', shift: true }), 'viewer')).toEqual({ kind: 'bottom' })
   })
+  test('t -> toggleTocVisible', () => {
+    expect(mapKey(k({ name: 't' }), 'viewer')).toEqual({ kind: 'toggleTocVisible' })
+  })
   test('unmapped key -> noop', () => {
     expect(mapKey(k({ name: 'x' }), 'viewer')).toEqual({ kind: 'noop' })
   })
@@ -67,5 +70,8 @@ describe('mapKey (sidebar focus)', () => {
   })
   test('tab -> focusViewer', () => {
     expect(mapKey(k({ name: 'tab' }), 'sidebar')).toEqual({ kind: 'focusViewer' })
+  })
+  test('t -> toggleTocVisible', () => {
+    expect(mapKey(k({ name: 't' }), 'sidebar')).toEqual({ kind: 'toggleTocVisible' })
   })
 })

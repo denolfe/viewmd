@@ -29,6 +29,8 @@ export function RenderView({ nodes, width, frontmatter = [] }: Props) {
       setSearch: () => {},
       mouseEnabled: false,
       toggleMouse: () => {},
+      tocVisible: true,
+      toggleTocVisible: () => {},
       contentWidth: Math.min(CONTENT_MAX_WIDTH, width),
     }),
     [width],

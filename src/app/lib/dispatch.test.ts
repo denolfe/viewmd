@@ -37,6 +37,8 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     setSearch: mock(),
     mouseEnabled: false,
     toggleMouse: mock(),
+    tocVisible: true,
+    toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
     setVisibleHeadingIds: mock(),
     ...overrides,
@@ -294,6 +296,36 @@ describe('dispatch', () => {
     const state = makeState()
     dispatch({ kind: 'toggleMouse' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleMouse).toHaveBeenCalled()
+  })
+})
+
+describe('dispatch toggleTocVisible', () => {
+  test('toggles visibility', () => {
+    const toggleTocVisible = mock()
+    const state = makeState({ toggleTocVisible })
+    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
+    expect(toggleTocVisible).toHaveBeenCalledTimes(1)
+  })
+
+  test('hiding from sidebar returns focus to viewer', () => {
+    const setFocus = mock()
+    const state = makeState({ focus: 'sidebar', tocVisible: true, setFocus })
+    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
+    expect(setFocus).toHaveBeenCalledWith('viewer')
+  })
+
+  test('hiding from viewer does not change focus', () => {
+    const setFocus = mock()
+    const state = makeState({ focus: 'viewer', tocVisible: true, setFocus })
+    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
+    expect(setFocus).not.toHaveBeenCalled()
+  })
+
+  test('focusSidebar is a no-op when toc hidden', () => {
+    const setFocus = mock()
+    const state = makeState({ tocVisible: false, setFocus })
+    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 20, () => {})
+    expect(setFocus).not.toHaveBeenCalled()
   })
 })
 

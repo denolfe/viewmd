@@ -33,6 +33,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   const [tocCursorId, setTocCursorId] = useState<string | null>(null)
   const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
+  const [tocVisible, setTocVisible] = useState(true)
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
     // At startup the H1 (if any) sits at the top of the viewport — seed it so
     // the breadcrumb's hide-when-visible rule fires on the first paint.
@@ -47,8 +48,9 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     })
   }, [])
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
+  const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
 
-  const hasToc = toc.length > 0
+  const isTocShown = toc.length > 0 && tocVisible
   const { width: termWidth } = useTerminalDimensions()
   // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
   const TOC_PADDING = 3
@@ -61,7 +63,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   const VIEWER_OVERHEAD = 2
   const viewerColumnWidth = Math.max(
     1,
-    (hasToc ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
+    (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
   )
   const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewerColumnWidth)
 
@@ -88,6 +90,8 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       setSearch,
       mouseEnabled,
       toggleMouse,
+      tocVisible,
+      toggleTocVisible,
       visibleHeadingIds,
       setVisibleHeadingIds,
       contentWidth,
@@ -101,6 +105,8 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       mouseEnabled,
       toggleExpanded,
       toggleMouse,
+      tocVisible,
+      toggleTocVisible,
       visibleHeadingIds,
       contentWidth,
     ],
@@ -156,8 +162,12 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
             tailReserve={tailReserve}
             onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
-          {hasToc && (
-            <box width={tocWidth} border={false}>
+          {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
+              makes it flash its own vertical scrollbar for one frame before layout
+              settles. `visible={false}` still frees the column so the viewer reclaims
+              the width. */}
+          {toc.length > 0 && (
+            <box width={tocWidth} border={false} visible={isTocShown}>
               <Toc toc={toc} />
             </box>
           )}

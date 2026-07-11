@@ -62,6 +62,9 @@ export type AppState = {
   mouseEnabled: boolean
   toggleMouse: () => void
 
+  tocVisible: boolean
+  toggleTocVisible: () => void
+
   /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
   contentWidth: number
 }

@@ -42,7 +42,7 @@ export function dispatch(
       jumpHeading(state, toc, headingIds, -1, fileLabel)
       return
     case 'focusSidebar':
-      if (toc.length === 0) return
+      if (toc.length === 0 || !state.tocVisible) return
       if (!state.tocCursorId) state.setTocCursorId(toc[0]!.id)
       state.setFocus('sidebar')
       return
@@ -95,6 +95,10 @@ export function dispatch(
       return
     case 'toggleMouse':
       state.toggleMouse()
+      return
+    case 'toggleTocVisible':
+      if (state.tocVisible && state.focus === 'sidebar') state.setFocus('viewer')
+      state.toggleTocVisible()
       return
     case 'noop':
       return
