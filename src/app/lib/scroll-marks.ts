@@ -1,5 +1,5 @@
 /** Mark categories, ordered by paint priority (higher wins a shared row). */
-export type MarkKind = 'heading' | 'match' | 'activeMatch'
+export type MarkKind = 'match' | 'activeMatch'
 
 /** A mark resolved to its absolute content-space y (same frame as renderable `.y`). */
 export type ResolvedMark = { y: number; kind: MarkKind }
@@ -7,7 +7,7 @@ export type ResolvedMark = { y: number; kind: MarkKind }
 /** One painted scrollbar cell. */
 export type TrackCell = { row: number; kind: MarkKind }
 
-const KIND_RANK: Record<MarkKind, number> = { heading: 1, match: 2, activeMatch: 3 }
+const KIND_RANK: Record<MarkKind, number> = { match: 1, activeMatch: 2 }
 
 /** Stable DOM id for a block box, keyed by its index path through the AST. */
 export function blockId(path: number[]): string {

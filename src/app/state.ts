@@ -29,16 +29,15 @@ export type ScrollboxHandle = {
    */
   getVisibleHeadingIds: (headingIds: string[], topOffset?: number) => Set<string>
   /**
-   * Resolves headings and matches to absolute content-y for the scrollbar overlay.
+   * Resolves search matches to absolute content-y for the scrollbar overlay.
    * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry
    * for `computeTrackCells`. Unresolvable marks are omitted (never throws).
    */
-  getScrollMarks: (params: {
-    headingIds: string[]
-    matches: Match[]
-    pattern: string
-    activeIndex: number
-  }) => { marks: ResolvedMark[]; contentHeight: number; trackHeight: number }
+  getScrollMarks: (params: { matches: Match[]; pattern: string; activeIndex: number }) => {
+    marks: ResolvedMark[]
+    contentHeight: number
+    trackHeight: number
+  }
 }
 
 export type SearchState = {

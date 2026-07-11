@@ -8,6 +8,7 @@ import { ScrollIndicators } from './ScrollIndicators'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
+import { theme } from '../styles/theme'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
@@ -24,13 +25,11 @@ export function Viewer({
   frontmatter = [],
   tailReserve = 0,
   onScroll,
-  headingIds,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
   tailReserve?: number
   onScroll?: () => void
-  headingIds: string[]
 }) {
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
@@ -56,8 +55,8 @@ export function Viewer({
       scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
-      getScrollMarks: ({ headingIds, matches, pattern, activeIndex }) =>
-        resolveScrollMarks(box, tailRef.current, { headingIds, matches, pattern, activeIndex }),
+      getScrollMarks: ({ matches, pattern, activeIndex }) =>
+        resolveScrollMarks(box, tailRef.current, { matches, pattern, activeIndex }),
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
@@ -72,14 +71,21 @@ export function Viewer({
   resetMatchCounter()
   return (
     <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
-      <scrollbox ref={localRef} focusable={false} width="100%" height="100%" overflow="hidden">
+      <scrollbox
+        ref={localRef}
+        focusable={false}
+        width="100%"
+        height="100%"
+        overflow="hidden"
+        verticalScrollbarOptions={{ trackOptions: { foregroundColor: theme.scrollbarThumb } }}
+      >
         <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
           <NodeList nodes={nodes} />
         </box>
         <box height={tailSpace} />
       </scrollbox>
-      <ScrollIndicators headingIds={headingIds} />
+      <ScrollIndicators />
     </box>
   )
 }
@@ -236,14 +242,10 @@ function resolveMatchY(
 function resolveScrollMarks(
   box: ScrollBoxRenderable,
   tail: number,
-  params: { headingIds: string[]; matches: Match[]; pattern: string; activeIndex: number },
+  params: { matches: Match[]; pattern: string; activeIndex: number },
 ): { marks: ResolvedMark[]; contentHeight: number; trackHeight: number } {
-  const { headingIds, matches, pattern, activeIndex } = params
+  const { matches, pattern, activeIndex } = params
   const marks: ResolvedMark[] = []
-  for (const id of headingIds) {
-    const child = box.content.findDescendantById(id)
-    if (child) marks.push({ y: child.y, kind: 'heading' })
-  }
   if (pattern) {
     for (let i = 0; i < matches.length; i++) {
       const match = matches[i]

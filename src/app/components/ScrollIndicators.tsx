@@ -7,12 +7,11 @@ import { theme } from '../styles/theme'
 
 const TICK = '─'
 const COLOR: Record<MarkKind, string> = {
-  heading: theme.scrollMarkHeading,
   match: theme.scrollMarkMatch,
   activeMatch: theme.scrollMarkActive,
 }
 
-export function ScrollIndicators({ headingIds }: { headingIds: string[] }) {
+export function ScrollIndicators() {
   const { viewerRef, search, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
   const [cells, setCells] = useState<TrackCell[]>([])
@@ -22,7 +21,6 @@ export function ScrollIndicators({ headingIds }: { headingIds: string[] }) {
       const v = viewerRef.current
       if (!v) return
       const { marks, contentHeight, trackHeight } = v.getScrollMarks({
-        headingIds,
         matches: search?.matches ?? [],
         pattern: search?.pattern ?? '',
         activeIndex: search?.index ?? -1,
@@ -30,16 +28,22 @@ export function ScrollIndicators({ headingIds }: { headingIds: string[] }) {
       setCells(computeTrackCells({ marks, contentHeight, trackHeight }))
     }, 0)
     return () => clearTimeout(tid)
-  }, [viewerRef, headingIds, search?.pattern, search?.index, contentWidth, height])
+  }, [viewerRef, search?.pattern, search?.index, contentWidth, height])
 
   if (cells.length === 0) return null
   const byRow = new Map(cells.map(c => [c.row, c.kind]))
+  // Marker cells take the scrollbar-thumb bg so they read as part of the bar;
+  // unmarked rows stay transparent so the real track/thumb shows through.
   return (
     <box position="absolute" right={0} top={0} width={1} height="100%">
       {Array.from({ length: height }, (_, row) => {
         const kind = byRow.get(row)
         return (
-          <text key={row} fg={kind ? COLOR[kind] : undefined}>
+          <text
+            key={row}
+            bg={kind ? theme.scrollbarThumb : undefined}
+            fg={kind ? COLOR[kind] : undefined}
+          >
             {kind ? TICK : ' '}
           </text>
         )

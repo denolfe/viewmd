@@ -28,9 +28,9 @@ export const theme = {
   searchCurrentBg: '#f59e1f',
   tocCurrent: '#e5e5e5',
   tocFocusBg: '#264f78',
-  scrollMarkHeading: '#666666', // faint — reuse border tone
   scrollMarkMatch: '#f5f543', // saturated — reuse searchMatchBg
   scrollMarkActive: '#f59e1f', // brightest — reuse searchCurrentBg
+  scrollbarThumb: '#585858', // scrollbar bar color; also the marker cell bg so marks read as part of the bar
 } as const
 
 export type Theme = typeof theme
