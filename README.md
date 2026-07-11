@@ -1,98 +1,60 @@
 # viewmd
 
-Terminal markdown renderer with mermaid diagram support.
+An interactive terminal markdown viewer
 
-- Mermaid diagrams → ASCII art
-- Inline images (iTerm2, Kitty, Sixel, ANSI fallback)
-- Syntax-highlighted code blocks with box borders
-- Less-style pager with search and sticky headers
+> Pre-1.0 beta. Until the first stable release, install the beta explicitly: `npm install -g viewmd@beta`.
 
-<img src="preview.png" alt="Preview of viewmd rendering a markdown document with various features" width="600"/>
-
-## Installation
+## Install
 
 ```sh
-npm install -g viewmd
+npm install -g viewmd@beta
 ```
-
-Ships prebuilt binaries for macOS, Linux, and Windows (x64/arm64) — no Bun or build step required.
-
-<details>
-<summary>From source</summary>
-
-_Prerequisites: Bun_
-
-```sh
-git clone git@github.com:denolfe/viewmd.git
-cd viewmd
-bun install
-bun link
-```
-
-</details>
 
 ## Usage
 
 ```sh
-# Interactive viewer (requires a TTY)
-viewmd README.md
+viewmd README.md     # open the interactive viewer (needs a TTY)
+viewmd -r README.md  # print a one-shot ANSI render and exit
 ```
 
-## Pipe / fzf preview
-
-When stdout is not a TTY (a pipe, a redirect, an fzf preview pane), `viewmd` skips the interactive viewer and prints a one-shot ANSI render instead. Force this in a TTY with `--render` / `-r`.
-
 ```sh
-# Pipe to a pager
-viewmd README.md | less -R
-
-# From stdin
-cat README.md | viewmd
-
-# fzf preview
-fzf --ansi --preview 'viewmd {}'
+viewmd README.md
 ```
 
 ## Features
 
-### Mermaid Diagrams
+- **Mermaid diagrams** rendered as ASCII art, via [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid).
+- **Syntax-highlighted code blocks** - tree-sitter highlighting in a bordered box labeled with the language.
+- **Table-of-contents sidebar** - a collapsible tree of the document's headings.
+- **Sticky headers** - as you scroll past a heading, its ancestors stay pinned at the top so you always know where you are.
+- **Ergonomic navigation** - header navigation, page up/down, half-page up/down, and mouse scrolling.
+- **Search** forward and backward, `less`-style.
+- **Images** appear as a labeled, clickable link
 
-Converts mermaid code blocks to ASCII art using [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid).
+## Keyboard shortcuts
 
-### Inline Images
+### Viewer
 
-Renders images directly in the terminal using [terminal-image](https://github.com/sindresorhus/terminal-image). Uses native terminal protocols (iTerm2, Kitty, Sixel) when available, falls back to ANSI block characters.
+| Key              | Action                                    |
+| ---------------- | ----------------------------------------- |
+| `j` / `↓`        | Down one line                             |
+| `k` / `↑`        | Up one line                               |
+| `Space` / `PgDn` | Page down                                 |
+| `b` / `PgUp`     | Page up                                   |
+| `d` / `u`        | Half page down / up                       |
+| `g` / `G`        | Top / bottom                              |
+| `n` / `N`        | Next / previous heading (or search match) |
+| `/` / `?`        | Search forward / backward                 |
+| `Esc`            | Clear search                              |
+| `Tab`            | Focus the table-of-contents sidebar       |
+| `m`              | Toggle mouse scroll (off = select text)   |
+| `q` / `Ctrl-C`   | Quit                                      |
 
-### Sticky Headers
+### Sidebar
 
-When scrolled past a heading, ancestor headers appear dimmed at the top of the viewport, showing your position in the document hierarchy. For example, when reading content under an H3, the parent H2 and H1 are displayed above with a separator line.
-
-<img src="sticky-headers.png" alt="Screenshot showing sticky headers in viewmd, with H1 and H2 displayed at the top of the viewport while reading an H3 section" width="600"/>
-
-### Keyboard Shortcuts
-
-| Key           | Action                                  |
-| ------------- | --------------------------------------- |
-| `n`           | Next header                             |
-| `N`           | Previous header                         |
-| `j` / `↓`     | Scroll down one line                    |
-| `k` / `↑`     | Scroll up one line                      |
-| `Space` / `f` | Page down                               |
-| `b`           | Page up                                 |
-| `d`           | Half page down                          |
-| `u`           | Half page up                            |
-| `g`           | Go to top                               |
-| `G`           | Go to bottom                            |
-| `/`           | Search forward                          |
-| `?`           | Search backward                         |
-| `m`           | Toggle mouse scroll (off = select text) |
-| `=`           | Show position info                      |
-| `q`           | Quit                                    |
-
-## Releasing
-
-1. Bump `version` in `package.json`.
-2. `git commit -am "chore(release): vX.Y.Z" && git tag vX.Y.Z && git push --follow-tags`
-3. CI builds all platforms, stages, and publishes `viewmd` + `viewmd-*` to npm, and creates a GitHub Release.
-
-Requires the `NPM_TOKEN` repository secret (npm automation token).
+| Key           | Action             |
+| ------------- | ------------------ |
+| `j` / `k`     | Move down / up     |
+| `Space`       | Expand / collapse  |
+| `Enter`       | Jump to heading    |
+| `Tab` / `Esc` | Back to the viewer |
