@@ -2,13 +2,15 @@
 
 An interactive terminal markdown viewer
 
-> Pre-1.0 beta. Until the first stable release, install the beta explicitly: `npm install -g viewmd@beta`.
+> Pre-1.0 beta. Until the first stable release, install the beta explicitly: `npm install -g viewmd-cli@beta`.
 
 ## Install
 
 ```sh
-npm install -g viewmd@beta
+npm install -g viewmd-cli
 ```
+
+The package is `viewmd-cli`; the command it installs is `viewmd`.
 
 ## Usage
 
