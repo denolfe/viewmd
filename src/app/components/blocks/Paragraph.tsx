@@ -1,9 +1,15 @@
 import { InlineRenderer } from './InlineRenderer'
 import type { Node } from '../../lib/ast'
 
-export function Paragraph({ node }: { node: Extract<Node, { kind: 'paragraph' }> }) {
+export function Paragraph({
+  node,
+  id,
+}: {
+  node: Extract<Node, { kind: 'paragraph' }>
+  id?: string
+}) {
   return (
-    <box paddingX={2}>
+    <box id={id} paddingX={2}>
       <text>
         <InlineRenderer nodes={node.inline} />
       </text>

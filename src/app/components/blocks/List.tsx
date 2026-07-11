@@ -1,16 +1,17 @@
 import { InlineRenderer } from './InlineRenderer'
-import { NodeList } from './NodeRenderer'
+import { NodeList, NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
+import { blockId } from '../../lib/scroll-marks'
 import type { ListItem, Node } from '../../lib/ast'
 
-export function List({ node }: { node: Extract<Node, { kind: 'list' }> }) {
+export function List({ node, path }: { node: Extract<Node, { kind: 'list' }>; path: number[] }) {
   return (
     <box paddingLeft={2}>
       {node.items.map((item, i) => (
         <box key={i} flexDirection="row">
           <Marker item={item} ordered={node.ordered} index={i} />
           <box flexGrow={1}>
-            <ItemBody nodes={item.children} />
+            <ItemBody nodes={item.children} pathPrefix={[...path, i]} />
           </box>
         </box>
       ))}
@@ -31,17 +32,19 @@ function Marker({ item, ordered, index }: { item: ListItem; ordered: boolean; in
   return <text>{ordered ? `${index + 1}. ` : '- '}</text>
 }
 
-function ItemBody({ nodes }: { nodes: Node[] }) {
+function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }) {
   const [first, ...rest] = nodes
   if (first?.kind === 'paragraph') {
     return (
       <>
-        <text>
+        <text id={blockId([...pathPrefix, 0])}>
           <InlineRenderer nodes={first.inline} />
         </text>
-        {rest.length > 0 && <NodeList nodes={rest} />}
+        {rest.map((n, i) => (
+          <NodeRenderer key={i + 1} node={n} path={[...pathPrefix, i + 1]} />
+        ))}
       </>
     )
   }
-  return <NodeList nodes={nodes} />
+  return <NodeList nodes={nodes} pathPrefix={pathPrefix} />
 }

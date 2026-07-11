@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import { InlineRenderer } from './InlineRenderer'
 import { NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
+import { blockId } from '../../lib/scroll-marks'
 import type { Node } from '../../lib/ast'
 
 const PIPE_BORDER_CHARS = {
@@ -18,7 +19,13 @@ const PIPE_BORDER_CHARS = {
   cross: '▌',
 }
 
-export function Blockquote({ node }: { node: Extract<Node, { kind: 'blockquote' }> }) {
+export function Blockquote({
+  node,
+  path,
+}: {
+  node: Extract<Node, { kind: 'blockquote' }>
+  path: number[]
+}) {
   return (
     <box flexDirection="row" paddingX={2}>
       <box
@@ -28,20 +35,23 @@ export function Blockquote({ node }: { node: Extract<Node, { kind: 'blockquote' 
         paddingLeft={1}
         flexGrow={1}
       >
-        {node.children.map((child, i) => (
-          <Fragment key={i}>
-            {i > 0 && <box height={1} />}
-            {child.kind === 'paragraph' ? (
-              <text fg={theme.blockquote}>
-                <em>
-                  <InlineRenderer nodes={child.inline} />
-                </em>
-              </text>
-            ) : (
-              <NodeRenderer node={child} />
-            )}
-          </Fragment>
-        ))}
+        {node.children.map((child, i) => {
+          const childPath = [...path, i]
+          return (
+            <Fragment key={i}>
+              {i > 0 && <box height={1} />}
+              {child.kind === 'paragraph' ? (
+                <text id={blockId(childPath)} fg={theme.blockquote}>
+                  <em>
+                    <InlineRenderer nodes={child.inline} />
+                  </em>
+                </text>
+              ) : (
+                <NodeRenderer node={child} path={childPath} />
+              )}
+            </Fragment>
+          )
+        })}
       </box>
     </box>
   )
