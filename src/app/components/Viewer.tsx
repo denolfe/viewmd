@@ -183,6 +183,8 @@ function asTextBearer(node: unknown): TextBearer | null {
 }
 
 /** Depth-first search for the first descendant exposing plainText + lineInfo. */
+// First text-bearing descendant. Multi-text blocks (e.g. tables) rely on the
+// kth-occurrence check in resolveMatchY missing in the wrong child → block-top fallback.
 function findTextBearer(node: { getChildren(): unknown[] }): TextBearer | null {
   const self = asTextBearer(node)
   if (self) return self

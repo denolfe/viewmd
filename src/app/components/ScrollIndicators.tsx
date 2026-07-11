@@ -13,7 +13,7 @@ const COLOR: Record<MarkKind, string> = {
 }
 
 export function ScrollIndicators({ headingIds }: { headingIds: string[] }) {
-  const { viewerRef, search, expanded } = useAppState()
+  const { viewerRef, search, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
   const [cells, setCells] = useState<TrackCell[]>([])
 
@@ -30,7 +30,7 @@ export function ScrollIndicators({ headingIds }: { headingIds: string[] }) {
       setCells(computeTrackCells({ marks, contentHeight, trackHeight }))
     }, 0)
     return () => clearTimeout(tid)
-  }, [viewerRef, headingIds, search?.pattern, search?.index, expanded, height])
+  }, [viewerRef, headingIds, search?.pattern, search?.index, contentWidth, height])
 
   if (cells.length === 0) return null
   const byRow = new Map(cells.map(c => [c.row, c.kind]))
