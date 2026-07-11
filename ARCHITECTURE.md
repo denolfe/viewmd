@@ -156,6 +156,14 @@ It also installs `installRealisticThumb`, which patches the scrollbar slider's `
 
 `focusable={false}` is intentional — `focused={false}` is a no-op on mount; this avoids click-focus re-enabling OpenTUI's built-in j/k handler that would compete with our dispatcher.
 
+### Scroll indicators (`src/app/components/ScrollIndicators.tsx`)
+
+The scrollbox is wrapped in a `position=relative` box; `ScrollIndicators` renders as an **absolute** sibling pinned to the right column (`width={1}`), painting tick marks over the scrollbar track. The thumb still renders beneath it, so a mark under the thumb shows through as the thumb passes over it.
+
+Block boxes carry a stable id via `blockId(path)` (`src/app/lib/scroll-marks.ts`), keyed by the block's index path through the AST — the same convention headings already use via their slug `id`. `Match.blockElementId` (stamped during search) joins a match back to its block box, so `getScrollMarks` can resolve `box.content.findDescendantById(match.blockElementId)` and then locate the exact visual line within it via `plainText`/`lineInfo` (falling back to the block's own `y` if no text-bearing descendant is found). Heading marks resolve the same way `getHeadingNearTop` does, via `findDescendantById(headingId)`.
+
+`computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`y / contentHeight * (trackHeight - 1)`), independent of scroll position — so marks recompute on **reflow** (resize, TOC expand/collapse, search pattern/index change), not on every scroll tick. `ScrollIndicators` debounces recomputation into a microtask (`setTimeout(…, 0)`) after those dependencies change and reads the current layout off `viewerRef`. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match > heading`), painted with `theme.scrollMarkActive` / `scrollMarkMatch` / `scrollMarkHeading`. On a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
+
 ## 8. Sticky breadcrumb (`src/app/components/StickyHeader.tsx`)
 
 An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `contentWidth`, `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — crumbs paint _over_ the top content lines rather than pushing content down, so the breadcrumb can grow from zero without the content region reflowing.

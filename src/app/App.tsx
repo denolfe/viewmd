@@ -171,6 +171,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
             nodes={nodes}
             frontmatter={frontmatter}
             tailReserve={tailReserve}
+            headingIds={headingIds}
             onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox

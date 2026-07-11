@@ -4,6 +4,7 @@ import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
 import { resetMatchCounter } from './blocks/InlineRenderer'
+import { ScrollIndicators } from './ScrollIndicators'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
@@ -23,11 +24,13 @@ export function Viewer({
   frontmatter = [],
   tailReserve = 0,
   onScroll,
+  headingIds,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
   tailReserve?: number
   onScroll?: () => void
+  headingIds: string[]
 }) {
   const { viewerRef, contentWidth } = useAppState()
   const { height } = useTerminalDimensions()
@@ -68,19 +71,16 @@ export function Viewer({
 
   resetMatchCounter()
   return (
-    <scrollbox
-      ref={localRef}
-      focusable={false}
-      width={contentWidth + VIEWER_OVERHEAD}
-      height="100%"
-      overflow="hidden"
-    >
-      <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
-        <Frontmatter rows={frontmatter} />
-        <NodeList nodes={nodes} />
-      </box>
-      <box height={tailSpace} />
-    </scrollbox>
+    <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
+      <scrollbox ref={localRef} focusable={false} width="100%" height="100%" overflow="hidden">
+        <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
+          <Frontmatter rows={frontmatter} />
+          <NodeList nodes={nodes} />
+        </box>
+        <box height={tailSpace} />
+      </scrollbox>
+      <ScrollIndicators headingIds={headingIds} />
+    </box>
   )
 }
 
