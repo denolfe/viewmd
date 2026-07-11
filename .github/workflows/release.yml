@@ -22,7 +22,6 @@ jobs:
     needs: build
     if: ${{ github.event_name == 'push' || inputs.publish }}
     runs-on: ubuntu-latest
-    environment: npm
     env:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       # dispatch honors the chosen tag; -beta tag pushes route to `beta`, else `latest`.
