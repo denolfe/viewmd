@@ -251,13 +251,17 @@ function resolveScrollMarks(
 } {
   const { matches, pattern, activeIndex } = params
   const marks: ResolvedMark[] = []
+  // Renderable `.y` is screen-absolute and includes the scroll translation
+  // (content.translateY = -scrollTop). Convert to document space so marks stay
+  // fixed on the track while scrolling: docY = screenY - viewportScreenY + scrollTop.
+  const screenToDoc = box.scrollTop - box.viewport.y
   if (pattern) {
     for (let i = 0; i < matches.length; i++) {
       const match = matches[i]
       if (!match) continue
       const y = resolveMatchY(box, match, matches, i, pattern)
       if (y === null) continue
-      marks.push({ y, kind: i === activeIndex ? 'activeMatch' : 'match' })
+      marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
     }
   }
   return {
