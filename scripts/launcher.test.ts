@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdtempSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { PLATFORM_PACKAGES } from '../bin/viewmd.cjs'
+import { PLATFORM_PACKAGES, ensureExecutable } from '../bin/viewmd.cjs'
 
 describe('launcher', () => {
   test('maps all 5 platforms to viewmd-<id> packages', () => {
@@ -15,6 +15,25 @@ describe('launcher', () => {
       'win32-x64',
     ])
     expect(PLATFORM_PACKAGES['win32-x64'].bin).toBe('viewmd.exe')
+  })
+
+  test('ensureExecutable adds the exec bit when it is missing', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'viewmd-exec-'))
+    const bin = join(dir, 'bin')
+    writeFileSync(bin, 'x')
+    chmodSync(bin, 0o644)
+    ensureExecutable(bin)
+    expect(statSync(bin).mode & 0o111).not.toBe(0)
+  })
+
+  test('ensureExecutable does not chmod when the exec bit is already set', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'viewmd-exec-'))
+    const bin = join(dir, 'bin')
+    writeFileSync(bin, 'x')
+    chmodSync(bin, 0o755)
+    const before = statSync(bin).ctimeMs
+    ensureExecutable(bin)
+    expect(statSync(bin).ctimeMs).toBe(before)
   })
 
   test('VIEWMD_BIN_PATH override execs the given binary, forwarding args and exit code', () => {

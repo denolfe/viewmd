@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict'
 const { spawnSync } = require('node:child_process')
-const { existsSync, chmodSync } = require('node:fs')
+const { existsSync, chmodSync, statSync } = require('node:fs')
 const path = require('node:path')
 
 // Kept in sync with scripts/platforms.ts. Duplicated intentionally: the
@@ -36,6 +36,16 @@ function resolveBunFallback() {
   return { bun, main }
 }
 
+// Skip chmod when already executable: it bumps ctime, invalidating the
+// kernel's code-signature cache and forcing a ~470ms re-verify on every exec.
+function ensureExecutable(binary) {
+  if (process.platform === 'win32') return
+  try {
+    if (statSync(binary).mode & 0o111) return
+    chmodSync(binary, 0o755)
+  } catch {}
+}
+
 function exit(result) {
   if (result.error) {
     console.error(`viewmd: failed to launch: ${result.error.message}`)
@@ -54,11 +64,7 @@ function run() {
 
   const binary = resolvePlatformBinary()
   if (binary) {
-    if (process.platform !== 'win32') {
-      try {
-        chmodSync(binary, 0o755)
-      } catch {}
-    }
+    ensureExecutable(binary)
     return exit(spawnSync(binary, args, { stdio: 'inherit' }))
   }
 
@@ -76,4 +82,4 @@ function run() {
 
 if (require.main === module) run()
 
-module.exports = { PLATFORM_PACKAGES, resolvePlatformBinary }
+module.exports = { PLATFORM_PACKAGES, resolvePlatformBinary, ensureExecutable }
