@@ -6,16 +6,15 @@ import type { Focus } from './lib/keys'
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
  *
- * `scrollBy`, `scrollTo`, `scrollChildIntoView` map directly to
- * `ScrollBoxRenderable`. `scrollToBottom` is a polyfill the Viewer
- * provides by wrapping the raw renderable ref:
+ * `scrollBy`, `scrollTo` map directly to `ScrollBoxRenderable`.
+ * `scrollToBottom` is a polyfill the Viewer provides by wrapping the raw
+ * renderable ref:
  *   `{ scrollToBottom: () => box.scrollTo(box.scrollHeight) }`
  */
 export type ScrollboxHandle = {
   scrollBy: (delta: number) => void
   scrollTo: (y: number) => void
   scrollToBottom: () => void
-  scrollChildIntoView: (childId: string) => void
   /** Scrolls so the named child sits at the top of the viewport, offset `topOffset` rows down (default 0). */
   scrollChildToTop: (childId: string, topOffset?: number) => void
   /**

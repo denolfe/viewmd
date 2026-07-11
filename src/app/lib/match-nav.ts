@@ -1,5 +1,23 @@
-import type { Node } from './ast'
+import type { Node, TocEntry } from './ast'
 import type { Match } from './search'
+import { breadcrumbHeightForHeading } from './toc-util'
+
+/**
+ * Where to scroll a search match: the heading to pin, plus the breadcrumb
+ * overlay height to clear so the match lands below the sticky header rather than
+ * behind it. Returns null when no heading precedes the match (top-of-document).
+ */
+export function matchScrollTarget(params: {
+  nodes: Node[]
+  toc: TocEntry[]
+  match: Match
+  fileLabel?: string
+}): { headingId: string; topOffset: number } | null {
+  const { nodes, toc, match, fileLabel } = params
+  const headingId = nearestPrecedingHeadingId(nodes, match)
+  if (!headingId) return null
+  return { headingId, topOffset: breadcrumbHeightForHeading({ toc, id: headingId, fileLabel }) }
+}
 
 /**
  * Returns the heading id whose block index precedes the match's top-level block.

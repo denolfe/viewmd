@@ -6,7 +6,7 @@ import type { Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
 import { dispatch, syncHeadings } from './lib/dispatch'
-import { nearestPrecedingHeadingId } from './lib/match-nav'
+import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
@@ -116,8 +116,19 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     if (!search || search.index < 0) return
     const m = search.matches[search.index]
     if (!m) return
-    const headingId = nearestPrecedingHeadingId(nodes, m)
-    if (headingId) viewerRef.current?.scrollChildIntoView(headingId)
+    const v = viewerRef.current
+    if (!v) return
+    const target = matchScrollTarget({ nodes, toc, match: m, fileLabel })
+    // No preceding heading → the match is in the pre-heading region at the very
+    // top; reveal it there. Otherwise pin its heading below the breadcrumb
+    // overlay so the match doesn't land hidden behind it.
+    if (!target) {
+      v.scrollTo(0)
+      return
+    }
+    v.scrollChildToTop(target.headingId, target.topOffset)
+    setCurrentHeadingId(target.headingId)
+    setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds, target.topOffset))
   }, [search?.index, search?.pattern])
 
   // Populate visibleHeadingIds once after first layout so the breadcrumb's

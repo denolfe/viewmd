@@ -48,7 +48,6 @@ export function Viewer({
       scrollBy: delta => box.scrollBy(delta),
       scrollTo: y => box.scrollTo(y),
       scrollToBottom: () => box.scrollTo(box.scrollHeight),
-      scrollChildIntoView: id => box.scrollChildIntoView(id),
       scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
@@ -82,7 +81,7 @@ export function Viewer({
 }
 
 /**
- * All vertical scroll paths (keyboard, wheel, scrollTo, scrollChildIntoView)
+ * All vertical scroll paths (keyboard, wheel, scrollTo, scrollChildToTop)
  * funnel into `verticalScrollBar.scrollPosition`'s setter. Patch it so we
  * notify after every change — keyboard goes through dispatch's own sync, but
  * mouse wheel / drag mutate scrollTop directly and would otherwise leave the
