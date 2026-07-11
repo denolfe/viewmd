@@ -25,9 +25,8 @@ jobs:
     environment: npm
     env:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-      # workflow_dispatch honors the chosen dist-tag; tag pushes route
-      # prerelease tags (-alpha/-beta/-rc) to the `beta` tag, else `latest`.
-      NPM_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag || ((contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc')) && 'beta' || 'latest') }}
+      # dispatch honors the chosen tag; -beta tag pushes route to `beta`, else `latest`.
+      NPM_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.npm_tag || (contains(github.ref_name, '-beta') && 'beta' || 'latest') }}
     steps:
       # setup-node with registry-url writes an authenticated ~/.npmrc from
       # NODE_AUTH_TOKEN so `npm publish` can authenticate.
@@ -90,4 +89,4 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: release-assets/*
-          prerelease: ${{ contains(github.ref_name, '-alpha') || contains(github.ref_name, '-beta') || contains(github.ref_name, '-rc') }}
+          prerelease: ${{ contains(github.ref_name, '-beta') }}
