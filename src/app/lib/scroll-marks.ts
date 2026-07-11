@@ -1,11 +1,14 @@
 /** Mark categories, ordered by paint priority (higher wins a shared row). */
 export type MarkKind = 'match' | 'activeMatch'
 
-/** A mark resolved to its absolute content-space y (same frame as renderable `.y`). */
+/** A mark resolved to its document-space y (row offset from the top of the scroll content). */
 export type ResolvedMark = { y: number; kind: MarkKind }
 
 /** One painted scrollbar cell. */
 export type TrackCell = { row: number; kind: MarkKind }
+
+/** Inclusive track-row span of the scrollbar thumb. */
+export type ThumbRows = { start: number; end: number }
 
 const KIND_RANK: Record<MarkKind, number> = { match: 1, activeMatch: 2 }
 
@@ -44,4 +47,38 @@ export function computeTrackCells(params: {
     if (!existing || KIND_RANK[mark.kind] > KIND_RANK[existing]) byRow.set(row, mark.kind)
   }
   return [...byRow.entries()].map(([row, kind]) => ({ row, kind }))
+}
+
+/**
+ * Replicates OpenTUI's vertical slider thumb placement (half-cell "virtual"
+ * track, `getVirtualThumbSize`/`getVirtualThumbStart`) plus our
+ * `installRealisticThumb` viewPortSize override, so the overlay can tell which
+ * track rows the thumb occupies. Returns null when the content isn't scrollable.
+ */
+export function computeThumbRows(params: {
+  scrollTop: number
+  scrollHeight: number
+  viewportHeight: number
+  realContentHeight: number
+}): ThumbRows | null {
+  const { scrollTop, scrollHeight, viewportHeight, realContentHeight } = params
+  const range = scrollHeight - viewportHeight
+  if (viewportHeight < 1 || scrollHeight <= 0 || range <= 0) return null
+  // installRealisticThumb sizes the thumb to viewport/realContent (skipped when
+  // the real content fits the viewport); the slider clamps viewPortSize to range.
+  const desired =
+    realContentHeight > viewportHeight
+      ? Math.max(1, Math.round((viewportHeight * scrollHeight) / realContentHeight))
+      : viewportHeight
+  const viewPortSize = Math.max(0.01, Math.min(desired, range))
+  const virtualTrack = viewportHeight * 2
+  const virtualThumbSize = Math.max(
+    1,
+    Math.min(Math.floor((virtualTrack * viewPortSize) / (range + viewPortSize)), virtualTrack),
+  )
+  const clampedTop = Math.max(0, Math.min(scrollTop, range))
+  const virtualStart = Math.round((clampedTop / range) * (virtualTrack - virtualThumbSize))
+  const start = Math.max(0, Math.floor(virtualStart / 2))
+  const end = Math.min(viewportHeight - 1, Math.ceil((virtualStart + virtualThumbSize) / 2) - 1)
+  return { start, end }
 }

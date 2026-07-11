@@ -30,7 +30,8 @@ export const theme = {
   tocFocusBg: '#264f78',
   scrollMarkMatch: '#f5f543', // saturated — reuse searchMatchBg
   scrollMarkActive: '#f59e1f', // brightest — reuse searchCurrentBg
-  scrollbarThumb: '#585858', // scrollbar bar color; also the marker cell bg so marks read as part of the bar
+  scrollbarThumb: '#585858', // thumb color; marker cells inside the thumb use it as bg
+  scrollbarTrack: '#252527', // track bg (OpenTUI default, pinned); marker cells outside the thumb use it as bg
 } as const
 
 export type Theme = typeof theme

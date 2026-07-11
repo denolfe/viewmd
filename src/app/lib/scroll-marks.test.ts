@@ -1,5 +1,5 @@
 import { test, expect } from 'bun:test'
-import { blockId, computeTrackCells } from './scroll-marks'
+import { blockId, computeThumbRows, computeTrackCells } from './scroll-marks'
 import type { ResolvedMark } from './scroll-marks'
 
 test('blockId joins a path with the blk- prefix', () => {
@@ -66,4 +66,29 @@ test('renders nothing when the document fits the viewport or track is degenerate
   expect(
     computeTrackCells({ marks, scrollHeight: 100, viewportHeight: 0, realContentHeight: 90 }),
   ).toEqual([])
+})
+
+// Geometry mirrors OpenTUI's vertical slider + installRealisticThumb:
+// vps = round(vh·scrollH/real) = 55, virtualTrack = 98,
+// S = floor(98·55/(398+55)) = 11, vStart = round(top/398·87).
+const THUMB_GEO = { scrollHeight: 447, viewportHeight: 49, realContentHeight: 400 }
+
+test('computeThumbRows places the thumb per the slider virtual-track math', () => {
+  expect(computeThumbRows({ ...THUMB_GEO, scrollTop: 197 })).toEqual({ start: 21, end: 26 })
+})
+
+test('computeThumbRows pins the thumb to the track ends', () => {
+  expect(computeThumbRows({ ...THUMB_GEO, scrollTop: 0 })).toEqual({ start: 0, end: 5 })
+  // scrollTop at (or clamped to) range = scrollHeight - viewportHeight.
+  expect(computeThumbRows({ ...THUMB_GEO, scrollTop: 398 })).toEqual({ start: 43, end: 48 })
+  expect(computeThumbRows({ ...THUMB_GEO, scrollTop: 9999 })).toEqual({ start: 43, end: 48 })
+})
+
+test('computeThumbRows returns null when content is not scrollable', () => {
+  expect(
+    computeThumbRows({ scrollTop: 0, scrollHeight: 40, viewportHeight: 49, realContentHeight: 40 }),
+  ).toBeNull()
+  expect(
+    computeThumbRows({ scrollTop: 0, scrollHeight: 100, viewportHeight: 0, realContentHeight: 90 }),
+  ).toBeNull()
 })

@@ -35,10 +35,13 @@ export type ScrollboxHandle = {
    */
   getScrollMarks: (params: { matches: Match[]; pattern: string; activeIndex: number }) => {
     marks: ResolvedMark[]
+    scrollTop: number
     scrollHeight: number
     viewportHeight: number
     realContentHeight: number
   }
+  /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
+  subscribeScroll: (cb: () => void) => () => void
 }
 
 export type SearchState = {

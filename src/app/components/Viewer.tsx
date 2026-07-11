@@ -48,6 +48,7 @@ export function Viewer({
   useEffect(() => {
     const box = localRef.current
     if (!box) return
+    const scrollListeners = new Set<() => void>()
     const handle: ScrollboxHandle = {
       scrollBy: delta => box.scrollBy(delta),
       scrollTo: y => box.scrollTo(y),
@@ -57,10 +58,17 @@ export function Viewer({
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, pattern, activeIndex }) =>
         resolveScrollMarks(box, tailRef.current, { matches, pattern, activeIndex }),
+      subscribeScroll: cb => {
+        scrollListeners.add(cb)
+        return () => scrollListeners.delete(cb)
+      },
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
-    const restoreScroll = watchScroll(box, () => onScrollRef.current?.())
+    const restoreScroll = watchScroll(box, () => {
+      onScrollRef.current?.()
+      for (const cb of scrollListeners) cb()
+    })
     return () => {
       restoreScroll()
       restore()
@@ -77,7 +85,12 @@ export function Viewer({
         width="100%"
         height="100%"
         overflow="hidden"
-        verticalScrollbarOptions={{ trackOptions: { foregroundColor: theme.scrollbarThumb } }}
+        verticalScrollbarOptions={{
+          trackOptions: {
+            foregroundColor: theme.scrollbarThumb,
+            backgroundColor: theme.scrollbarTrack,
+          },
+        }}
       >
         <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
@@ -245,6 +258,7 @@ function resolveScrollMarks(
   params: { matches: Match[]; pattern: string; activeIndex: number },
 ): {
   marks: ResolvedMark[]
+  scrollTop: number
   scrollHeight: number
   viewportHeight: number
   realContentHeight: number
@@ -266,6 +280,7 @@ function resolveScrollMarks(
   }
   return {
     marks,
+    scrollTop: box.scrollTop,
     scrollHeight: box.scrollHeight,
     viewportHeight: box.viewport.height,
     realContentHeight: box.scrollHeight - tail,
