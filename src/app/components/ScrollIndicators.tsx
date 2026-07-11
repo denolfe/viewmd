@@ -17,6 +17,7 @@ export function ScrollIndicators() {
   const { height } = useTerminalDimensions()
   const [cells, setCells] = useState<TrackCell[]>([])
   const [thumb, setThumb] = useState<ThumbRows | null>(null)
+  const [trackRows, setTrackRows] = useState(0)
 
   useEffect(() => {
     const recompute = () => {
@@ -29,6 +30,7 @@ export function ScrollIndicators() {
       })
       setCells(computeTrackCells(geo))
       setThumb(computeThumbRows(geo))
+      setTrackRows(geo.viewportHeight)
     }
     // Defer past the current commit so the scrollbox has laid out.
     const tid = setTimeout(recompute, 0)
@@ -44,10 +46,11 @@ export function ScrollIndicators() {
   const byRow = new Map(cells.map(c => [c.row, c]))
   // Marker cells adopt the bg of whatever they cover — thumb or track — so
   // they read as painted on the bar; unmarked rows stay transparent so the
-  // real scrollbar shows through.
+  // real scrollbar shows through. Row count must match the track exactly:
+  // extra children make yoga shrink the column and shift every row up one.
   return (
     <box position="absolute" right={0} top={0} width={1} height="100%">
-      {Array.from({ length: height }, (_, row) => {
+      {Array.from({ length: trackRows }, (_, row) => {
         const cell = byRow.get(row)
         const isOnThumb = thumb !== null && row >= thumb.start && row <= thumb.end
         return (
