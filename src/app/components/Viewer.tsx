@@ -243,7 +243,12 @@ function resolveScrollMarks(
   box: ScrollBoxRenderable,
   tail: number,
   params: { matches: Match[]; pattern: string; activeIndex: number },
-): { marks: ResolvedMark[]; contentHeight: number; trackHeight: number } {
+): {
+  marks: ResolvedMark[]
+  scrollHeight: number
+  viewportHeight: number
+  realContentHeight: number
+} {
   const { matches, pattern, activeIndex } = params
   const marks: ResolvedMark[] = []
   if (pattern) {
@@ -255,5 +260,10 @@ function resolveScrollMarks(
       marks.push({ y, kind: i === activeIndex ? 'activeMatch' : 'match' })
     }
   }
-  return { marks, contentHeight: box.scrollHeight - tail, trackHeight: box.viewport.height }
+  return {
+    marks,
+    scrollHeight: box.scrollHeight,
+    viewportHeight: box.viewport.height,
+    realContentHeight: box.scrollHeight - tail,
+  }
 }

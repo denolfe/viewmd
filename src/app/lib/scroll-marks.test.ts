@@ -8,15 +8,21 @@ test('blockId joins a path with the blk- prefix', () => {
   expect(blockId([])).toBe('blk-')
 })
 
-test('maps y proportionally to a track row', () => {
+test('maps y over scrollHeight (thumb scale) to a track row', () => {
   const marks: ResolvedMark[] = [
     { y: 0, kind: 'match' },
-    { y: 100, kind: 'match' },
     { y: 50, kind: 'match' },
+    { y: 100, kind: 'match' },
   ]
-  const cells = computeTrackCells({ marks, contentHeight: 100, trackHeight: 11 })
+  // round(y / scrollHeight * viewportHeight) = round(y / 110 * 11) = round(y / 10)
+  const cells = computeTrackCells({
+    marks,
+    scrollHeight: 110,
+    viewportHeight: 11,
+    realContentHeight: 100,
+  })
   const rows = cells.map(c => c.row).sort((a, b) => a - b)
-  expect(rows).toEqual([0, 5, 10]) // round(y/100 * 10)
+  expect(rows).toEqual([0, 5, 10])
 })
 
 test('clamps rows into the track', () => {
@@ -24,7 +30,12 @@ test('clamps rows into the track', () => {
     { y: -20, kind: 'match' },
     { y: 9999, kind: 'match' },
   ]
-  const cells = computeTrackCells({ marks, contentHeight: 100, trackHeight: 10 })
+  const cells = computeTrackCells({
+    marks,
+    scrollHeight: 100,
+    viewportHeight: 10,
+    realContentHeight: 90,
+  })
   expect(cells.map(c => c.row).sort((a, b) => a - b)).toEqual([0, 9])
 })
 
@@ -33,16 +44,26 @@ test('collision priority is activeMatch > match', () => {
     { y: 0, kind: 'match' },
     { y: 2, kind: 'activeMatch' },
   ]
-  // contentHeight must exceed trackHeight to remain scrollable; kept large so all
-  // three closely-spaced marks round onto the same track row (0).
-  const cells = computeTrackCells({ marks, contentHeight: 10_000, trackHeight: 200 })
+  // scrollHeight large so both marks round onto row 0.
+  const cells = computeTrackCells({
+    marks,
+    scrollHeight: 10_000,
+    viewportHeight: 200,
+    realContentHeight: 9_000,
+  })
   const row0 = cells.filter(c => c.row === 0)
   expect(row0).toHaveLength(1)
   expect(row0[0]?.kind).toBe('activeMatch')
 })
 
-test('renders nothing when not scrollable', () => {
+test('renders nothing when the document fits the viewport or track is degenerate', () => {
   const marks: ResolvedMark[] = [{ y: 5, kind: 'match' }]
-  expect(computeTrackCells({ marks, contentHeight: 10, trackHeight: 10 })).toEqual([])
-  expect(computeTrackCells({ marks, contentHeight: 100, trackHeight: 0 })).toEqual([])
+  // realContentHeight <= viewportHeight → not scrollable.
+  expect(
+    computeTrackCells({ marks, scrollHeight: 100, viewportHeight: 10, realContentHeight: 10 }),
+  ).toEqual([])
+  // Degenerate track height.
+  expect(
+    computeTrackCells({ marks, scrollHeight: 100, viewportHeight: 0, realContentHeight: 90 }),
+  ).toEqual([])
 })

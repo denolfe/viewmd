@@ -20,12 +20,12 @@ export function ScrollIndicators() {
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      const { marks, contentHeight, trackHeight } = v.getScrollMarks({
+      const { marks, scrollHeight, viewportHeight, realContentHeight } = v.getScrollMarks({
         matches: search?.matches ?? [],
         pattern: search?.pattern ?? '',
         activeIndex: search?.index ?? -1,
       })
-      setCells(computeTrackCells({ marks, contentHeight, trackHeight }))
+      setCells(computeTrackCells({ marks, scrollHeight, viewportHeight, realContentHeight }))
     }, 0)
     return () => clearTimeout(tid)
   }, [viewerRef, search?.pattern, search?.index, contentWidth, height])

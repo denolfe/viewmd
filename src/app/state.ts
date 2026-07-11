@@ -35,8 +35,9 @@ export type ScrollboxHandle = {
    */
   getScrollMarks: (params: { matches: Match[]; pattern: string; activeIndex: number }) => {
     marks: ResolvedMark[]
-    contentHeight: number
-    trackHeight: number
+    scrollHeight: number
+    viewportHeight: number
+    realContentHeight: number
   }
 }
 
