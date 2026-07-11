@@ -6,6 +6,7 @@ import type { MarkKind, ThumbRows, TrackCell } from '../lib/scroll-marks'
 import { theme } from '../styles/theme'
 
 const TICK = '─'
+const MULTI_TICK = '═'
 const COLOR: Record<MarkKind, string> = {
   match: theme.scrollMarkMatch,
   activeMatch: theme.scrollMarkActive,
@@ -40,22 +41,22 @@ export function ScrollIndicators() {
   }, [viewerRef, search?.pattern, search?.index, contentWidth, height])
 
   if (cells.length === 0) return null
-  const byRow = new Map(cells.map(c => [c.row, c.kind]))
+  const byRow = new Map(cells.map(c => [c.row, c]))
   // Marker cells adopt the bg of whatever they cover — thumb or track — so
   // they read as painted on the bar; unmarked rows stay transparent so the
   // real scrollbar shows through.
   return (
     <box position="absolute" right={0} top={0} width={1} height="100%">
       {Array.from({ length: height }, (_, row) => {
-        const kind = byRow.get(row)
+        const cell = byRow.get(row)
         const isOnThumb = thumb !== null && row >= thumb.start && row <= thumb.end
         return (
           <text
             key={row}
-            bg={kind ? (isOnThumb ? theme.scrollbarThumb : theme.scrollbarTrack) : undefined}
-            fg={kind ? COLOR[kind] : undefined}
+            bg={cell ? (isOnThumb ? theme.scrollbarThumb : theme.scrollbarTrack) : undefined}
+            fg={cell ? COLOR[cell.kind] : undefined}
           >
-            {kind ? TICK : ' '}
+            {cell ? (cell.count > 1 ? MULTI_TICK : TICK) : ' '}
           </text>
         )
       })}

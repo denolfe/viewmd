@@ -56,6 +56,23 @@ test('collision priority is activeMatch > match', () => {
   expect(row0[0]?.kind).toBe('activeMatch')
 })
 
+test('counts marks collapsed onto a shared row', () => {
+  const marks: ResolvedMark[] = [
+    { y: 0, kind: 'match' },
+    { y: 1, kind: 'match' },
+    { y: 2, kind: 'match' },
+    { y: 5_000, kind: 'match' },
+  ]
+  const cells = computeTrackCells({
+    marks,
+    scrollHeight: 10_000,
+    viewportHeight: 200,
+    realContentHeight: 9_000,
+  })
+  expect(cells.find(c => c.row === 0)?.count).toBe(3)
+  expect(cells.find(c => c.row === 100)?.count).toBe(1)
+})
+
 test('renders nothing when the document fits the viewport or track is degenerate', () => {
   const marks: ResolvedMark[] = [{ y: 5, kind: 'match' }]
   // realContentHeight <= viewportHeight → not scrollable.

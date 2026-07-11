@@ -4,8 +4,8 @@ export type MarkKind = 'match' | 'activeMatch'
 /** A mark resolved to its document-space y (row offset from the top of the scroll content). */
 export type ResolvedMark = { y: number; kind: MarkKind }
 
-/** One painted scrollbar cell. */
-export type TrackCell = { row: number; kind: MarkKind }
+/** One painted scrollbar cell. `count` is how many marks collapsed onto the row. */
+export type TrackCell = { row: number; kind: MarkKind; count: number }
 
 /** Inclusive track-row span of the scrollbar thumb. */
 export type ThumbRows = { start: number; end: number }
@@ -39,14 +39,18 @@ export function computeTrackCells(params: {
 }): TrackCell[] {
   const { marks, scrollHeight, viewportHeight, realContentHeight } = params
   if (viewportHeight < 1 || scrollHeight <= 0 || realContentHeight <= viewportHeight) return []
-  const byRow = new Map<number, MarkKind>()
+  const byRow = new Map<number, { kind: MarkKind; count: number }>()
   for (const mark of marks) {
     const raw = Math.round((mark.y / scrollHeight) * viewportHeight)
     const row = Math.max(0, Math.min(viewportHeight - 1, raw))
     const existing = byRow.get(row)
-    if (!existing || KIND_RANK[mark.kind] > KIND_RANK[existing]) byRow.set(row, mark.kind)
+    if (!existing) byRow.set(row, { kind: mark.kind, count: 1 })
+    else {
+      existing.count++
+      if (KIND_RANK[mark.kind] > KIND_RANK[existing.kind]) existing.kind = mark.kind
+    }
   }
-  return [...byRow.entries()].map(([row, kind]) => ({ row, kind }))
+  return [...byRow.entries()].map(([row, { kind, count }]) => ({ row, kind, count }))
 }
 
 /**
