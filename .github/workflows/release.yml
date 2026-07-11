@@ -79,6 +79,11 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - name: Extract changelog from tag message
+        run: git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > NOTES.md
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: viewmd-*
@@ -93,4 +98,5 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: release-assets/*
+          body_path: NOTES.md
           prerelease: ${{ contains(github.ref_name, '-') }}
