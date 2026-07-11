@@ -45,9 +45,11 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.2.17",
+    "@types/semver": "^7.7.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "prettier": "^3.8.1"
+    "prettier": "^3.8.1",
+    "semver": "^7.8.5"
   },
   "dependencies": {
     "@opentui/core": "^0.4.1",
