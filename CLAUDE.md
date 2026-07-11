@@ -41,7 +41,13 @@ keyboard-driven feature:
   `makeState` (mock `AppState`) and `makeViewerRef` helpers in `dispatch.test.ts`. Assert on
   the mocked setters / recorded scroll calls. `makeState` casts `as AppState`, so adding a new
   `AppState` field doesn't break existing tests — add a default there when you extend the type.
-- **Layout / interactive behavior needs a TTY** — it can't be unit-tested. Verify by hand with
+- **Layout / interactive behavior can be tested headlessly** — `createTestRenderer` from
+  `@opentui/core/testing` mounts the real `App` without a TTY: mock keyboard input, capture
+  char frames, assert on rendered rows/columns. See `ScrollIndicators.test.tsx` for the
+  pattern (settle helper: `flush` → short sleep → `renderOnce`). Quirks: the **first
+  keypress is consumed** by the terminal capability handshake — send a throwaway key
+  first; use `typeText`/`pressEnter`, and locate the scrollbar column by its thumb glyphs
+  (`█▀▄`). Final visual polish still deserves a by-hand pass with
   `./src/index.tsx README.md` (interactive) or `./src/index.tsx --render README.md` (one-shot).
 
 ## Conventions

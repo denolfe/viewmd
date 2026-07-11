@@ -16,6 +16,14 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
     getHeadingNearTop: () => opts.nearTop ?? null,
     getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
+    getScrollMarks: () => ({
+      marks: [],
+      scrollTop: 0,
+      scrollHeight: 0,
+      viewportHeight: 0,
+      realContentHeight: 0,
+    }),
+    subscribeScroll: () => () => {},
   }
   return { ref: { current: handle }, calls }
 }
@@ -100,6 +108,14 @@ function makePositionalViewerRef(
       }
       return out
     },
+    getScrollMarks: () => ({
+      marks: [],
+      scrollTop: 0,
+      scrollHeight: 0,
+      viewportHeight: 0,
+      realContentHeight: 0,
+    }),
+    subscribeScroll: () => () => {},
   }
   return { ref: { current: handle } }
 }

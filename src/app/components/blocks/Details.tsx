@@ -1,21 +1,28 @@
 import { InlineRenderer } from './InlineRenderer'
 import { NodeList } from './NodeRenderer'
 import { theme } from '../../styles/theme'
+import { blockId } from '../../lib/scroll-marks'
 import type { Node } from '../../lib/ast'
 
 // <details> is rendered always-expanded with a ▾ marker and indented body.
 // The TUI has no way to toggle, so closed-vs-open is collapsed to one state.
 // Inner blocks render through the regular pipeline so markdown structure
 // (lists, code, etc.) is preserved instead of flattened to plain text.
-export function Details({ node }: { node: Extract<Node, { kind: 'details' }> }) {
+export function Details({
+  node,
+  path,
+}: {
+  node: Extract<Node, { kind: 'details' }>
+  path: number[]
+}) {
   return (
-    <box paddingX={2}>
+    <box id={blockId(path)} paddingX={2}>
       <text fg={theme.foregroundMuted}>
         {'▾ '}
         <InlineRenderer nodes={node.summary} />
       </text>
       <box paddingLeft={2}>
-        <NodeList nodes={node.children} />
+        <NodeList nodes={node.children} pathPrefix={path} />
       </box>
     </box>
   )

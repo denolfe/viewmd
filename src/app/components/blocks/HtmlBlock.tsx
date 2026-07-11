@@ -6,9 +6,9 @@ import { theme } from '../../styles/theme'
 // block-level <html> nodes where badge rows / nav lists / clickable banner
 // images need their URLs to survive. Whitespace between segments is already
 // normalized by parseHtmlSegments.
-export function HtmlBlock({ segments }: { segments: HtmlSegment[] }) {
+export function HtmlBlock({ segments, id }: { segments: HtmlSegment[]; id: string }) {
   return (
-    <box marginBottom={1} paddingX={2}>
+    <box id={id} marginBottom={1} paddingX={2}>
       <text fg={theme.foregroundMuted}>
         <SegmentList segments={segments} inLink={false} />
       </text>

@@ -8,13 +8,13 @@ const BORDER = 2 // left + right border cells
 const PADDING_X = 2
 const MARGIN_X = 2
 
-export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
+export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>; id: string }) {
   const { contentWidth } = useAppState()
 
   // Mermaid ASCII already carries its own frame; render it bare.
   if (node.lang === 'mermaid') {
     return (
-      <box marginX={MARGIN_X}>
+      <box id={id} marginX={MARGIN_X}>
         <text wrapMode="none">{node.value}</text>
       </box>
     )
@@ -31,6 +31,7 @@ export function CodeBlock({ node }: { node: Extract<Node, { kind: 'code' }> }) {
 
   return (
     <box
+      id={id}
       border
       borderColor={theme.border}
       title={title}

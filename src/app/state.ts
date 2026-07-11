@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { RefObject } from 'react'
 import type { Match } from './lib/search'
 import type { Focus } from './lib/keys'
+import type { ResolvedMark } from './lib/scroll-marks'
 
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
@@ -27,6 +28,20 @@ export type ScrollboxHandle = {
    * content region. `topOffset` excludes the rows occluded by the breadcrumb overlay.
    */
   getVisibleHeadingIds: (headingIds: string[], topOffset?: number) => Set<string>
+  /**
+   * Resolves search matches to absolute content-y for the scrollbar overlay.
+   * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry
+   * for `computeTrackCells`. Unresolvable marks are omitted (never throws).
+   */
+  getScrollMarks: (params: { matches: Match[]; pattern: string; activeIndex: number }) => {
+    marks: ResolvedMark[]
+    scrollTop: number
+    scrollHeight: number
+    viewportHeight: number
+    realContentHeight: number
+  }
+  /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
+  subscribeScroll: (cb: () => void) => () => void
 }
 
 export type SearchState = {

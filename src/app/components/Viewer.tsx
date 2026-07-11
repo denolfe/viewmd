@@ -4,12 +4,16 @@ import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
 import { resetMatchCounter } from './blocks/InlineRenderer'
+import { ScrollIndicators } from './ScrollIndicators'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
+import { theme } from '../styles/theme'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
+import type { Match } from '../lib/search'
+import type { ResolvedMark } from '../lib/scroll-marks'
 
 // Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
 const VIEWER_OVERHEAD = 2
@@ -44,6 +48,7 @@ export function Viewer({
   useEffect(() => {
     const box = localRef.current
     if (!box) return
+    const scrollListeners = new Set<() => void>()
     const handle: ScrollboxHandle = {
       scrollBy: delta => box.scrollBy(delta),
       scrollTo: y => box.scrollTo(y),
@@ -51,10 +56,19 @@ export function Viewer({
       scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
+      getScrollMarks: ({ matches, pattern, activeIndex }) =>
+        resolveScrollMarks(box, tailRef.current, { matches, pattern, activeIndex }),
+      subscribeScroll: cb => {
+        scrollListeners.add(cb)
+        return () => scrollListeners.delete(cb)
+      },
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
-    const restoreScroll = watchScroll(box, () => onScrollRef.current?.())
+    const restoreScroll = watchScroll(box, () => {
+      onScrollRef.current?.()
+      for (const cb of scrollListeners) cb()
+    })
     return () => {
       restoreScroll()
       restore()
@@ -64,19 +78,28 @@ export function Viewer({
 
   resetMatchCounter()
   return (
-    <scrollbox
-      ref={localRef}
-      focusable={false}
-      width={contentWidth + VIEWER_OVERHEAD}
-      height="100%"
-      overflow="hidden"
-    >
-      <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
-        <Frontmatter rows={frontmatter} />
-        <NodeList nodes={nodes} />
-      </box>
-      <box height={tailSpace} />
-    </scrollbox>
+    <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
+      <scrollbox
+        ref={localRef}
+        focusable={false}
+        width="100%"
+        height="100%"
+        overflow="hidden"
+        verticalScrollbarOptions={{
+          trackOptions: {
+            foregroundColor: theme.scrollbarThumb,
+            backgroundColor: theme.scrollbarTrack,
+          },
+        }}
+      >
+        <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
+          <Frontmatter rows={frontmatter} />
+          <NodeList nodes={nodes} />
+        </box>
+        <box height={tailSpace} />
+      </scrollbox>
+      <ScrollIndicators />
+    </box>
   )
 }
 
@@ -160,4 +183,106 @@ function findVisibleHeadingIds(
     if (childBottom > top && childTop < bottom) out.add(id)
   }
   return out
+}
+
+/** Minimal structural view of the text-bearing renderable inside a block box. */
+type TextBearer = { y: number; plainText: string; lineInfo: { lineStartCols: number[] } }
+
+function asTextBearer(node: unknown): TextBearer | null {
+  if (!node || typeof node !== 'object') return null
+  if (!('plainText' in node) || !('lineInfo' in node) || !('y' in node)) return null
+  const li = (node as { lineInfo: unknown }).lineInfo
+  if (
+    !li ||
+    typeof li !== 'object' ||
+    !Array.isArray((li as { lineStartCols?: unknown }).lineStartCols)
+  )
+    return null
+  return node as unknown as TextBearer
+}
+
+/** Depth-first search for the first descendant exposing plainText + lineInfo. */
+// First text-bearing descendant. Multi-text blocks (e.g. tables) rely on the
+// kth-occurrence check in resolveMatchY missing in the wrong child → block-top fallback.
+function findTextBearer(node: { getChildren(): unknown[] }): TextBearer | null {
+  const self = asTextBearer(node)
+  if (self) return self
+  for (const child of node.getChildren()) {
+    const found = findTextBearer(child as { getChildren(): unknown[] })
+    if (found) return found
+  }
+  return null
+}
+
+/** Visual-line index for a character offset, via lineInfo.lineStartCols (cols ≈ chars). */
+function visualLineForOffset(lineStartCols: number[], offset: number): number {
+  let line = 0
+  for (let i = 0; i < lineStartCols.length; i++) {
+    if ((lineStartCols[i] ?? 0) <= offset) line = i
+    else break
+  }
+  return line
+}
+
+function resolveMatchY(
+  box: ScrollBoxRenderable,
+  match: Match,
+  matches: Match[],
+  matchIndex: number,
+  pattern: string,
+): number | null {
+  const blockBox = box.content.findDescendantById(match.blockElementId)
+  if (!blockBox) return null
+  const bearer = findTextBearer(blockBox)
+  if (!bearer) return blockBox.y
+  let k = 0
+  for (let i = 0; i < matchIndex; i++) {
+    if (matches[i]?.blockElementId === match.blockElementId) k++
+  }
+  const hay = bearer.plainText.toLowerCase()
+  const needle = pattern.toLowerCase()
+  let from = 0
+  let found = -1
+  for (let occ = 0; occ <= k; occ++) {
+    found = hay.indexOf(needle, from)
+    if (found < 0) break
+    from = found + Math.max(1, needle.length)
+  }
+  if (found < 0) return blockBox.y
+  return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, found)
+}
+
+function resolveScrollMarks(
+  box: ScrollBoxRenderable,
+  tail: number,
+  params: { matches: Match[]; pattern: string; activeIndex: number },
+): {
+  marks: ResolvedMark[]
+  scrollTop: number
+  scrollHeight: number
+  viewportHeight: number
+  realContentHeight: number
+} {
+  const { matches, pattern, activeIndex } = params
+  const marks: ResolvedMark[] = []
+  // Renderable `.y` is screen-absolute and includes the scroll translation
+  // (content.translateY = -scrollTop). Convert to document space so marks stay
+  // fixed on the track while scrolling: docY = screenY - viewportScreenY + scrollTop.
+  const screenToDoc = box.scrollTop - box.viewport.y
+  if (pattern) {
+    for (let i = 0; i < matches.length; i++) {
+      const match = matches[i]
+      if (!match) continue
+      const y = resolveMatchY(box, match, matches, i, pattern)
+      if (y === null) continue
+      marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
+    }
+  }
+  return {
+    marks,
+    scrollTop: box.scrollTop,
+    scrollHeight: box.scrollHeight,
+    viewportHeight: box.viewport.height,
+    realContentHeight: box.scrollHeight - tail,
+  }
 }

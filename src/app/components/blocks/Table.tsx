@@ -10,7 +10,7 @@ const CELL_PADDING_X = 1
 const TABLE_MARGIN_X = 2
 const MIN_COL_WIDTH = 3
 
-export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
+export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id: string }) {
   const { contentWidth } = useAppState()
   const available = (contentWidth || CONTENT_MAX_WIDTH) - TABLE_MARGIN_X * 2
   const desired = computeColumnWidths(node.header, node.rows)
@@ -21,7 +21,13 @@ export function Table({ node }: { node: Extract<Node, { kind: 'table' }> }) {
   const botRule = '└' + cellWidths.map(w => '─'.repeat(w)).join('┴') + '┘'
 
   return (
-    <box flexDirection="column" alignSelf="flex-start" marginBottom={1} marginX={TABLE_MARGIN_X}>
+    <box
+      id={id}
+      flexDirection="column"
+      alignSelf="flex-start"
+      marginBottom={1}
+      marginX={TABLE_MARGIN_X}
+    >
       <text fg={theme.border} height={1}>
         {topRule}
       </text>
