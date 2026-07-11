@@ -1,4 +1,4 @@
-name: Release Prebuilt npm
+name: release
 
 on:
   push:
