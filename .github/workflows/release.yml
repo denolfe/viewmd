@@ -71,6 +71,16 @@ jobs:
           }
           for dir in dist/release/npm/viewmd-*; do publish "$dir"; done
           publish dist/release/npm/viewmd
+      - name: Sync latest tag to beta
+        # While in beta, keep `latest` pointing at the newest beta release.
+        if: env.NPM_TAG == 'beta'
+        run: |
+          set -e
+          for dir in dist/release/npm/viewmd-* dist/release/npm/viewmd; do
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            npm dist-tag add "$name@$version" latest
+          done
 
   github-release:
     needs: build
