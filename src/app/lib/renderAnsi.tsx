@@ -5,6 +5,7 @@ import {
   getTreeSitterClient,
 } from '@opentui/core'
 import type { BaseRenderable, CapturedLine, CapturedSpan } from '@opentui/core'
+import { dlopen, suffix } from 'bun:ffi'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
 import { RenderView } from '../RenderView'
@@ -65,7 +66,33 @@ export async function renderAnsi(opts: {
   // the caller's process exit clean up.
   console.warn = () => {}
   setup.renderer.destroy()
+  restoreStdoutBlocking()
   return trimTrailingBlankRows(text)
+}
+
+/**
+ * OpenTUI's renderer sets fd 1 to O_NONBLOCK at startup and never restores it,
+ * not even on destroy(). A non-blocking stdout makes Bun.write busy-spin on
+ * EAGAIN at 100% CPU forever when the pipe reader stalls or dies (the orphaned
+ * viewmd processes), so clear the flag before the caller writes the frame.
+ */
+function restoreStdoutBlocking(): void {
+  if (process.platform === 'win32') return
+  const F_GETFL = 3
+  const F_SETFL = 4
+  const O_NONBLOCK = process.platform === 'darwin' ? 0x0004 : 0x0800
+  try {
+    const libc = dlopen(process.platform === 'darwin' ? `libc.${suffix}` : 'libc.so.6', {
+      fcntl: { args: ['int', 'int', 'int'], returns: 'int' },
+    })
+    const flags = libc.symbols.fcntl(1, F_GETFL, 0)
+    if (flags >= 0 && (flags & O_NONBLOCK) !== 0) {
+      libc.symbols.fcntl(1, F_SETFL, flags & ~O_NONBLOCK)
+    }
+    libc.close()
+  } catch {
+    // Best effort: without libc access the flag stays as OpenTUI left it.
+  }
 }
 
 /** Convert a single captured line to an ANSI-colored string. */

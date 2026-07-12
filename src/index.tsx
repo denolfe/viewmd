@@ -33,7 +33,13 @@ if (renderMode) {
     width,
     maxHeight: RENDER_MAX_HEIGHT,
   })
-  await Bun.write(Bun.stdout, out + '\n')
+  try {
+    await Bun.write(Bun.stdout, out + '\n')
+  } catch (e) {
+    // Reader closed the pipe (e.g. `viewmd file.md | head`); exit quietly
+    // like other CLIs instead of dumping a stack trace.
+    if (!isEpipe(e)) throw e
+  }
   process.exit(0)
 }
 
@@ -53,6 +59,10 @@ createRoot(renderer).render(
     fileLabel={fileLabel(filePath)}
   />,
 )
+
+function isEpipe(e: unknown): boolean {
+  return e instanceof Error && 'code' in e && e.code === 'EPIPE'
+}
 
 function clampWidth(w: number): number {
   return Number.isFinite(w) && w >= MIN_WIDTH ? Math.floor(w) : MIN_WIDTH
