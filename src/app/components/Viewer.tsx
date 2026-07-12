@@ -49,11 +49,16 @@ export function Viewer({
   const pendingRef = useRef<PendingTarget | null>(null)
   const notifyRef = useRef<() => void>(() => {})
   const needsNotifyRef = useRef(false)
+  // True only while the frame retry itself scrolls, so watchScroll can tell a
+  // retry's own scroll apart from wheel/drag (which must cancel the pending).
+  const completingRef = useRef(false)
 
   const [mountedCount, setMountedCount] = useState(() =>
     initialMountCount({ nodes, contentWidth, viewportHeight: height }),
   )
   const fullyMounted = mountedCount >= nodes.length
+  const fullyMountedRef = useRef(fullyMounted)
+  fullyMountedRef.current = fullyMounted
 
   // Grow one chunk per task until the whole doc is mounted. setTimeout(0)
   // yields between commits so keyboard/scroll stay live during mount.
@@ -120,7 +125,12 @@ export function Viewer({
       onScrollRef.current?.()
       for (const cb of scrollListeners) cb()
     }
-    const restoreScroll = watchScroll(box, () => notifyRef.current())
+    const restoreScroll = watchScroll(box, () => {
+      // A scroll not initiated by the retry means the user moved (wheel/drag
+      // bypass the handle) — their navigation supersedes the pending jump.
+      if (!completingRef.current) pendingRef.current = null
+      notifyRef.current()
+    })
     // Retries run on the renderer's post-layout `frame` event, not in a React
     // effect: a just-committed chunk's renderables keep y=0 until the next
     // layout pass, so effect-time geometry would land the jump at the top.
@@ -130,11 +140,15 @@ export function Viewer({
         // Complete a jump that targeted content unmounted when it was issued.
         // A completed scroll also triggers watchScroll → notify, keeping the
         // breadcrumb in sync mid-mount.
+        completingRef.current = true
         const done =
           pending.kind === 'heading'
             ? scrollChildToTop(box, pending.id, pending.topOffset)
             : jumpToMatchNow(box, pending.params)
-        if (done) pendingRef.current = null
+        completingRef.current = false
+        // Done, or unresolvable (the doc is fully mounted and the target still
+        // isn't there) — either way no stale pending survives.
+        if (done || fullyMountedRef.current) pendingRef.current = null
       }
       if (needsNotifyRef.current) {
         needsNotifyRef.current = false

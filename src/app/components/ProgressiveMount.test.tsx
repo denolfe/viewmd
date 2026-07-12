@@ -1,5 +1,7 @@
 import { expect, test } from 'bun:test'
 import { createTestRenderer } from '@opentui/core/testing'
+import { ScrollBoxRenderable } from '@opentui/core'
+import type { Renderable } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from '../App'
 import { Viewer } from './Viewer'
@@ -82,7 +84,7 @@ const mountViewerOnly = async (md: string, onScroll?: () => void) => {
   const { nodes, headingIds } = buildTree(md)
   const setup = await createTestRenderer({ width: 80, height: 20 })
   const viewerRef: { current: ScrollboxHandle | null } = { current: null }
-  const state = { viewerRef, contentWidth: 78, search: null } as unknown as AppState
+  const state = { viewerRef, contentWidth: 78, search: null } as AppState
   const settle = async () => {
     await setup.flush({ maxPasses: 20 })
     await new Promise(r => setTimeout(r, 30))
@@ -102,6 +104,16 @@ const mountViewerOnly = async (md: string, onScroll?: () => void) => {
   }
   if (!viewerRef.current) throw new Error('viewer handle never installed')
   return { nodes, headingIds, setup, settle, viewerRef }
+}
+
+/** The raw scrollbox renderable — lets a test scroll like the mouse wheel does, bypassing the handle. */
+const findScrollbox = (node: Renderable): ScrollBoxRenderable | null => {
+  if (node instanceof ScrollBoxRenderable) return node
+  for (const child of node.getChildren()) {
+    const found = findScrollbox(child)
+    if (found) return found
+  }
+  return null
 }
 
 test('scrollChildToTop to an unmounted heading completes once its chunk mounts', async () => {
@@ -128,6 +140,22 @@ test('jumpToMatch to an unmounted block completes once its chunk mounts', async 
   expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
   // Mount completion + the completed jump must have fired the scroll listeners.
   expect(scrolls).toBeGreaterThan(0)
+})
+
+test('a direct scroll while a jump is pending supersedes the pending jump', async () => {
+  const { headingIds, setup, settle, viewerRef } = await mountViewerOnly(bigFixture())
+  const lastId = headingIds.at(-1)
+  if (lastId === undefined) throw new Error('fixture must have headings')
+  viewerRef.current?.scrollChildToTop(lastId) // miss → pending recorded
+  const box = findScrollbox(setup.renderer.root)
+  if (!box) throw new Error('scrollbox not found')
+  // Wheel/drag mutate the scrollbox directly without going through the
+  // handle — this must cancel the pending jump, not get yanked away later.
+  box.scrollBy(4)
+  for (let i = 0; i < 40; i++) await settle()
+  const frame = setup.captureCharFrame()
+  expect(frame).toContain('filler paragraph')
+  expect(frame).not.toContain('Last Heading')
 })
 
 test('search jump issued before mount completes lands once the target mounts', async () => {
