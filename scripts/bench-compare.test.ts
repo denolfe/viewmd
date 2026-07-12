@@ -54,12 +54,12 @@ describe('compare', () => {
 })
 
 describe('renderTable', () => {
-  test('renders version, ms means, ratio, and verdict emoji', () => {
+  test('renders label, ms means, ratio, and verdict emoji', () => {
     const table = renderTable({
       comparison: compare(report(0.534, 0.28)),
-      baselineVersion: '0.1.0-beta.2',
+      baselineLabel: 'main@abc1234',
     })
-    expect(table).toContain('0.1.0-beta.2')
+    expect(table).toContain('main@abc1234')
     expect(table).toContain('534.0ms ± 10.0ms')
     expect(table).toContain('280.0ms ± 8.0ms')
     expect(table).toContain('0.52×')
@@ -67,7 +67,10 @@ describe('renderTable', () => {
   })
 
   test('renders ❌ for fail', () => {
-    const table = renderTable({ comparison: compare(report(0.5, 0.7)), baselineVersion: '0.1.0' })
+    const table = renderTable({
+      comparison: compare(report(0.5, 0.7)),
+      baselineLabel: 'main@abc1234',
+    })
     expect(table).toContain('❌')
   })
 })

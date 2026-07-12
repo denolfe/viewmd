@@ -39,18 +39,18 @@ export function compare(report: HyperfineReport): Comparison {
   return { baseline, pr, ratio, verdict: 'ok' }
 }
 
-export function renderTable(params: { comparison: Comparison; baselineVersion: string }): string {
-  const { comparison, baselineVersion } = params
+export function renderTable(params: { comparison: Comparison; baselineLabel: string }): string {
+  const { comparison, baselineLabel } = params
   const emoji: Record<Verdict, string> = { ok: '✅', warn: '⚠️', fail: '❌' }
   const lines = [
     '### Startup benchmark (`--render test/exhaustive.md`, linux-x64)',
     '',
     '| build | mean | ratio | verdict |',
     '| --- | --- | --- | --- |',
-    `| baseline v${baselineVersion} | ${ms(comparison.baseline)} | — | |`,
+    `| baseline (${baselineLabel}) | ${ms(comparison.baseline)} | — | |`,
     `| PR | ${ms(comparison.pr)} | ${comparison.ratio.toFixed(2)}× | ${emoji[comparison.verdict]} ${comparison.verdict} |`,
     '',
-    `Thresholds: warn ≥ ${WARN_RATIO}×, fail ≥ ${FAIL_RATIO}×. Baseline is the latest published release.`,
+    `Thresholds: warn ≥ ${WARN_RATIO}×, fail ≥ ${FAIL_RATIO}×. Baseline built from main.`,
   ]
   return lines.join('\n')
 }
@@ -59,21 +59,21 @@ if (import.meta.main) {
   const { values, positionals } = parseArgs({
     allowPositionals: true,
     options: {
-      'baseline-version': { type: 'string' },
+      'baseline-label': { type: 'string' },
       out: { type: 'string' },
     },
   })
   const jsonPath = positionals[0]
-  const baselineVersion = values['baseline-version']
-  if (!jsonPath || !baselineVersion) {
+  const baselineLabel = values['baseline-label']
+  if (!jsonPath || !baselineLabel) {
     throw new Error(
-      'Usage: bench-compare.ts <hyperfine.json> --baseline-version <v> [--out <file>]',
+      'Usage: bench-compare.ts <hyperfine.json> --baseline-label <label> [--out <file>]',
     )
   }
 
   const report: HyperfineReport = await Bun.file(jsonPath).json()
   const comparison = compare(report)
-  const table = renderTable({ comparison, baselineVersion })
+  const table = renderTable({ comparison, baselineLabel })
 
   console.log(table)
   if (values.out) await Bun.write(values.out, table)
