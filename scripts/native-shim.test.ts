@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test'
 import { existsSync } from 'node:fs'
-import { buildShimSource, opentuiNativePackageName, resolveNativeLib } from './native-shim'
+import {
+  COMPILED_RUNTIME_FILTER,
+  buildShimSource,
+  opentuiNativePackageName,
+  resolveNativeLib,
+} from './native-shim'
 import { PLATFORMS, hostPlatform } from './platforms'
 
 describe('native-shim', () => {
@@ -16,6 +21,23 @@ describe('native-shim', () => {
     expect(existsSync(native.libPath)).toBe(true)
     expect(native.libFileName).toMatch(/\.(dylib|so|dll)$/)
     expect(native.version).toMatch(/^\d+\.\d+\.\d+/)
+  })
+
+  describe('COMPILED_RUNTIME_FILTER', () => {
+    test('matches posix bundler paths', () => {
+      expect(COMPILED_RUNTIME_FILTER.test('/Users/x/viewmd/src/compiled-runtime.ts')).toBe(true)
+    })
+
+    test('matches Windows bundler paths (backslash separators)', () => {
+      expect(COMPILED_RUNTIME_FILTER.test('D:\\a\\viewmd\\viewmd\\src\\compiled-runtime.ts')).toBe(
+        true,
+      )
+    })
+
+    test('does not match unrelated files', () => {
+      expect(COMPILED_RUNTIME_FILTER.test('/x/src/compiled-runtime.test.ts')).toBe(false)
+      expect(COMPILED_RUNTIME_FILTER.test('/x/other/compiled-runtime.ts')).toBe(false)
+    })
   })
 
   describe('buildShimSource', () => {

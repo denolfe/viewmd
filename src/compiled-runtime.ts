@@ -1,9 +1,5 @@
-// Points OpenTUI's tree-sitter worker at its embedded location when running
-// inside a `bun build --compile` standalone binary. The worker is embedded as a
-// second compile entrypoint at this $bunfs path; without this, OpenTUI resolves
-// a non-existent path and syntax highlighting silently fails. No-op in dev,
-// where the worker resolves from the real filesystem.
-if (Bun.main.startsWith('/$bunfs')) {
-  process.env.OTUI_TREE_SITTER_WORKER_PATH ||=
-    '/$bunfs/root/node_modules/@opentui/core/parser.worker.js'
-}
+// Placeholder module: the compiled-binary build (scripts/build-bin.ts) replaces
+// this file with the tree-sitter worker materializer via a bundler plugin (see
+// buildWorkerRuntimeSource in scripts/native-shim.ts). In dev and npm builds
+// this module is intentionally empty — the worker resolves from node_modules.
+export {}
