@@ -71,16 +71,6 @@ jobs:
           }
           for dir in dist/release/npm/viewmd-*; do publish "$dir"; done
           publish dist/release/npm/viewmd
-      - name: Sync latest tag to beta
-        # While in beta, keep `latest` pointing at the newest beta release.
-        if: env.NPM_TAG == 'beta'
-        run: |
-          set -e
-          for dir in dist/release/npm/viewmd-* dist/release/npm/viewmd; do
-            name=$(node -p "require('./$dir/package.json').name")
-            version=$(node -p "require('./$dir/package.json').version")
-            npm dist-tag add "$name@$version" latest
-          done
 
   github-release:
     needs: build
@@ -89,11 +79,6 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
-        with:
-          fetch-depth: 0
-      - name: Extract changelog from tag message
-        run: git tag -l --format='%(contents:body)' "$GITHUB_REF_NAME" > NOTES.md
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: viewmd-*
@@ -108,5 +93,5 @@ jobs:
       - uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
         with:
           files: release-assets/*
-          body_path: NOTES.md
+          generate_release_notes: true
           prerelease: ${{ contains(github.ref_name, '-') }}

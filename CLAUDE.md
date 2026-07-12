@@ -68,9 +68,9 @@ keyboard-driven feature:
 
 ## Releasing
 
-`bun run release` (see `scripts/release.ts`) bumps the version, then commits, tags, and pushes from the current branch. The tag push triggers `.github/workflows/release.yml`, which builds binaries, publishes to npm, and creates the GitHub Release.
+`bun run release [beta|patch|minor|<version>]` (see `scripts/release.ts`) bumps the version, then commits, tags, and pushes from the current branch. `beta` (default) bumps the prerelease; `patch` finalizes the prerelease (or bumps patch if already stable); `minor` bumps the minor. The tag push triggers `.github/workflows/release.yml`, which builds binaries, publishes to npm, and creates the GitHub Release with auto-generated notes.
 
-One non-obvious detail: the GitHub Release body is the annotated tag's changelog — the `github-release` job extracts `%(contents:body)` from the tag into `NOTES.md` and passes it as `body_path`. Annotated tag messages are not auto-used by the release API, so the changelog surfaces **only because CI reads it off the tag**.
+CI derives the npm dist-tag from the version string alone: a prerelease (hyphen) publishes under `beta`, otherwise `latest`. The two dist-tags are independent — publishing a beta never moves `latest`.
 
 ## Ubiquitous Language
 
