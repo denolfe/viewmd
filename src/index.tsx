@@ -17,48 +17,55 @@ import { renderAnsi } from './app/lib/renderAnsi'
 const MIN_WIDTH = 20
 const RENDER_MAX_HEIGHT = 2000
 
-const { filePath, forceRender } = parseArgs(process.argv.slice(2))
-const md = await readInput(filePath)
-const { frontmatter, body } = splitFrontmatter(md)
-const processed = replaceMermaidBlocks(body)
-const { nodes, toc, headingIds } = buildTree(processed)
-const frontmatterRows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
+// No top-level await: the compiled binary ships bytecode, which requires CJS.
+main()
 
-const renderMode = forceRender || !process.stdout.isTTY
-if (renderMode) {
-  const width = clampWidth(Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80)
-  const out = await renderAnsi({
-    nodes,
-    frontmatter: frontmatterRows,
-    width,
-    maxHeight: RENDER_MAX_HEIGHT,
-  })
-  try {
-    await Bun.write(Bun.stdout, out + '\n')
-  } catch (e) {
-    // Reader closed the pipe (e.g. `viewmd file.md | head`); exit quietly
-    // like other CLIs instead of dumping a stack trace.
-    if (!isEpipe(e)) throw e
+async function main(): Promise<void> {
+  const { filePath, forceRender } = parseArgs(process.argv.slice(2))
+  const md = await readInput(filePath)
+  const { frontmatter, body } = splitFrontmatter(md)
+  const processed = replaceMermaidBlocks(body)
+  const { nodes, toc, headingIds } = buildTree(processed)
+  const frontmatterRows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
+
+  const renderMode = forceRender || !process.stdout.isTTY
+  if (renderMode) {
+    const width = clampWidth(
+      Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80,
+    )
+    const out = await renderAnsi({
+      nodes,
+      frontmatter: frontmatterRows,
+      width,
+      maxHeight: RENDER_MAX_HEIGHT,
+    })
+    try {
+      await Bun.write(Bun.stdout, out + '\n')
+    } catch (e) {
+      // Reader closed the pipe (e.g. `viewmd file.md | head`); exit quietly
+      // like other CLIs instead of dumping a stack trace.
+      if (!isEpipe(e)) throw e
+    }
+    process.exit(0)
   }
-  process.exit(0)
-}
 
-addDefaultParsers(extraParsers)
-const keyboard = keyboardStream()
-const renderer = await createCliRenderer({ exitOnCtrlC: false, stdin: keyboard })
-if (keyboard !== process.stdin) {
-  // Close the /dev/tty fd on quit — destroy() only pauses it, which would keep the process alive.
-  renderer.on('destroy', () => keyboard.destroy())
+  addDefaultParsers(extraParsers)
+  const keyboard = keyboardStream()
+  const renderer = await createCliRenderer({ exitOnCtrlC: false, stdin: keyboard })
+  if (keyboard !== process.stdin) {
+    // Close the /dev/tty fd on quit — destroy() only pauses it, which would keep the process alive.
+    renderer.on('destroy', () => keyboard.destroy())
+  }
+  createRoot(renderer).render(
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={frontmatterRows}
+      fileLabel={fileLabel(filePath)}
+    />,
+  )
 }
-createRoot(renderer).render(
-  <App
-    nodes={nodes}
-    toc={toc}
-    headingIds={headingIds}
-    frontmatter={frontmatterRows}
-    fileLabel={fileLabel(filePath)}
-  />,
-)
 
 function isEpipe(e: unknown): boolean {
   return e instanceof Error && 'code' in e && e.code === 'EPIPE'

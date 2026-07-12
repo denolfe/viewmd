@@ -38,6 +38,10 @@ export async function renderAnsi(opts: {
     width,
     height: maxHeight,
     exitOnCtrlC: false,
+    // The visual-idle waits below cost whole frame periods; at the default
+    // 30fps two waits × two quiet frames stall ~130ms. The headless renderer
+    // writes to a memory buffer, so a short frame period costs nothing.
+    targetFps: 240,
   })
   // React subtree mounts one resize listener per component using useOnResize;
   // the default EventEmitter cap (10) trips a warning for non-trivial docs.
@@ -55,6 +59,16 @@ export async function renderAnsi(opts: {
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
   await waitForHighlights(setup.renderer.root)
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
+
+  // captureSpans walks every buffer cell (two RGBA allocations per cell), so
+  // capturing all maxHeight rows costs ~80ms even for a two-line doc. Measure
+  // the content height from the cheap native char capture and shrink the
+  // buffer to it before extracting spans.
+  const contentRows = countContentRows(setup.captureCharFrame())
+  if (contentRows < maxHeight) {
+    setup.resize(width, Math.max(contentRows, 1))
+    await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
+  }
 
   const frame = setup.captureSpans()
   const text = frame.lines.map(lineToAnsi).join('\n')
@@ -185,6 +199,16 @@ function collectHighlighting(node: BaseRenderable, out: Promise<void>[]): void {
     out.push(node.highlightingDone)
   }
   for (const child of node.getChildren()) collectHighlighting(child, out)
+}
+
+/** Rows up to and including the last non-blank row of a captured char frame. */
+function countContentRows(charFrame: string): number {
+  const rows = charFrame.split('\n')
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i]
+    if (row && row.trim() !== '') return i + 1
+  }
+  return 1
 }
 
 function trimTrailingBlankRows(frame: string): string {
