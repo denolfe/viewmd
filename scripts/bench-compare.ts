@@ -43,7 +43,7 @@ export function renderTable(params: { comparison: Comparison; baselineVersion: s
   const { comparison, baselineVersion } = params
   const emoji: Record<Verdict, string> = { ok: '✅', warn: '⚠️', fail: '❌' }
   const lines = [
-    '### Startup benchmark (`--render README.md`, linux-x64)',
+    '### Startup benchmark (`--render test/exhaustive.md`, linux-x64)',
     '',
     '| build | mean | ratio | verdict |',
     '| --- | --- | --- | --- |',

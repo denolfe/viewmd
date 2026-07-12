@@ -47,8 +47,8 @@ jobs:
       - name: Benchmark baseline vs PR
         run: |
           hyperfine --warmup 3 --runs 10 --export-json bench.json \
-            'baseline/package/bin/viewmd --render README.md' \
-            'dist/bin/viewmd --render README.md'
+            'baseline/package/bin/viewmd --render test/exhaustive.md' \
+            'dist/bin/viewmd --render test/exhaustive.md'
       - name: Compare
         run: bun run scripts/bench-compare.ts bench.json --baseline-version "$(cat baseline/version.txt)" --out bench-summary.md
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5

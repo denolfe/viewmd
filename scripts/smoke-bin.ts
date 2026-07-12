@@ -4,7 +4,7 @@ import { hostPlatform } from './platforms'
 
 const RUN_TIMEOUT_MS = 30_000
 const WARM_CEILING_MS = 2_000
-const DOC = 'README.md'
+const DOC = 'test/exhaustive.md'
 
 export type RunResult = {
   exitCode: number
