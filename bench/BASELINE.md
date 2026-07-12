@@ -22,17 +22,17 @@ hyperfine -w 2 -r 10 \
   'bun bench/first-frame.tsx bench/synthetic.md'
 ```
 
-| Command                                          |   Mean [ms] | Min [ms] | Max [ms] | Relative |
-| :----------------------------------------------- | ----------: | -------: | -------: | -------: |
-| `bun bench/first-frame.tsx README.md`            | 198.1 ± 6.6 |    191.5 |    215.5 |     1.03 |
-| `bun bench/first-frame.tsx test/exhaustive.md`   | 201.8 ± 4.9 |    197.6 |    214.9 |     1.05 |
-| `bun bench/first-frame.tsx test/lang-parsers.md` | 191.7 ± 4.5 |    187.7 |    201.5 |     1.00 |
-| `bun bench/first-frame.tsx bench/synthetic.md`   | 290.5 ± 5.2 |    285.2 |    304.0 |     1.52 |
+| Command                                          |    Mean [ms] | Min [ms] | Max [ms] | Relative |
+| :----------------------------------------------- | -----------: | -------: | -------: | -------: |
+| `bun bench/first-frame.tsx README.md`            |  216.4 ± 8.4 |    209.4 |    234.2 |     1.08 |
+| `bun bench/first-frame.tsx test/exhaustive.md`   | 240.8 ± 13.3 |    226.5 |    263.3 |     1.20 |
+| `bun bench/first-frame.tsx test/lang-parsers.md` | 200.8 ± 24.9 |    182.7 |    266.1 |     1.00 |
+| `bun bench/first-frame.tsx bench/synthetic.md`   | 771.5 ± 12.4 |    757.0 |    789.1 |     3.84 |
 
-**Kill-switch check:** synthetic (290.5ms) vs README (198.1ms) → **1.47×**; vs
-test/lang-parsers.md (fastest baseline, 191.7ms) → **1.52×**. Both clear the ~1.3×
-threshold — first-frame mount cost scales with doc size, so progressive/chunked
-mounting is worth pursuing. Proceed with Task 2+.
+**Kill-switch check:** synthetic (771.5ms) vs README (216.4ms) → **3.57×**; vs
+test/lang-parsers.md (fastest baseline, 200.8ms) → **3.84×**. Both clear the ~1.3×
+threshold decisively — first-frame mount cost scales with doc size, so
+progressive/chunked mounting is worth pursuing. Proceed with Task 2+.
 
 ## `--render` (one-shot ANSI dump, full process e2e)
 

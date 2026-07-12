@@ -2,7 +2,7 @@
 // Usage: bun bench/first-frame.tsx <doc.md>
 import { addDefaultParsers } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
-import { createRoot } from '@opentui/react'
+import { createRoot, flushSync } from '@opentui/react'
 import { App } from '../src/app/App'
 import { buildTree } from '../src/app/lib/ast'
 import { splitFrontmatter } from '../src/app/lib/frontmatter'
@@ -23,12 +23,22 @@ addDefaultParsers(extraParsers)
 const setup = await createTestRenderer({ width: 120, height: 40, targetFps: 240 })
 setup.renderer.setMaxListeners(0)
 
-createRoot(setup.renderer).render(
-  <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="bench/doc" />,
-)
+flushSync(() => {
+  createRoot(setup.renderer).render(
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="bench/doc" />,
+  )
+})
+let hasFrame = false
 for (let i = 0; i < 1000; i++) {
   await setup.renderOnce()
-  if (setup.captureCharFrame().trim() !== '') break
+  if (setup.captureCharFrame().trim() !== '') {
+    hasFrame = true
+    break
+  }
+}
+if (!hasFrame) {
+  console.error('first-frame: no non-blank frame after 1000 render passes')
+  process.exit(1)
 }
 console.log(`first-frame ${performance.now().toFixed(1)}ms`)
 process.exit(0)
