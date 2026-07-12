@@ -37,6 +37,7 @@
     "build:npm": "bun run scripts/build-npm.ts",
     "stage:prebuilt": "bun run scripts/stage-prebuilt-npm.ts",
     "smoke": "bun run scripts/smoke-prebuilt.ts",
+    "smoke:bin": "bun run scripts/smoke-bin.ts",
     "update-parsers": "bun ./node_modules/@opentui/core/lib/tree-sitter/update-assets.js --config ./parsers-config.json --assets ./assets/parsers --output /tmp/parsers-generated.ts"
   },
   "lint-staged": {
