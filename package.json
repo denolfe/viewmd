@@ -1,6 +1,6 @@
 {
   "name": "viewmd-cli",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "description": "Interactive terminal markdown viewer with mermaid diagrams, syntax highlighting, and a less-style pager.",
   "license": "MIT",
   "author": "Elliot DeNolf",
