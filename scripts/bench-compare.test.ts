@@ -42,6 +42,12 @@ describe('compare', () => {
     expect(compare(report(0.534, 0.534 * 1.5)).verdict).toBe('fail')
   })
 
+  test('throws on non-numeric means instead of passing', () => {
+    const bad = report(0.534, 0.28)
+    bad.results[1] = { command: 'pr', mean: Number.NaN, stddev: 0 }
+    expect(() => compare(bad)).toThrow('Non-finite ratio')
+  })
+
   test('throws when the report does not contain exactly two results', () => {
     expect(() => compare({ results: [] })).toThrow()
   })

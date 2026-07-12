@@ -31,6 +31,9 @@ export function compare(report: HyperfineReport): Comparison {
     throw new Error(`Expected exactly 2 hyperfine results, got ${report.results.length}`)
   }
   const ratio = pr.mean / baseline.mean
+  if (!Number.isFinite(ratio)) {
+    throw new Error(`Non-finite ratio from means ${pr.mean} / ${baseline.mean}`)
+  }
   if (ratio >= FAIL_RATIO) return { baseline, pr, ratio, verdict: 'fail' }
   if (ratio >= WARN_RATIO) return { baseline, pr, ratio, verdict: 'warn' }
   return { baseline, pr, ratio, verdict: 'ok' }
