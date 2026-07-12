@@ -236,6 +236,15 @@ test('search matches highlight inside syntax-highlighted code blocks and track n
     await new Promise(r => setTimeout(r, 60))
     await renderOnce()
   }
+  // Code-block match spans arrive via the async tree-sitter highlight pipeline
+  // (see makeMatchChunkTransform); a fixed sleep races it on slow CI runners.
+  // Poll until the condition holds, then let the assertions report failures.
+  const settleUntil = async (pred: () => boolean, timeoutMs = 3000) => {
+    const start = performance.now()
+    do {
+      await settle()
+    } while (!pred() && performance.now() - start < timeoutMs)
+  }
   createRoot(renderer).render(
     <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/ts.md" />,
   )
@@ -264,7 +273,9 @@ test('search matches highlight inside syntax-highlighted code blocks and track n
   await mockInput.typeText('zebra')
   await settle()
   mockInput.pressEnter()
-  await settle()
+  await settleUntil(() =>
+    spansWithBg(MATCH_BG).some(s => rowText(s.row).includes('const zebra = 1')),
+  )
 
   // Active on the intro paragraph; the code-block occurrence shows a plain match bg.
   let active = spansWithBg(ACTIVE_BG)
@@ -275,14 +286,18 @@ test('search matches highlight inside syntax-highlighted code blocks and track n
 
   // n → active moves onto the code-block match.
   await mockInput.typeText('n')
-  await settle()
+  await settleUntil(() =>
+    spansWithBg(ACTIVE_BG).some(s => rowText(s.row).includes('const zebra = 1')),
+  )
   active = spansWithBg(ACTIVE_BG)
   expect(active).toHaveLength(1)
   expect(rowText(active[0]?.row ?? -1)).toContain('const zebra = 1')
 
   // n → active leaves the code block; its match falls back to the plain bg.
   await mockInput.typeText('n')
-  await settle()
+  await settleUntil(() =>
+    spansWithBg(MATCH_BG).some(s => rowText(s.row).includes('const zebra = 1')),
+  )
   active = spansWithBg(ACTIVE_BG)
   expect(active).toHaveLength(1)
   expect(rowText(active[0]?.row ?? -1)).toContain('zebra tail')

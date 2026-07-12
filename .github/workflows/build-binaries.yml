@@ -29,6 +29,8 @@ jobs:
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
       - run: bun install --frozen-lockfile
       - run: bun run build:bin
+      - run: bun run smoke:bin
+        timeout-minutes: 3
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: viewmd-${{ matrix.id }}
@@ -49,6 +51,7 @@ jobs:
       - run: bun run build:npm
       - run: bun run stage:prebuilt --artifact-root artifacts
       - run: bun run smoke
+        timeout-minutes: 3
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: staged-npm
