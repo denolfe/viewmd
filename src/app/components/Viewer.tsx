@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTerminalDimensions } from '@opentui/react'
+import { useRenderer, useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
@@ -33,6 +33,7 @@ export function Viewer({
   onScroll?: () => void
 }) {
   const { viewerRef, contentWidth } = useAppState()
+  const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
   // Only the status line (1 row) sits below the viewport now — the breadcrumb
@@ -45,6 +46,9 @@ export function Viewer({
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
+  const pendingRef = useRef<PendingTarget | null>(null)
+  const notifyRef = useRef<() => void>(() => {})
+  const needsNotifyRef = useRef(false)
 
   const [mountedCount, setMountedCount] = useState(() =>
     initialMountCount({ nodes, contentWidth, viewportHeight: height }),
@@ -72,11 +76,25 @@ export function Viewer({
     const box = localRef.current
     if (!box) return
     const scrollListeners = new Set<() => void>()
+    // Any explicit navigation supersedes a jump still waiting on its chunk —
+    // otherwise a stale pending target would yank the viewport later.
     const handle: ScrollboxHandle = {
-      scrollBy: delta => box.scrollBy(delta),
-      scrollTo: y => box.scrollTo(y),
-      scrollToBottom: () => box.scrollTo(box.scrollHeight),
-      scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
+      scrollBy: delta => {
+        pendingRef.current = null
+        box.scrollBy(delta)
+      },
+      scrollTo: y => {
+        pendingRef.current = null
+        box.scrollTo(y)
+      },
+      scrollToBottom: () => {
+        pendingRef.current = null
+        box.scrollTo(box.scrollHeight)
+      },
+      scrollChildToTop: (id, topOffset) => {
+        const found = scrollChildToTop(box, id, topOffset ?? 0)
+        pendingRef.current = found ? null : { kind: 'heading', id, topOffset: topOffset ?? 0 }
+      },
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, pattern, activeIndex }) =>
@@ -87,15 +105,9 @@ export function Viewer({
           viewportTop: box.viewport.y,
           dir,
         }),
-      jumpToMatch: ({ match, matches, index, pattern, topOffset }) => {
-        const y = resolveMatchY(box, match, matches, index, pattern)
-        if (y === null) return
-        const delta = matchJumpDelta({
-          matchY: y,
-          viewportTop: box.viewport.y,
-          topOffset: topOffset ?? 0,
-        })
-        if (delta !== 0) box.scrollBy(delta)
+      jumpToMatch: params => {
+        const found = jumpToMatchNow(box, params)
+        pendingRef.current = found ? null : { kind: 'match', params }
       },
       subscribeScroll: cb => {
         scrollListeners.add(cb)
@@ -104,16 +116,45 @@ export function Viewer({
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
-    const restoreScroll = watchScroll(box, () => {
+    notifyRef.current = () => {
       onScrollRef.current?.()
       for (const cb of scrollListeners) cb()
-    })
+    }
+    const restoreScroll = watchScroll(box, () => notifyRef.current())
+    // Retries run on the renderer's post-layout `frame` event, not in a React
+    // effect: a just-committed chunk's renderables keep y=0 until the next
+    // layout pass, so effect-time geometry would land the jump at the top.
+    const onFrame = () => {
+      const pending = pendingRef.current
+      if (pending) {
+        // Complete a jump that targeted content unmounted when it was issued.
+        // A completed scroll also triggers watchScroll → notify, keeping the
+        // breadcrumb in sync mid-mount.
+        const done =
+          pending.kind === 'heading'
+            ? scrollChildToTop(box, pending.id, pending.topOffset)
+            : jumpToMatchNow(box, pending.params)
+        if (done) pendingRef.current = null
+      }
+      if (needsNotifyRef.current) {
+        needsNotifyRef.current = false
+        notifyRef.current()
+      }
+    }
+    renderer.on('frame', onFrame)
     return () => {
+      renderer.off('frame', onFrame)
       restoreScroll()
       restore()
       viewerRef.current = null
     }
-  }, [viewerRef])
+  }, [viewerRef, renderer])
+
+  // Refresh breadcrumb/marks once the whole doc is mounted — deferred to the
+  // next frame so listeners read post-layout geometry.
+  useEffect(() => {
+    if (fullyMounted) needsNotifyRef.current = true
+  }, [fullyMounted])
 
   return (
     <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
@@ -169,11 +210,35 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
   }
 }
 
-function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): void {
+type PendingTarget =
+  | { kind: 'heading'; id: string; topOffset: number }
+  | { kind: 'match'; params: Parameters<ScrollboxHandle['jumpToMatch']>[0] }
+
+/** Scrolls `id` to the viewport top. Returns false if `id` isn't mounted yet. */
+function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): boolean {
   const child = box.content.findDescendantById(id)
-  if (!child) return
+  if (!child) return false
   const delta = child.y - box.viewport.y - PIN_TOP_OFFSET - topOffset
   if (delta !== 0) box.scrollBy(delta)
+  return true
+}
+
+/** Jumps to a search match. Returns false if its block isn't mounted yet. */
+function jumpToMatchNow(
+  box: ScrollBoxRenderable,
+  params: Parameters<ScrollboxHandle['jumpToMatch']>[0],
+): boolean {
+  const { match, matches, index, pattern, topOffset } = params
+  if (!box.content.findDescendantById(match.blockElementId)) return false
+  const y = resolveMatchY(box, match, matches, index, pattern)
+  if (y === null) return false
+  const delta = matchJumpDelta({
+    matchY: y,
+    viewportTop: box.viewport.y,
+    topOffset: topOffset ?? 0,
+  })
+  if (delta !== 0) box.scrollBy(delta)
+  return true
 }
 
 function findHeadingNearTop(

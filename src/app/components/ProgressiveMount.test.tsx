@@ -2,7 +2,11 @@ import { expect, test } from 'bun:test'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot } from '@opentui/react'
 import { App } from '../App'
+import { Viewer } from './Viewer'
+import { AppStateContext } from '../state'
+import type { AppState, ScrollboxHandle } from '../state'
 import { buildTree } from '../lib/ast'
+import { findMatches } from '../lib/search'
 import { initialMountCount } from '../lib/progressive'
 
 const bigFixture = (): string =>
@@ -60,4 +64,89 @@ test('after settling, the last node is reachable and mounted (spacer gone)', asy
 test('small docs mount fully on first render', async () => {
   const { nodes } = buildTree('# Small\n\njust one paragraph\n')
   expect(initialMountCount({ nodes, contentWidth: 78, viewportHeight: 20 })).toBe(nodes.length)
+})
+
+test('large docs start partially mounted', () => {
+  const { nodes } = buildTree(bigFixture())
+  expect(initialMountCount({ nodes, contentWidth: 78, viewportHeight: 20 })).toBeLessThan(
+    nodes.length,
+  )
+})
+
+/**
+ * Mounts Viewer alone under a minimal AppState so the test owns viewerRef and
+ * can drive the ScrollboxHandle synchronously — deterministic, unlike keyboard
+ * input whose settles let the growth loop finish before the jump is issued.
+ */
+const mountViewerOnly = async (md: string, onScroll?: () => void) => {
+  const { nodes, headingIds } = buildTree(md)
+  const setup = await createTestRenderer({ width: 80, height: 20 })
+  const viewerRef: { current: ScrollboxHandle | null } = { current: null }
+  const state = { viewerRef, contentWidth: 78, search: null } as unknown as AppState
+  const settle = async () => {
+    await setup.flush({ maxPasses: 20 })
+    await new Promise(r => setTimeout(r, 30))
+    await setup.renderOnce()
+  }
+  createRoot(setup.renderer).render(
+    <AppStateContext.Provider value={state}>
+      <Viewer nodes={nodes} onScroll={onScroll} />
+    </AppStateContext.Provider>,
+  )
+  // Wait for React to commit the mount effect that installs the handle. Each
+  // event-loop tick advances at most one 32-node chunk; the fixture needs ~25
+  // chunks, so the tail of the doc is still safely unmounted afterwards.
+  for (let i = 0; i < 50 && !viewerRef.current; i++) {
+    await new Promise(r => setTimeout(r, 1))
+    await setup.renderOnce()
+  }
+  if (!viewerRef.current) throw new Error('viewer handle never installed')
+  return { nodes, headingIds, setup, settle, viewerRef }
+}
+
+test('scrollChildToTop to an unmounted heading completes once its chunk mounts', async () => {
+  const { headingIds, setup, settle, viewerRef } = await mountViewerOnly(bigFixture())
+  const lastId = headingIds.at(-1)
+  if (lastId === undefined) throw new Error('fixture must have headings')
+  // Only the initial chunk is mounted here — the last heading isn't in the tree yet.
+  viewerRef.current?.scrollChildToTop(lastId)
+  for (let i = 0; i < 40; i++) await settle()
+  expect(setup.captureCharFrame()).toContain('Last Heading')
+})
+
+test('jumpToMatch to an unmounted block completes once its chunk mounts', async () => {
+  let scrolls = 0
+  const { nodes, setup, settle, viewerRef } = await mountViewerOnly(bigFixture(), () => {
+    scrolls++
+  })
+  const matches = findMatches(nodes, 'THE-FINAL-LINE')
+  const match = matches[0]
+  if (!match) throw new Error('fixture must contain the search target')
+  // The match's block is still behind the spacer — jumpToMatch must record it.
+  viewerRef.current?.jumpToMatch({ match, matches, index: 0, pattern: 'THE-FINAL-LINE' })
+  for (let i = 0; i < 40; i++) await settle()
+  expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
+  // Mount completion + the completed jump must have fired the scroll listeners.
+  expect(scrolls).toBeGreaterThan(0)
+})
+
+test('search jump issued before mount completes lands once the target mounts', async () => {
+  const { setup, settle } = await mount(bigFixture())
+  // Search right away, while the growth loop is still running: the commit
+  // fires with the last block (the match target) not yet mounted, so
+  // jumpToMatch misses and must record a pending target that completes once
+  // the chunk containing it lands. (Typing + settling advances only a few of
+  // the ~25 chunks this fixture needs, so the target is reliably unmounted
+  // at commit time; without the pending path the jump silently no-ops.)
+  await settle()
+  await setup.mockInput.typeText('x') // handshake consumes first key
+  await settle()
+  await setup.mockInput.typeText('/')
+  await settle()
+  await setup.mockInput.typeText('THE-FINAL-LINE')
+  await settle()
+  setup.mockInput.pressEnter()
+  await settle()
+  for (let i = 0; i < 40; i++) await settle()
+  expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
 })
