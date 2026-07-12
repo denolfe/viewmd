@@ -99,8 +99,8 @@ function InlineOne({ node }: { node: InlineNode }) {
 // Per-block scope for active-match identification. Each block that renders
 // highlightable inline content provides its element id plus an occurrence
 // counter; the counter object is recreated on every render, keeping ordinals
-// aligned with findMatches' within-block order, and blocks that render no
-// highlights (syntax-highlighted code) can't shift highlights in other blocks.
+// aligned with findMatches' within-block order. Syntax-highlighted code blocks
+// highlight through their own chunk transform (CodeBlock) instead of a scope.
 type MatchScopeValue = { id: string; counter: { n: number } }
 const MatchScopeContext = createContext<MatchScopeValue | null>(null)
 
@@ -117,16 +117,16 @@ export function MatchScope({ id, children }: { id: string; children: ReactNode }
  * active match lives in a different block. Mirrors the k-counting in the
  * Viewer's resolveMatchY.
  */
-function activeOccurrenceInBlock(
+export function activeOccurrenceInBlock(
   search: { matches: Match[]; index: number },
-  scope: MatchScopeValue | null,
+  blockElementId: string,
 ): number {
-  if (!scope || search.index < 0) return -1
+  if (search.index < 0) return -1
   const active = search.matches[search.index]
-  if (!active || active.blockElementId !== scope.id) return -1
+  if (!active || active.blockElementId !== blockElementId) return -1
   let occ = 0
   for (let i = 0; i < search.index; i++) {
-    if (search.matches[i]?.blockElementId === active.blockElementId) occ++
+    if (search.matches[i]?.blockElementId === blockElementId) occ++
   }
   return occ
 }
@@ -135,7 +135,7 @@ export function HighlightedText({ value }: { value: string }) {
   const { search } = useAppState()
   const scope = useContext(MatchScopeContext)
   if (!search?.pattern || !search.matches.length) return <>{value}</>
-  const activeOcc = activeOccurrenceInBlock(search, scope)
+  const activeOcc = scope ? activeOccurrenceInBlock(search, scope.id) : -1
   const pattern = search.pattern
   const re = new RegExp(escapeRegex(pattern), 'gi')
   const parts: ReactNode[] = []

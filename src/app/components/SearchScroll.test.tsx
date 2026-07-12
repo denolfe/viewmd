@@ -208,6 +208,89 @@ test('active highlight tracks n across code blocks, tables, and image alts', asy
   renderer.destroy()
 })
 
+// Matches inside a syntax-highlighted (tree-sitter) code block must render
+// search backgrounds on top of the styled text, tracking n like other blocks.
+const TS_BLOCK_MIX = [
+  '# Title',
+  '',
+  'zebra intro',
+  '',
+  '```ts',
+  'const zebra = 1',
+  '```',
+  '',
+  'zebra tail',
+].join('\n')
+
+const MATCH_BG = { r: 245 / 255, g: 245 / 255, b: 67 / 255 }
+
+test('search matches highlight inside syntax-highlighted code blocks and track n', async () => {
+  const { nodes, toc, headingIds } = buildTree(TS_BLOCK_MIX)
+  const { renderer, mockInput, flush, renderOnce, captureSpans, captureCharFrame } =
+    await createTestRenderer({
+      width: 80,
+      height: 24,
+    })
+  const settle = async () => {
+    await flush({ maxPasses: 20 })
+    await new Promise(r => setTimeout(r, 60))
+    await renderOnce()
+  }
+  createRoot(renderer).render(
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/ts.md" />,
+  )
+  await settle()
+  await mockInput.typeText('x')
+  await settle()
+
+  // Rows of spans whose bg matches `target`, with the span text.
+  const spansWithBg = (target: { r: number; g: number; b: number }) => {
+    const out: { row: number; text: string }[] = []
+    const frame = captureSpans()
+    const near = (v: number, t: number) => Math.abs(v - t) < 0.02
+    for (let row = 0; row < frame.lines.length; row++) {
+      for (const s of frame.lines[row]?.spans ?? []) {
+        if (near(s.bg.r, target.r) && near(s.bg.g, target.g) && near(s.bg.b, target.b)) {
+          out.push({ row, text: s.text })
+        }
+      }
+    }
+    return out
+  }
+  const rowText = (row: number) => captureCharFrame().split('\n')[row] ?? ''
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('zebra')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  // Active on the intro paragraph; the code-block occurrence shows a plain match bg.
+  let active = spansWithBg(ACTIVE_BG)
+  expect(active).toHaveLength(1)
+  expect(rowText(active[0]?.row ?? -1)).toContain('zebra intro')
+  const codeMatch = spansWithBg(MATCH_BG).find(s => rowText(s.row).includes('const zebra = 1'))
+  expect(codeMatch?.text).toBe('zebra')
+
+  // n → active moves onto the code-block match.
+  await mockInput.typeText('n')
+  await settle()
+  active = spansWithBg(ACTIVE_BG)
+  expect(active).toHaveLength(1)
+  expect(rowText(active[0]?.row ?? -1)).toContain('const zebra = 1')
+
+  // n → active leaves the code block; its match falls back to the plain bg.
+  await mockInput.typeText('n')
+  await settle()
+  active = spansWithBg(ACTIVE_BG)
+  expect(active).toHaveLength(1)
+  expect(rowText(active[0]?.row ?? -1)).toContain('zebra tail')
+  expect(spansWithBg(MATCH_BG).some(s => rowText(s.row).includes('const zebra = 1'))).toBe(true)
+
+  renderer.destroy()
+})
+
 test('a far jump lands the match at the top of the view', async () => {
   const { renderer, mockInput, settle, captureCharFrame } = await setup()
 
