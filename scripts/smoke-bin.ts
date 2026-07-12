@@ -3,7 +3,9 @@ import { existsSync } from 'node:fs'
 import { hostPlatform } from './platforms'
 
 const RUN_TIMEOUT_MS = 30_000
-const WARM_CEILING_MS = 2_000
+// Order-of-magnitude guard only: legit warm runs reach ~2s on windows-latest
+// (observed 705ms-2006ms across runs). Perf sensitivity lives in the bench job.
+const WARM_CEILING_MS = 10_000
 const DOC = 'test/exhaustive.md'
 
 export type RunResult = {
@@ -78,8 +80,10 @@ if (import.meta.main) {
   )
 }
 
+// Surface stderr even on passing runs — a broken subsystem (e.g. the
+// tree-sitter worker) can log errors while the render still exits 0.
 function assertOk(verdict: SmokeVerdict, run: RunResult): void {
+  if (run.stderr.length > 0) console.error(`SMOKE_STDERR:\n${run.stderr}`)
   if (verdict.ok) return
-  console.error(run.stderr)
   throw new Error(verdict.reason)
 }
