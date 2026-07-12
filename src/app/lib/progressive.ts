@@ -66,9 +66,11 @@ export function estimateNodeRows(node: Node, contentWidth: number): number {
     case 'blockquote':
       return Math.max(1, estimateTotalRows(node.children, contentWidth))
     case 'details':
-      return estimateTotalRows(node.children, contentWidth) + 2
+      return estimateTotalRows(node.children, contentWidth) + 1 // summary row, no margins
     case 'html':
-      return Math.max(1, node.value.split('\n').length)
+      // HtmlBlock collapses the markup into a single wrapped <text> (raw line
+      // count over-counts badly); empty-segment HTML renders nothing. 1 is low.
+      return 1
     case 'image':
       return 1
   }

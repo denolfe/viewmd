@@ -57,10 +57,45 @@ describe('estimateNodeRows', () => {
     expect(estimateNodeRows(node('> quoted line'), WIDTH)).toBe(1)
   })
 
-  test('html and image are at least 1 row', () => {
+  test('html and image are 1 row', () => {
     expect(estimateNodeRows({ kind: 'image', alt: 'a', src: 's' }, WIDTH)).toBe(1)
     expect(estimateNodeRows({ kind: 'html', value: '<b>x</b>' }, WIDTH)).toBe(1)
+    // HtmlBlock collapses multi-line markup into a single wrapped <text>.
+    expect(estimateNodeRows({ kind: 'html', value: '<p>\n<b>x</b>\n</p>' }, WIDTH)).toBe(1)
   })
+})
+
+describe('per-kind low bias against real render', () => {
+  /** Rows the block occupies: sandwich it between sentinel paragraphs and diff renders. */
+  const occupiedRows = async (
+    blockMd: string,
+    kind: Node['kind'],
+  ): Promise<{ block: Node; rows: number }> => {
+    const base = buildTree('TOP\n\nBOTTOM')
+    const withBlock = buildTree(`TOP\n\n${blockMd}\n\nBOTTOM`)
+    const block = withBlock.nodes.find(n => n.kind === kind)
+    if (!block) throw new Error(`no ${kind} node parsed from: ${blockMd}`)
+    const a = await renderAnsi({ nodes: base.nodes, width: WIDTH, maxHeight: 500 })
+    const b = await renderAnsi({ nodes: withBlock.nodes, width: WIDTH, maxHeight: 500 })
+    return { block, rows: b.split('\n').length - a.split('\n').length }
+  }
+
+  test('multi-line html block estimate <= actual rows', async () => {
+    const md = [
+      '<p>',
+      '  <a href="https://a"><img alt="A" src="https://a.svg" /></a>',
+      '  <a href="https://b"><img alt="B" src="https://b.svg" /></a>',
+      '</p>',
+    ].join('\n')
+    const { block, rows } = await occupiedRows(md, 'html')
+    expect(estimateNodeRows(block, WIDTH)).toBeLessThanOrEqual(rows)
+  }, 30000)
+
+  test('details estimate <= actual rows', async () => {
+    const md = '<details>\n<summary>More</summary>\n\nhidden para\n\n</details>'
+    const { block, rows } = await occupiedRows(md, 'details')
+    expect(estimateNodeRows(block, WIDTH)).toBeLessThanOrEqual(rows)
+  }, 30000)
 })
 
 describe('low bias against real render', () => {
