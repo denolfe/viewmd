@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 import './compiled-runtime'
+import { openSync } from 'node:fs'
 import { basename, dirname, resolve } from 'node:path'
+import { ReadStream as TtyReadStream } from 'node:tty'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
@@ -36,7 +38,12 @@ if (renderMode) {
 }
 
 addDefaultParsers(extraParsers)
-const renderer = await createCliRenderer({ exitOnCtrlC: false })
+const keyboard = keyboardStream()
+const renderer = await createCliRenderer({ exitOnCtrlC: false, stdin: keyboard })
+if (keyboard !== process.stdin) {
+  // Close the /dev/tty fd on quit — destroy() only pauses it, which would keep the process alive.
+  renderer.on('destroy', () => keyboard.destroy())
+}
 createRoot(renderer).render(
   <App
     nodes={nodes}
@@ -56,6 +63,19 @@ function fileLabel(p?: string): string | undefined {
   const abs = resolve(p)
   const parent = basename(dirname(abs))
   return parent ? `${parent}/${basename(abs)}` : basename(abs)
+}
+
+/**
+ * Stream the renderer reads keys from. When the doc is piped in, process.stdin
+ * is the exhausted pipe — keys must come from the controlling terminal instead.
+ */
+function keyboardStream(): NodeJS.ReadStream {
+  if (process.stdin.isTTY) return process.stdin
+  try {
+    return new TtyReadStream(openSync('/dev/tty', 'r'))
+  } catch {
+    return process.stdin
+  }
 }
 
 async function readInput(filePath?: string): Promise<string> {

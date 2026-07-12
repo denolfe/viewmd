@@ -49,6 +49,12 @@ keyboard-driven feature:
   first; use `typeText`/`pressEnter`, and locate the scrollbar column by its thumb glyphs
   (`█▀▄`). Final visual polish still deserves a by-hand pass with
   `./src/index.tsx README.md` (interactive) or `./src/index.tsx --render README.md` (one-shot).
+- **Entry-point / TTY wiring needs a real pty, not the headless harness** —
+  `createTestRenderer` injects a fake stdin and mounts `App` directly, bypassing
+  `src/index.tsx` (stdin/stdout mode selection, `/dev/tty` keyboard fallback). Test that
+  layer by spawning the actual CLI under an `expect`-allocated pty; see
+  `pipe-input.test.ts` (guard with `describe.skipIf` when `expect` is unavailable, and
+  remember the throwaway first keypress).
 
 ## Conventions
 
