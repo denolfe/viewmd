@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { dlopen, suffix } from 'bun:ffi'
 import { buildTree } from './ast'
 import { renderAnsi } from './renderAnsi'
 
@@ -74,6 +75,24 @@ describe('renderAnsi', () => {
     const escCount = (s: string) => (s.match(/\x1b\[[0-9;]*m/g) ?? []).length
     expect(escCount(highlighted)).toBeGreaterThan(escCount(plain))
   })
+
+  test.skipIf(process.platform === 'win32')(
+    'leaves stdout blocking after render (OpenTUI sets O_NONBLOCK on fd 1)',
+    async () => {
+      // A non-blocking stdout makes Bun.write busy-spin at 100% CPU forever
+      // when the pipe reader stalls or dies (orphaned-process bug).
+      const { nodes } = buildTree('# Hello\n')
+      await renderAnsi({ nodes, width: 80, maxHeight: 80 })
+      const F_GETFL = 3
+      const O_NONBLOCK = process.platform === 'darwin' ? 0x0004 : 0x0800
+      const libc = dlopen(process.platform === 'darwin' ? `libc.${suffix}` : 'libc.so.6', {
+        fcntl: { args: ['int', 'int', 'int'], returns: 'int' },
+      })
+      const flags = libc.symbols.fcntl(1, F_GETFL, 0)
+      libc.close()
+      expect(flags & O_NONBLOCK).toBe(0)
+    },
+  )
 
   test('trims rows that contain only ANSI background escapes', async () => {
     const { nodes } = buildTree('# One line\n')
