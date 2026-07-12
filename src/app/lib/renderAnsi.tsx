@@ -9,32 +9,53 @@ import { dlopen, suffix } from 'bun:ffi'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
 import { RenderView } from '../RenderView'
+import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { extraParsers } from '../parsers'
+import { sliceCountForRows } from './progressive'
 import type { Node } from './ast'
 import type { FrontmatterRow } from './frontmatter'
 
 let parsersRegistered = false
+
+// Estimates are LOW-biased (see progressive.ts), so pad the target rows
+// before slicing to avoid truncating content that actually fits on screen.
+const CAP_BUFFER_ROWS = 10
 
 export async function renderAnsi(opts: {
   nodes: Node[]
   width: number
   maxHeight: number
   frontmatter?: FrontmatterRow[]
-  /** Row cap for fzf preview / other preview tools. Unused until Task 6 wires slicing. */
+  /** Row cap for fzf preview / other preview tools. Limits mounted nodes and output lines. */
   capRows?: number
 }): Promise<string> {
-  const { nodes, width, maxHeight, frontmatter = [] } = opts
+  const { nodes, width, maxHeight, frontmatter = [], capRows } = opts
 
   if (!parsersRegistered) {
     addDefaultParsers(extraParsers)
     parsersRegistered = true
   }
 
+  // With a known visible pane, mount only nodes that can reach it — this
+  // skips parser preload, highlighting, and layout for below-the-fold
+  // content in previews. Estimates are low-biased, so CAP_BUFFER_ROWS makes
+  // the slice over-include (safe) rather than under-include (blank bottom).
+  const renderNodes = capRows
+    ? nodes.slice(
+        0,
+        sliceCountForRows({
+          nodes,
+          contentWidth: Math.min(CONTENT_MAX_WIDTH, width),
+          rows: capRows + CAP_BUFFER_ROWS,
+        }),
+      )
+    : nodes
+
   // Preload tree-sitter parsers for every fenced language present so the
   // first render captures highlighted spans rather than a fallback to plain
   // text. Without this, on a cold tree-sitter worker, highlightOnce can
   // reject before wasm finishes loading and the code commits unhighlighted.
-  await preloadParsersForNodes(nodes)
+  await preloadParsersForNodes(renderNodes)
 
   const setup = await createTestRenderer({
     width,
@@ -56,7 +77,7 @@ export async function renderAnsi(opts: {
   // empty, U+0A00-filled buffer. flushSync forces the first commit so
   // requestRender() is scheduled before we wait.
   flushSync(() => {
-    root.render(<RenderView nodes={nodes} width={width} frontmatter={frontmatter} />)
+    root.render(<RenderView nodes={renderNodes} width={width} frontmatter={frontmatter} />)
   })
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
   await waitForHighlights(setup.renderer.root)
@@ -83,7 +104,8 @@ export async function renderAnsi(opts: {
   console.warn = () => {}
   setup.renderer.destroy()
   restoreStdoutBlocking()
-  return trimTrailingBlankRows(text)
+  const trimmed = trimTrailingBlankRows(text)
+  return capRows ? trimmed.split('\n').slice(0, capRows).join('\n') : trimmed
 }
 
 /**

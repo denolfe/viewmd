@@ -31,7 +31,7 @@ export function parseArgs(args: string[]): ParsedArgs {
   return out
 }
 
-function parsePositiveInt(raw: string | undefined): number | undefined {
+export function parsePositiveInt(raw: string | undefined): number | undefined {
   if (raw === undefined || raw === '') return undefined
   const n = Number(raw)
   return Number.isInteger(n) && n > 0 ? n : undefined

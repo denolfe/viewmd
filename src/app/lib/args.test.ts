@@ -40,6 +40,11 @@ describe('parseArgs', () => {
       error: '--max-lines requires a positive integer',
     })
   })
+  test('empty value after = is an error', () => {
+    expect(parseArgs(['--max-lines='])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+  })
   test('non-integer and non-positive values are errors', () => {
     expect(parseArgs(['--max-lines', 'abc'])).toEqual({
       error: '--max-lines requires a positive integer',

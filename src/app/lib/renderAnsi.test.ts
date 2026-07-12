@@ -104,3 +104,46 @@ describe('renderAnsi', () => {
     expect(lineCount).toBeLessThan(50)
   })
 })
+
+describe('renderAnsi capRows', () => {
+  const bigDoc = (): string =>
+    [
+      '# Top',
+      '',
+      'first paragraph',
+      '',
+      '```typescript',
+      'const visible = 1',
+      '```',
+      '',
+      ...Array.from({ length: 300 }, (_, i) => `filler ${i}\n`),
+      '```python',
+      'below_the_fold = True',
+      '```',
+    ].join('\n')
+
+  test('output is truncated to capRows and keeps top content', async () => {
+    const { nodes } = buildTree(bigDoc())
+    const out = await renderAnsi({ nodes, width: 80, maxHeight: 40, capRows: 40 })
+    const plain = stripAnsi(out)
+    expect(out.split('\n').length).toBeLessThanOrEqual(40)
+    expect(plain).toContain('Top')
+    expect(plain).toContain('const visible = 1')
+    expect(plain).not.toContain('below_the_fold')
+  })
+
+  test('code inside the cap is highlighted', async () => {
+    const { nodes } = buildTree(bigDoc())
+    const out = await renderAnsi({ nodes, width: 80, maxHeight: 40, capRows: 40 })
+    const codeLine = out.split('\n').find(l => stripAnsi(l).includes('const visible'))
+    expect(codeLine).toBeDefined()
+    expect(codeLine).toMatch(/\x1b\[[0-9;]*m/)
+  })
+
+  test('no capRows → unchanged output (regression guard)', async () => {
+    const { nodes } = buildTree('# Hello\n\nA paragraph here.\n\n```ts\nconst x = 1\n```\n')
+    const capped = await renderAnsi({ nodes, width: 80, maxHeight: 200 })
+    const explicit = await renderAnsi({ nodes, width: 80, maxHeight: 200, capRows: undefined })
+    expect(explicit).toBe(capped)
+  })
+})

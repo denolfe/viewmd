@@ -6,7 +6,7 @@ import { ReadStream as TtyReadStream } from 'node:tty'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
-import { parseArgs } from './app/lib/args'
+import { parseArgs, parsePositiveInt } from './app/lib/args'
 import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
@@ -84,8 +84,7 @@ function clampWidth(w: number): number {
 
 /** FZF_PREVIEW_LINES is set only inside fzf preview subprocesses. */
 function fzfPreviewLines(): number | undefined {
-  const n = Number(process.env.FZF_PREVIEW_LINES)
-  return Number.isInteger(n) && n > 0 ? n : undefined
+  return parsePositiveInt(process.env.FZF_PREVIEW_LINES)
 }
 
 function fileLabel(p?: string): string | undefined {
