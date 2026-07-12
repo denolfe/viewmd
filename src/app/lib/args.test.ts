@@ -26,4 +26,29 @@ describe('parseArgs', () => {
   test('first non-flag positional wins', () => {
     expect(parseArgs(['a.md', 'b.md'])).toEqual({ filePath: 'a.md' })
   })
+  test('--max-lines with a separate value', () => {
+    expect(parseArgs(['--max-lines', '40', 'doc.md'])).toEqual({
+      filePath: 'doc.md',
+      maxLines: 40,
+    })
+  })
+  test('--max-lines=<n> form', () => {
+    expect(parseArgs(['--max-lines=25', 'doc.md'])).toEqual({ filePath: 'doc.md', maxLines: 25 })
+  })
+  test('missing value is an error', () => {
+    expect(parseArgs(['--max-lines'])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+  })
+  test('non-integer and non-positive values are errors', () => {
+    expect(parseArgs(['--max-lines', 'abc'])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+    expect(parseArgs(['--max-lines', '0'])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+    expect(parseArgs(['--max-lines', '-5'])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+  })
 })

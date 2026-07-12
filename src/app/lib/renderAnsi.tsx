@@ -20,6 +20,8 @@ export async function renderAnsi(opts: {
   width: number
   maxHeight: number
   frontmatter?: FrontmatterRow[]
+  /** Row cap for fzf preview / other preview tools. Unused until Task 6 wires slicing. */
+  capRows?: number
 }): Promise<string> {
   const { nodes, width, maxHeight, frontmatter = [] } = opts
 
