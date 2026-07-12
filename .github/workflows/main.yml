@@ -20,3 +20,45 @@ jobs:
     uses: ./.github/workflows/build-binaries.yml
     with:
       publish: false
+
+  bench:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      - run: bun install --frozen-lockfile
+      - run: bun run build:bin
+      - name: Fetch baseline binary
+        run: |
+          mkdir -p baseline
+          npm pack viewmd-linux-x64 --pack-destination baseline
+          tar -xzf baseline/viewmd-linux-x64-*.tgz -C baseline
+          chmod +x baseline/package/bin/viewmd
+          node -p "require('./baseline/package/package.json').version" > baseline/version.txt
+      - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
+        with:
+          tool: hyperfine
+      - name: Benchmark baseline vs PR
+        run: |
+          hyperfine --warmup 3 --runs 10 --export-json bench.json \
+            'baseline/package/bin/viewmd --render README.md' \
+            'dist/bin/viewmd --render README.md'
+      - name: Compare
+        run: bun run scripts/bench-compare.ts bench.json --baseline-version "$(cat baseline/version.txt)" --out bench-summary.md
+      - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
+        if: always()
+        with:
+          header: bench
+          path: bench-summary.md
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: bench-json
+          path: bench.json
+          if-no-files-found: ignore
