@@ -1,26 +1,63 @@
 #!/usr/bin/env bun
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, rm, writeFile } from 'node:fs/promises'
+import { basename } from 'node:path'
 import pkg from '../package.json'
-import { buildShimSource, resolveNativeLib } from './native-shim'
+import {
+  buildShimSource,
+  buildWorkerRuntimeSource,
+  packageVersion,
+  resolveNativeLib,
+  resolvePackageDir,
+} from './native-shim'
 import { hostPlatform } from './platforms'
+import type { TlaPatch } from './tla-patches'
+import { applyTlaPatches, assertPatchesApplied, buildTlaPatches } from './tla-patches'
 
 const platform = hostPlatform()
 const outDir = 'dist/bin'
+const workerDir = 'dist/worker'
 const outFile = `${outDir}/${platform.binName}`
 
 await mkdir(outDir, { recursive: true })
 
-// Replace the OpenTUI native package with a shim that dlopens the lib from a
-// stable cache path instead of re-extracting the embedded copy on every run.
+// Stage 1: bundle the tree-sitter worker as plain ESM. It can't be a bytecode
+// compile entrypoint (its wasm dynamic import breaks under CJS bytecode), so
+// the compiled binary embeds these outputs as file assets instead and
+// materializes them to the cache dir at startup (see buildWorkerRuntimeSource).
+await rm(workerDir, { recursive: true, force: true })
+const workerBuild = await Bun.build({
+  entrypoints: ['./node_modules/@opentui/core/parser.worker.js'],
+  target: 'bun',
+  format: 'esm',
+  outdir: workerDir,
+})
+const workerFiles = workerBuild.outputs.map(o => ({ absPath: o.path, name: basename(o.path) }))
+const workerEntry = workerBuild.outputs.find(o => o.kind === 'entry-point')
+if (!workerEntry) throw new Error('worker bundle produced no entry point')
+
+// Stage 2: compile the CLI with bytecode. The plugin swaps in two generated
+// modules: the OpenTUI platform package becomes the stable-cache dylib shim,
+// and compiled-runtime.ts becomes the worker materializer. OpenTUI's
+// module-scope awaits are rewritten to sync equivalents (bytecode needs CJS,
+// which forbids top-level await).
 const native = resolveNativeLib(platform)
 const shimSource = buildShimSource(native)
+const workerRuntimeSource = buildWorkerRuntimeSource({
+  entryName: basename(workerEntry.path),
+  files: workerFiles,
+  version: packageVersion(resolvePackageDir('@opentui/core')),
+})
+const patches = buildTlaPatches(native.packageName)
+const appliedPatches = new Set<TlaPatch>()
 
 await Bun.build({
-  entrypoints: ['./src/index.tsx', './node_modules/@opentui/core/parser.worker.js'],
+  entrypoints: ['./src/index.tsx'],
   compile: { target: platform.bunTarget, outfile: outFile },
+  format: 'cjs',
+  bytecode: true,
   plugins: [
     {
-      name: 'opentui-native-stable-cache',
+      name: 'viewmd-compiled-runtime',
       setup(build) {
         build.onResolve({ filter: new RegExp(`^${native.packageName}$`) }, () => ({
           path: native.packageName,
@@ -30,10 +67,28 @@ await Bun.build({
           contents: shimSource,
           loader: 'ts',
         }))
+        build.onLoad({ filter: /src\/compiled-runtime\.ts$/ }, () => ({
+          contents: workerRuntimeSource,
+          loader: 'ts',
+        }))
+        build.onLoad(
+          { filter: /@opentui\/(core\/index|react\/chunk)-[a-z0-9]+\.js$/ },
+          async args => ({
+            contents: applyTlaPatches({
+              path: args.path,
+              source: await Bun.file(args.path).text(),
+              patches,
+              applied: appliedPatches,
+            }),
+            loader: 'js',
+          }),
+        )
       },
     },
   ],
 })
+
+assertPatchesApplied(patches, appliedPatches)
 
 await writeFile(
   `${outDir}/metadata.json`,
