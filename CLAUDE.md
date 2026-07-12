@@ -21,7 +21,7 @@ bun run typecheck                     # tsc --noEmit
 
 Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@opentui/react`). Markdown is parsed once into a typed AST, rendered as React components inside a scrollable viewport with a TOC sidebar, sticky breadcrumb header, and status line.
 
-**Full architecture: see [ARCHITECTURE.md](./ARCHITECTURE.md).** Read it before non-trivial changes touching the AST, dispatcher, viewer scroll surface, or sticky-header rules.
+**Full architecture: see [ARCHITECTURE.md](./docs/ARCHITECTURE.md).** Read it before non-trivial changes touching the AST, dispatcher, viewer scroll surface, or sticky-header rules.
 
 Quick orientation:
 
