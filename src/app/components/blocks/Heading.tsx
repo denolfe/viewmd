@@ -1,4 +1,4 @@
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 import type { Node } from '../../lib/ast'
 
@@ -9,7 +9,9 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
         <text bg={theme.h1Bg} fg={theme.h1Fg}>
           <strong>
             {` `}
-            <InlineRenderer nodes={node.text} />
+            <MatchScope id={node.id}>
+              <InlineRenderer nodes={node.text} />
+            </MatchScope>
             {` `}
           </strong>
         </text>
@@ -20,7 +22,10 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
     <box id={node.id} marginBottom={1} paddingX={2}>
       <text fg={theme.heading}>
         <strong>
-          {'#'.repeat(node.level)} <InlineRenderer nodes={node.text} />
+          {'#'.repeat(node.level)}{' '}
+          <MatchScope id={node.id}>
+            <InlineRenderer nodes={node.text} />
+          </MatchScope>
         </strong>
       </text>
     </box>

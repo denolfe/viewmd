@@ -40,6 +40,26 @@ export type ScrollboxHandle = {
     viewportHeight: number
     realContentHeight: number
   }
+  /**
+   * Less-style jump to a search match: scrolls its line to a few context rows
+   * below the breadcrumb overlay (`topOffset` rows). See `matchJumpDelta`.
+   */
+  jumpToMatch: (params: {
+    match: Match
+    matches: Match[]
+    index: number
+    pattern: string
+    topOffset?: number
+  }) => void
+  /**
+   * Seed index for a freshly committed search: the nearest match in the search
+   * direction relative to the viewport top (wrapping). See `seedMatchIndex`.
+   */
+  seedMatchIndex: (params: {
+    matches: Match[]
+    pattern: string
+    dir: 'forward' | 'backward'
+  }) => number
   /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
   subscribeScroll: (cb: () => void) => () => void
 }

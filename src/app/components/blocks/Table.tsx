@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import { inlineVisibleWidth, wrapInline } from '../../lib/inline-width'
 import { useAppState } from '../../state'
 import { theme } from '../../styles/theme'
@@ -28,19 +28,23 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
       marginBottom={1}
       marginX={TABLE_MARGIN_X}
     >
-      <text fg={theme.border} height={1}>
-        {topRule}
-      </text>
-      <Row cells={node.header} cellWidths={cellWidths} colWidths={colWidths} isHeader />
-      <text fg={theme.border} height={1}>
-        {midRule}
-      </text>
-      {node.rows.map((row, ri) => (
-        <Row key={ri} cells={row} cellWidths={cellWidths} colWidths={colWidths} />
-      ))}
-      <text fg={theme.border} height={1}>
-        {botRule}
-      </text>
+      {/* One scope for the whole table: cells render header-first then row by
+          row, matching findMatches' scan order across cells. */}
+      <MatchScope id={id}>
+        <text fg={theme.border} height={1}>
+          {topRule}
+        </text>
+        <Row cells={node.header} cellWidths={cellWidths} colWidths={colWidths} isHeader />
+        <text fg={theme.border} height={1}>
+          {midRule}
+        </text>
+        {node.rows.map((row, ri) => (
+          <Row key={ri} cells={row} cellWidths={cellWidths} colWidths={colWidths} />
+        ))}
+        <text fg={theme.border} height={1}>
+          {botRule}
+        </text>
+      </MatchScope>
     </box>
   )
 }

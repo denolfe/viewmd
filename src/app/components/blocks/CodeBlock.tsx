@@ -1,4 +1,5 @@
 import { infoStringToFiletype } from '@opentui/core'
+import { HighlightedText, MatchScope } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
@@ -15,7 +16,11 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
   if (node.lang === 'mermaid') {
     return (
       <box id={id} marginX={MARGIN_X}>
-        <text wrapMode="none">{node.value}</text>
+        <text wrapMode="none">
+          <MatchScope id={id}>
+            <HighlightedText value={node.value} />
+          </MatchScope>
+        </text>
       </box>
     )
   }
@@ -40,10 +45,17 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
       paddingX={PADDING_X}
       paddingY={1}
     >
+      {/* Syntax-highlighted blocks render via tree-sitter and can't carry match
+          spans; per-block scoping keeps their unrendered matches from shifting
+          highlights elsewhere. */}
       {filetype ? (
         <code content={node.value} filetype={filetype} syntaxStyle={syntaxStyle} wrapMode="char" />
       ) : (
-        <text wrapMode="char">{node.value}</text>
+        <text wrapMode="char">
+          <MatchScope id={id}>
+            <HighlightedText value={node.value} />
+          </MatchScope>
+        </text>
       )}
     </box>
   )

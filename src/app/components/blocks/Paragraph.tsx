@@ -1,4 +1,4 @@
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import type { Node } from '../../lib/ast'
 
 export function Paragraph({
@@ -11,7 +11,9 @@ export function Paragraph({
   return (
     <box id={id} paddingX={2}>
       <text>
-        <InlineRenderer nodes={node.inline} />
+        <MatchScope id={id}>
+          <InlineRenderer nodes={node.inline} />
+        </MatchScope>
       </text>
     </box>
   )

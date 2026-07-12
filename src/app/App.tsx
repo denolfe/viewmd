@@ -117,17 +117,17 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     if (!m) return
     const v = viewerRef.current
     if (!v) return
+    // Less-style jump: the match line scrolls to the top of the viewport,
+    // below the breadcrumb overlay. The scroll listener re-syncs breadcrumb
+    // state, so no heading bookkeeping here.
     const target = matchScrollTarget({ nodes, toc, match: m, fileLabel })
-    // No preceding heading → the match is in the pre-heading region at the very
-    // top; reveal it there. Otherwise pin its heading below the breadcrumb
-    // overlay so the match doesn't land hidden behind it.
-    if (!target) {
-      v.scrollTo(0)
-      return
-    }
-    v.scrollChildToTop(target.headingId, target.topOffset)
-    setCurrentHeadingId(target.headingId)
-    setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds, target.topOffset))
+    v.jumpToMatch({
+      match: m,
+      matches: search.matches,
+      index: search.index,
+      pattern: search.pattern,
+      topOffset: target?.topOffset ?? 0,
+    })
   }, [search?.index, search?.pattern])
 
   // Populate visibleHeadingIds once after first layout so the breadcrumb's

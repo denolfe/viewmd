@@ -1,4 +1,5 @@
 import { TextAttributes } from '@opentui/core'
+import { HighlightedText, MatchScope } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 
 export function ImageBlock({ alt, src, id }: { alt: string; src: string; id: string }) {
@@ -6,7 +7,14 @@ export function ImageBlock({ alt, src, id }: { alt: string; src: string; id: str
     <box id={id} marginBottom={1} paddingX={2}>
       <text fg={theme.foregroundMuted}>
         <em>
-          [Image: {alt || src}
+          [Image:{' '}
+          {alt ? (
+            <MatchScope id={id}>
+              <HighlightedText value={alt} />
+            </MatchScope>
+          ) : (
+            src
+          )}
           {alt && src ? (
             <>
               {' → '}

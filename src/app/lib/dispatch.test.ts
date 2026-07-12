@@ -23,6 +23,8 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
       viewportHeight: 0,
       realContentHeight: 0,
     }),
+    jumpToMatch: () => {},
+    seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
   }
   return { ref: { current: handle }, calls }
@@ -115,6 +117,8 @@ function makePositionalViewerRef(
       viewportHeight: 0,
       realContentHeight: 0,
     }),
+    jumpToMatch: () => {},
+    seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
   }
   return { ref: { current: handle } }

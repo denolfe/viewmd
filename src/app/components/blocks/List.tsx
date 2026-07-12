@@ -1,4 +1,4 @@
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import { NodeList, NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
@@ -38,7 +38,9 @@ function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }
     return (
       <>
         <text id={blockId([...pathPrefix, 0])}>
-          <InlineRenderer nodes={first.inline} />
+          <MatchScope id={blockId([...pathPrefix, 0])}>
+            <InlineRenderer nodes={first.inline} />
+          </MatchScope>
         </text>
         {/* rest[i] is nodes[i+1] since the first child was destructured off index 0 */}
         {rest.map((n, i) => (

@@ -1,5 +1,5 @@
 import { Fragment } from 'react'
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import { NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
@@ -43,7 +43,9 @@ export function Blockquote({
               {child.kind === 'paragraph' ? (
                 <text id={blockId(childPath)} fg={theme.blockquote}>
                   <em>
-                    <InlineRenderer nodes={child.inline} />
+                    <MatchScope id={blockId(childPath)}>
+                      <InlineRenderer nodes={child.inline} />
+                    </MatchScope>
                   </em>
                 </text>
               ) : (

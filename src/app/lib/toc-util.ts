@@ -99,6 +99,23 @@ export function breadcrumbHeightForHeading(params: {
   }).length
 }
 
+// Rows the breadcrumb shows while `id` sits above the viewport (a search jump
+// pins the match line to the top, not the heading): the full chain including
+// `id`'s own crumb.
+export function breadcrumbHeightAboveHeading(params: {
+  toc: TocEntry[]
+  id: string
+  fileLabel?: string
+}): number {
+  const { toc, id, fileLabel } = params
+  return breadcrumbRows({
+    chain: ancestorChain(toc, id),
+    visibleHeadingIds: new Set(),
+    hasH1: toc[0]?.level === 1,
+    fileLabel,
+  }).length
+}
+
 // Not built on walkToc: prunes collapsed subtrees, so its traversal differs
 // from the unconditional pre-order primitive.
 export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>): TocEntry[] {

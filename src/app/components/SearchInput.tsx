@@ -6,13 +6,18 @@ import { theme } from '../styles/theme'
 import type { Node } from '../lib/ast'
 
 export function SearchInput({ nodes }: { nodes: Node[] }) {
-  const { search, setSearch, setFocus } = useAppState()
+  const { search, setSearch, setFocus, viewerRef } = useAppState()
   const [value, setValue] = useState('')
 
   const commit = () => {
     if (!search) return
     const matches = findMatches(nodes, value)
-    setSearch({ ...search, pattern: value, matches, index: matches.length ? 0 : -1 })
+    // Seed at the first visible match (view stays put), else the nearest match
+    // in the search direction — not blindly at the document's first match.
+    const index = matches.length
+      ? (viewerRef.current?.seedMatchIndex({ matches, pattern: value, dir: search.dir }) ?? 0)
+      : -1
+    setSearch({ ...search, pattern: value, matches, index })
     setFocus('viewer')
   }
 

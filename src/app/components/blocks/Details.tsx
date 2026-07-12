@@ -1,4 +1,4 @@
-import { InlineRenderer } from './InlineRenderer'
+import { InlineRenderer, MatchScope } from './InlineRenderer'
 import { NodeList } from './NodeRenderer'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
@@ -19,7 +19,9 @@ export function Details({
     <box id={blockId(path)} paddingX={2}>
       <text fg={theme.foregroundMuted}>
         {'▾ '}
-        <InlineRenderer nodes={node.summary} />
+        <MatchScope id={blockId(path)}>
+          <InlineRenderer nodes={node.summary} />
+        </MatchScope>
       </text>
       <box paddingLeft={2}>
         <NodeList nodes={node.children} pathPrefix={path} />

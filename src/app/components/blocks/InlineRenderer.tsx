@@ -1,6 +1,8 @@
+import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
+import type { Match } from '../../lib/search'
 import { useAppState } from '../../state'
 import { escapeRegex } from '../../lib/regex-util'
 import { theme } from '../../styles/theme'
@@ -67,7 +69,9 @@ function InlineOne({ node }: { node: InlineNode }) {
     case 'image':
       return (
         <em>
-          <span fg={theme.foregroundMuted}>[Image: {node.alt || node.src}</span>
+          <span fg={theme.foregroundMuted}>
+            [Image: {node.alt ? <HighlightedText value={node.alt} /> : node.src}
+          </span>
           {node.alt && node.src ? (
             <>
               <span fg={theme.foregroundMuted}>{' → '}</span>
@@ -92,19 +96,46 @@ function InlineOne({ node }: { node: InlineNode }) {
   }
 }
 
-// Document-order counter assigned to each rendered match. Relies on React
-// rendering function-component bodies top-down in tree order so the nth match
-// rendered here lines up with `search.matches[n]` from `findMatches` (which
-// walks the AST in the same order). Viewer calls `resetMatchCounter()` before
-// the tree renders.
-let matchCounter = 0
-export function resetMatchCounter(): void {
-  matchCounter = 0
+// Per-block scope for active-match identification. Each block that renders
+// highlightable inline content provides its element id plus an occurrence
+// counter; the counter object is recreated on every render, keeping ordinals
+// aligned with findMatches' within-block order, and blocks that render no
+// highlights (syntax-highlighted code) can't shift highlights in other blocks.
+type MatchScopeValue = { id: string; counter: { n: number } }
+const MatchScopeContext = createContext<MatchScopeValue | null>(null)
+
+export function MatchScope({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <MatchScopeContext.Provider value={{ id, counter: { n: 0 } }}>
+      {children}
+    </MatchScopeContext.Provider>
+  )
 }
 
-function HighlightedText({ value }: { value: string }) {
+/**
+ * Occurrence ordinal (within its block) of the active match, or -1 when the
+ * active match lives in a different block. Mirrors the k-counting in the
+ * Viewer's resolveMatchY.
+ */
+function activeOccurrenceInBlock(
+  search: { matches: Match[]; index: number },
+  scope: MatchScopeValue | null,
+): number {
+  if (!scope || search.index < 0) return -1
+  const active = search.matches[search.index]
+  if (!active || active.blockElementId !== scope.id) return -1
+  let occ = 0
+  for (let i = 0; i < search.index; i++) {
+    if (search.matches[i]?.blockElementId === active.blockElementId) occ++
+  }
+  return occ
+}
+
+export function HighlightedText({ value }: { value: string }) {
   const { search } = useAppState()
+  const scope = useContext(MatchScopeContext)
   if (!search?.pattern || !search.matches.length) return <>{value}</>
+  const activeOcc = activeOccurrenceInBlock(search, scope)
   const pattern = search.pattern
   const re = new RegExp(escapeRegex(pattern), 'gi')
   const parts: ReactNode[] = []
@@ -113,7 +144,7 @@ function HighlightedText({ value }: { value: string }) {
   let keyIdx = 0
   while ((m = re.exec(value)) !== null) {
     if (m.index > last) parts.push(value.slice(last, m.index))
-    const isActive = matchCounter++ === search.index
+    const isActive = scope !== null && scope.counter.n++ === activeOcc
     parts.push(
       <span
         key={`m${keyIdx++}`}

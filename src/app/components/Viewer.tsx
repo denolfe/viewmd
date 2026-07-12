@@ -3,11 +3,11 @@ import { useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
-import { resetMatchCounter } from './blocks/InlineRenderer'
 import { ScrollIndicators } from './ScrollIndicators'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
+import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
 import { theme } from '../styles/theme'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
@@ -58,6 +58,22 @@ export function Viewer({
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, pattern, activeIndex }) =>
         resolveScrollMarks(box, tailRef.current, { matches, pattern, activeIndex }),
+      seedMatchIndex: ({ matches, pattern, dir }) =>
+        seedMatchIndex({
+          matchYs: matches.map((m, i) => resolveMatchY(box, m, matches, i, pattern)),
+          viewportTop: box.viewport.y,
+          dir,
+        }),
+      jumpToMatch: ({ match, matches, index, pattern, topOffset }) => {
+        const y = resolveMatchY(box, match, matches, index, pattern)
+        if (y === null) return
+        const delta = matchJumpDelta({
+          matchY: y,
+          viewportTop: box.viewport.y,
+          topOffset: topOffset ?? 0,
+        })
+        if (delta !== 0) box.scrollBy(delta)
+      },
       subscribeScroll: cb => {
         scrollListeners.add(cb)
         return () => scrollListeners.delete(cb)
@@ -76,7 +92,6 @@ export function Viewer({
     }
   }, [viewerRef])
 
-  resetMatchCounter()
   return (
     <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
       <scrollbox
@@ -201,17 +216,21 @@ function asTextBearer(node: unknown): TextBearer | null {
   return node as unknown as TextBearer
 }
 
-/** Depth-first search for the first descendant exposing plainText + lineInfo. */
-// First text-bearing descendant. Multi-text blocks (e.g. tables) rely on the
-// kth-occurrence check in resolveMatchY missing in the wrong child → block-top fallback.
-function findTextBearer(node: { getChildren(): unknown[] }): TextBearer | null {
+/**
+ * All text-bearing descendants in tree order. Multi-text blocks (tables,
+ * blockquotes) render one text renderable per cell/paragraph; occurrence
+ * counting must span them all to land on the right one.
+ */
+function collectTextBearers(node: { getChildren(): unknown[] }, out: TextBearer[]): TextBearer[] {
   const self = asTextBearer(node)
-  if (self) return self
-  for (const child of node.getChildren()) {
-    const found = findTextBearer(child as { getChildren(): unknown[] })
-    if (found) return found
+  if (self) {
+    out.push(self)
+    return out
   }
-  return null
+  for (const child of node.getChildren()) {
+    collectTextBearers(child as { getChildren(): unknown[] }, out)
+  }
+  return out
 }
 
 /** Visual-line index for a character offset, via lineInfo.lineStartCols (cols ≈ chars). */
@@ -233,23 +252,26 @@ function resolveMatchY(
 ): number | null {
   const blockBox = box.content.findDescendantById(match.blockElementId)
   if (!blockBox) return null
-  const bearer = findTextBearer(blockBox)
-  if (!bearer) return blockBox.y
+  const bearers = collectTextBearers(blockBox, [])
+  if (bearers.length === 0) return blockBox.y
+  // The match is the kth occurrence of the pattern within this block; walk the
+  // block's text renderables in tree order (matching findMatches' AST order)
+  // counting occurrences until the kth is reached.
   let k = 0
   for (let i = 0; i < matchIndex; i++) {
     if (matches[i]?.blockElementId === match.blockElementId) k++
   }
-  const hay = bearer.plainText.toLowerCase()
   const needle = pattern.toLowerCase()
-  let from = 0
-  let found = -1
-  for (let occ = 0; occ <= k; occ++) {
-    found = hay.indexOf(needle, from)
-    if (found < 0) break
-    from = found + Math.max(1, needle.length)
+  for (const bearer of bearers) {
+    const hay = bearer.plainText.toLowerCase()
+    let found = hay.indexOf(needle)
+    while (found >= 0) {
+      if (k === 0) return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, found)
+      k--
+      found = hay.indexOf(needle, found + Math.max(1, needle.length))
+    }
   }
-  if (found < 0) return blockBox.y
-  return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, found)
+  return blockBox.y
 }
 
 function resolveScrollMarks(
