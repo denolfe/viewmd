@@ -34,6 +34,16 @@ describe('tla-patches', () => {
     expect(out).toContain('ERR_MODULE_NOT_FOUND')
   })
 
+  test('matches Windows backslash-separated paths', () => {
+    const patches = buildTlaPatches('@opentui/core-win32-x64')
+    const out = applyTlaPatches({
+      path: 'C:\\repo\\node_modules\\@opentui\\core\\index-pcvh9d34.js',
+      source: 'var backend2 = await loadBackend2();',
+      patches,
+    })
+    expect(out).not.toContain('await')
+  })
+
   test('leaves non-matching paths untouched', () => {
     const patches = buildTlaPatches('@opentui/core-darwin-arm64')
     const source = 'var backend2 = await loadBackend2();'

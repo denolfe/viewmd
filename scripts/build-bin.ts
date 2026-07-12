@@ -59,12 +59,22 @@ await Bun.build({
     {
       name: 'viewmd-compiled-runtime',
       setup(build) {
-        build.onResolve({ filter: new RegExp(`^${native.packageName}$`) }, () => ({
-          path: native.packageName,
-          namespace: 'opentui-native-shim',
+        // resolveNativePackage() dynamic-imports every platform variant; the
+        // runners install same-OS siblings too (e.g. linux glibc + musl), and
+        // bundling a sibling drags in its top-level await. Alias the target
+        // package to the shim and every sibling to a not-installed stub — dead
+        // code at runtime since the resolveNativePackage() call is patched out.
+        build.onResolve({ filter: /^@opentui\/core-[a-z0-9]+-[a-z0-9-]+$/ }, args => ({
+          path: args.path,
+          namespace:
+            args.path === native.packageName ? 'opentui-native-shim' : 'opentui-native-stub',
         }))
         build.onLoad({ filter: /.*/, namespace: 'opentui-native-shim' }, () => ({
           contents: shimSource,
+          loader: 'ts',
+        }))
+        build.onLoad({ filter: /.*/, namespace: 'opentui-native-stub' }, args => ({
+          contents: `throw Object.assign(new Error(${JSON.stringify(`${args.path} is not bundled in compiled viewmd`)}), { code: 'ERR_MODULE_NOT_FOUND' })`,
           loader: 'ts',
         }))
         build.onLoad({ filter: /src\/compiled-runtime\.ts$/ }, () => ({
@@ -72,7 +82,7 @@ await Bun.build({
           loader: 'ts',
         }))
         build.onLoad(
-          { filter: /@opentui\/(core\/index|react\/chunk)-[a-z0-9]+\.js$/ },
+          { filter: /@opentui[\\/](core[\\/]index|react[\\/]chunk)-[a-z0-9]+\.js$/ },
           async args => ({
             contents: applyTlaPatches({
               path: args.path,

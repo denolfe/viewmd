@@ -24,14 +24,14 @@ export function buildTlaPatches(nativePackageName: string): TlaPatch[] {
       // bun-ffi-structs picks its FFI backend with `await loadBackend2()`;
       // under Bun that path is just a dynamic import of bun:ffi, which
       // require() loads synchronously.
-      pathFilter: /@opentui\/core\/index-[a-z0-9]+\.js$/,
+      pathFilter: /@opentui[\\/]core[\\/]index-[a-z0-9]+\.js$/,
       find: 'var backend2 = await loadBackend2();',
       replace: 'var backend2 = createBunBackend2(require("bun:ffi"));',
     },
     {
       // resolveNativePackage() dynamic-imports the platform package, which the
       // build aliases to the sync stable-cache shim — import it statically.
-      pathFilter: /@opentui\/core\/index-[a-z0-9]+\.js$/,
+      pathFilter: /@opentui[\\/]core[\\/]index-[a-z0-9]+\.js$/,
       find: 'var nativePackage = await resolveNativePackage();',
       replace: 'var nativePackage = { default: __viewmdNativeLibPath };',
       prepend: `import __viewmdNativeLibPath from ${JSON.stringify(nativePackageName)}\n`,
@@ -40,7 +40,7 @@ export function buildTlaPatches(nativePackageName: string): TlaPatch[] {
       // DEV-only react-devtools import. Compiled binaries don't bundle
       // devtools; throwing the module-not-found shape the surrounding catch
       // expects preserves its install-hint warning under DEV=true.
-      pathFilter: /@opentui\/react\/chunk-[a-z0-9]+\.js$/,
+      pathFilter: /@opentui[\\/]react[\\/]chunk-[a-z0-9]+\.js$/,
       find: 'await import("./chunk-bdqvmfwv.js");',
       replace:
         'throw Object.assign(new Error("react-devtools-core is not bundled in compiled viewmd"), { code: "ERR_MODULE_NOT_FOUND" });',
