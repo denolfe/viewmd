@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 import { mkdir, writeFile } from 'node:fs/promises'
-import { $ } from 'bun'
 import pkg from '../package.json'
+import { buildShimSource, resolveNativeLib } from './native-shim'
 import { hostPlatform } from './platforms'
 
 const platform = hostPlatform()
@@ -10,7 +10,30 @@ const outFile = `${outDir}/${platform.binName}`
 
 await mkdir(outDir, { recursive: true })
 
-await $`bun build --compile --target=${platform.bunTarget} ./src/index.tsx ./node_modules/@opentui/core/parser.worker.js --outfile ${outFile}`
+// Replace the OpenTUI native package with a shim that dlopens the lib from a
+// stable cache path instead of re-extracting the embedded copy on every run.
+const native = resolveNativeLib(platform)
+const shimSource = buildShimSource(native)
+
+await Bun.build({
+  entrypoints: ['./src/index.tsx', './node_modules/@opentui/core/parser.worker.js'],
+  compile: { target: platform.bunTarget, outfile: outFile },
+  plugins: [
+    {
+      name: 'opentui-native-stable-cache',
+      setup(build) {
+        build.onResolve({ filter: new RegExp(`^${native.packageName}$`) }, () => ({
+          path: native.packageName,
+          namespace: 'opentui-native-shim',
+        }))
+        build.onLoad({ filter: /.*/, namespace: 'opentui-native-shim' }, () => ({
+          contents: shimSource,
+          loader: 'ts',
+        }))
+      },
+    },
+  ],
+})
 
 await writeFile(
   `${outDir}/metadata.json`,

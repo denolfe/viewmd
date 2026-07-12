@@ -4,7 +4,7 @@ export type Platform = {
   id: PlatformId
   os: string // node process.platform value
   cpu: string // node process.arch value
-  bunTarget: string
+  bunTarget: Bun.Build.CompileTarget
   runsOn: string // GitHub Actions runner label
   binName: string
 }
