@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
@@ -8,6 +8,7 @@ import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
+import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
 import { theme } from '../styles/theme'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
@@ -44,6 +45,28 @@ export function Viewer({
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
+
+  const [mountedCount, setMountedCount] = useState(() =>
+    initialMountCount({ nodes, contentWidth, viewportHeight: height }),
+  )
+  const fullyMounted = mountedCount >= nodes.length
+
+  // Grow one chunk per task until the whole doc is mounted. setTimeout(0)
+  // yields between commits so keyboard/scroll stay live during mount.
+  useEffect(() => {
+    if (fullyMounted) return
+    const tid = setTimeout(() => {
+      setMountedCount(c => Math.min(c + CHUNK_SIZE, nodes.length))
+    }, 0)
+    return () => clearTimeout(tid)
+  }, [fullyMounted, mountedCount, nodes])
+
+  const mountedNodes = fullyMounted ? nodes : nodes.slice(0, mountedCount)
+  // Spacer stands in for unmounted content so scrollbar/G read ~right.
+  const estimatedRemaining = useMemo(
+    () => (fullyMounted ? 0 : estimateTotalRows(nodes.slice(mountedCount), contentWidth)),
+    [fullyMounted, nodes, mountedCount, contentWidth],
+  )
 
   useEffect(() => {
     const box = localRef.current
@@ -109,7 +132,8 @@ export function Viewer({
       >
         <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
-          <NodeList nodes={nodes} />
+          <NodeList nodes={mountedNodes} />
+          {!fullyMounted && <box height={estimatedRemaining} />}
         </box>
         <box height={tailSpace} />
       </scrollbox>
