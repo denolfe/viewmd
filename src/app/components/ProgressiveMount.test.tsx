@@ -31,10 +31,26 @@ const mount = async (md: string) => {
     await new Promise(r => setTimeout(r, 30))
     await setup.renderOnce()
   }
+  // Fixed-time settles race against React commits on slow CI runners (e.g.
+  // typing the search pattern before the search <input> takes focus drops the
+  // keys) — settle until the frame proves the condition instead.
+  const settleUntil = async (isVisible: (frame: string) => boolean) => {
+    for (let i = 0; i < 40; i++) {
+      await settle()
+      if (isVisible(setup.captureCharFrame())) return
+    }
+    throw new Error(`condition not met after 40 settles:\n${setup.captureCharFrame()}`)
+  }
+  const searchPromptShows = (text: string) => (frame: string) =>
+    frame.split('\n').some(line => line.trimStart().startsWith(text))
+  // The committed pattern also echoes in the status line as `/<pattern> match
+  // n/m` — only a line without the prompt prefix proves the body text mounted.
+  const bodyLineShows = (text: string) => (frame: string) =>
+    frame.split('\n').some(line => line.includes(text) && !line.includes(`/${text}`))
   createRoot(setup.renderer).render(
     <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/f.md" />,
   )
-  return { nodes, setup, settle }
+  return { nodes, setup, settle, settleUntil, searchPromptShows, bodyLineShows }
 }
 
 test('first frame shows top content before the full doc mounts', async () => {
@@ -44,7 +60,7 @@ test('first frame shows top content before the full doc mounts', async () => {
 })
 
 test('after settling, the last node is reachable and mounted (spacer gone)', async () => {
-  const { setup, settle } = await mount(bigFixture())
+  const { setup, settle, settleUntil, searchPromptShows, bodyLineShows } = await mount(bigFixture())
   // Let the growth loop finish: settle repeatedly until mounting stabilizes.
   for (let i = 0; i < 40; i++) await settle()
   // `G`/scrollToBottom overshoots into the synthetic tail spacer by design
@@ -55,12 +71,12 @@ test('after settling, the last node is reachable and mounted (spacer gone)', asy
   await setup.mockInput.typeText('x') // handshake consumes first key
   await settle()
   await setup.mockInput.typeText('/')
-  await settle()
+  await settleUntil(searchPromptShows('/'))
   await setup.mockInput.typeText('THE-FINAL-LINE')
-  await settle()
+  await settleUntil(searchPromptShows('/THE-FINAL-LINE'))
   setup.mockInput.pressEnter()
-  await settle()
-  expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
+  await settleUntil(bodyLineShows('THE-FINAL-LINE'))
+  expect(bodyLineShows('THE-FINAL-LINE')(setup.captureCharFrame())).toBe(true)
 })
 
 test('small docs mount fully on first render', async () => {
@@ -159,7 +175,7 @@ test('a direct scroll while a jump is pending supersedes the pending jump', asyn
 })
 
 test('search jump issued before mount completes lands once the target mounts', async () => {
-  const { setup, settle } = await mount(bigFixture())
+  const { setup, settle, settleUntil, searchPromptShows, bodyLineShows } = await mount(bigFixture())
   // Search right away, while the growth loop is still running: the commit
   // fires with the last block (the match target) not yet mounted, so
   // jumpToMatch misses and must record a pending target that completes once
@@ -170,11 +186,10 @@ test('search jump issued before mount completes lands once the target mounts', a
   await setup.mockInput.typeText('x') // handshake consumes first key
   await settle()
   await setup.mockInput.typeText('/')
-  await settle()
+  await settleUntil(searchPromptShows('/'))
   await setup.mockInput.typeText('THE-FINAL-LINE')
-  await settle()
+  await settleUntil(searchPromptShows('/THE-FINAL-LINE'))
   setup.mockInput.pressEnter()
-  await settle()
-  for (let i = 0; i < 40; i++) await settle()
-  expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
+  await settleUntil(bodyLineShows('THE-FINAL-LINE'))
+  expect(bodyLineShows('THE-FINAL-LINE')(setup.captureCharFrame())).toBe(true)
 })
