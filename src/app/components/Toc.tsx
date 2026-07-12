@@ -1,3 +1,6 @@
+import { useLayoutEffect, useRef } from 'react'
+import { useRenderer } from '@opentui/react'
+import type { ScrollBoxRenderable } from '@opentui/core'
 import { useAppState } from '../state'
 import { flattenVisible, isTocExpanded } from '../lib/toc-util'
 import { theme } from '../styles/theme'
@@ -7,9 +10,29 @@ import { MutedInline } from './blocks/MutedInline'
 export function Toc({ toc }: { toc: TocEntry[] }) {
   const { expanded, currentHeadingId, tocCursorId, focus } = useAppState()
   const visible = flattenVisible(toc, expanded)
+  const renderer = useRenderer()
+  const boxRef = useRef<ScrollBoxRenderable | null>(null)
+
+  // On mount, scrollSize is set before viewportSize settles, so auto-visibility
+  // recalculates with garbage metrics and the bar flashes visible for one
+  // frame. Force it hidden until the renderer's next post-layout frame, then
+  // hand control back to the normal auto-visibility logic.
+  useLayoutEffect(() => {
+    const box = boxRef.current
+    if (!box) return
+    box.verticalScrollBar.visible = false
+    const onFrame = () => {
+      box.verticalScrollBar.resetVisibilityControl()
+      renderer.off('frame', onFrame)
+    }
+    renderer.on('frame', onFrame)
+    return () => {
+      renderer.off('frame', onFrame)
+    }
+  }, [renderer])
 
   return (
-    <scrollbox flexGrow={1} focusable={false} paddingX={1} paddingTop={1}>
+    <scrollbox ref={boxRef} flexGrow={1} focusable={false} paddingX={1} paddingTop={1}>
       {visible.map(e => {
         const isExpanded = isTocExpanded(e, expanded)
         const hasChildren = e.children.length > 0
