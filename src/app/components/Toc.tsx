@@ -1,5 +1,5 @@
 import { useAppState } from '../state'
-import { flattenVisible } from '../lib/toc-util'
+import { flattenVisible, isTocExpanded } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
 import { MutedInline } from './blocks/MutedInline'
@@ -11,7 +11,7 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
   return (
     <scrollbox flexGrow={1} focusable={false} paddingX={1} paddingTop={1}>
       {visible.map(e => {
-        const isExpanded = expanded.get(e.id) ?? e.level <= 2
+        const isExpanded = isTocExpanded(e, expanded)
         const hasChildren = e.children.length > 0
         const marker = hasChildren ? (isExpanded ? '▾' : '▸') : '•'
         const indent = '  '.repeat(Math.max(0, e.level - 1))

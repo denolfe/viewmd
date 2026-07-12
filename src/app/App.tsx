@@ -10,7 +10,7 @@ import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import { breadcrumbHeightForHeading, tocContentWidth } from './lib/toc-util'
+import { breadcrumbHeightForHeading, tocContentWidth, toggleTocExpanded } from './lib/toc-util'
 import { StatusLine } from './components/StatusLine'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
@@ -40,13 +40,12 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     toc[0]?.level === 1 ? new Set([toc[0].id]) : new Set(),
   )
 
-  const toggleExpanded = useCallback((id: string) => {
-    setExpanded(prev => {
-      const next = new Map(prev)
-      next.set(id, !(prev.get(id) ?? true))
-      return next
-    })
-  }, [])
+  const toggleExpanded = useCallback(
+    (id: string) => {
+      setExpanded(prev => toggleTocExpanded({ toc, expanded: prev, id }))
+    },
+    [toc],
+  )
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
   const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
 

@@ -107,14 +107,27 @@ export function flattenVisible(toc: TocEntry[], expanded: Map<string, boolean>):
   return out
 }
 
+// Every entry defaults to expanded; the map only holds explicit user toggles.
+export function isTocExpanded(e: TocEntry, expanded: Map<string, boolean>): boolean {
+  return expanded.get(e.id) ?? true
+}
+
+export function toggleTocExpanded(params: {
+  toc: TocEntry[]
+  expanded: Map<string, boolean>
+  id: string
+}): Map<string, boolean> {
+  const { toc, expanded, id } = params
+  const entry = findToc(toc, e => e.id === id)
+  if (!entry) return expanded
+  const next = new Map(expanded)
+  next.set(id, !isTocExpanded(entry, expanded))
+  return next
+}
+
 function walkVisible(entries: TocEntry[], expanded: Map<string, boolean>, out: TocEntry[]): void {
   for (const e of entries) {
     out.push(e)
-    const isExpanded = expanded.get(e.id) ?? defaultExpanded(e)
-    if (isExpanded && e.children.length) walkVisible(e.children, expanded, out)
+    if (isTocExpanded(e, expanded) && e.children.length) walkVisible(e.children, expanded, out)
   }
-}
-
-function defaultExpanded(e: TocEntry): boolean {
-  return e.level <= 2
 }

@@ -37,6 +37,52 @@ function fixtureDoc(): string {
   return md
 }
 
+function pressKey(setup: Awaited<ReturnType<typeof testRender>>, name: string, sequence = name) {
+  setup.renderer.keyInput.emit('keypress', {
+    name,
+    sequence,
+    ctrl: false,
+    shift: false,
+    meta: false,
+    option: false,
+    eventType: 'press',
+    repeated: false,
+  } as KeyEvent)
+}
+
+describe('TOC expand', () => {
+  // Regression: deep headings (h4/h5) must be visible in the TOC on open, and
+  // the first space-press must flip relative to the effective default (a
+  // stale `?? true` default once made the first toggle on an h3 a no-op).
+  test('h4 is visible on open; space on its h3 parent hides it', async () => {
+    // Enough body that the h4 heading is below the viewer fold — the only way
+    // 'Deeper' can appear on screen is via the TOC.
+    const filler = Array.from({ length: 60 }, (_, i) => `Body line ${i}.`).join('\n\n')
+    const md = `# Title\n\n## Section\n\n### Deep\n\n${filler}\n\n#### Deeper\n\nBody.\n`
+    const { nodes, toc, headingIds } = buildTree(md)
+    const setup = await testRender(
+      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="doc.md" />,
+      { width: 160, height: 40 },
+    )
+    await setup.flush()
+
+    // First keypress is consumed by the terminal capability handshake.
+    await act(async () => pressKey(setup, 'x'))
+    await setup.flush()
+    expect(setup.captureCharFrame()).toContain('Deeper')
+
+    await act(async () => pressKey(setup, 'tab', '\t')) // focus sidebar (cursor on Title)
+    await act(async () => pressKey(setup, 'j')) // Section
+    await act(async () => pressKey(setup, 'j')) // Deep (h3)
+    await act(async () => pressKey(setup, 'space', ' ')) // collapse Deep
+    await setup.flush()
+    await setup.renderOnce()
+    expect(setup.captureCharFrame()).not.toContain('Deeper')
+
+    setup.renderer.destroy()
+  })
+})
+
 describe('TOC toggle', () => {
   // Regression: re-showing the TOC used to remount its scrollbox, which drew
   // the TOC's vertical scrollbar for a single frame before layout settled —

@@ -9,6 +9,7 @@ import {
   flattenVisible,
   inlineVisibleWidth,
   tocContentWidth,
+  toggleTocExpanded,
   walkToc,
 } from './toc-util'
 import type { TocEntry } from './ast'
@@ -101,12 +102,50 @@ describe('flattenVisible', () => {
     ])
     expect(flattenVisible(toc, exp).map(e => e.id)).toEqual(['a', 'd'])
   })
-  test('default-expanded for levels <= 2', () => {
+  test('default-expanded at every level', () => {
     const exp = new Map<string, boolean>()
-    // a (L1) default-expanded -> b visible
-    // b (L2) default-expanded -> c visible
-    // c is a leaf; d (L1) default-expanded but has no children
     expect(flattenVisible(toc, exp).map(e => e.id)).toEqual(['a', 'b', 'c', 'd'])
+  })
+})
+
+describe('toggleTocExpanded', () => {
+  const deepToc: TocEntry[] = [
+    {
+      id: 'h2',
+      level: 2,
+      text: 'H2',
+      inline: [],
+      children: [
+        {
+          id: 'h3',
+          level: 3,
+          text: 'H3',
+          inline: [],
+          children: [{ id: 'h4', level: 4, text: 'H4', inline: [], children: [] }],
+        },
+      ],
+    },
+  ]
+
+  test('h4 under an h3 is visible with no explicit toggles', () => {
+    expect(flattenVisible(deepToc, new Map()).map(e => e.id)).toEqual(['h2', 'h3', 'h4'])
+  })
+
+  test('first toggle on an h3 collapses it, hiding its h4 child', () => {
+    const next = toggleTocExpanded({ toc: deepToc, expanded: new Map(), id: 'h3' })
+    expect(next.get('h3')).toBe(false)
+    expect(flattenVisible(deepToc, next).map(e => e.id)).toEqual(['h2', 'h3'])
+  })
+
+  test('toggle twice restores the default state', () => {
+    const once = toggleTocExpanded({ toc: deepToc, expanded: new Map(), id: 'h3' })
+    const twice = toggleTocExpanded({ toc: deepToc, expanded: once, id: 'h3' })
+    expect(flattenVisible(deepToc, twice).map(e => e.id)).toEqual(['h2', 'h3', 'h4'])
+  })
+
+  test('unknown id -> unchanged map', () => {
+    const exp = new Map([['h2', false]])
+    expect(toggleTocExpanded({ toc: deepToc, expanded: exp, id: 'nope' })).toBe(exp)
   })
 })
 
