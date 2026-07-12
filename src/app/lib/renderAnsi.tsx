@@ -17,8 +17,7 @@ import type { FrontmatterRow } from './frontmatter'
 
 let parsersRegistered = false
 
-// Estimates are LOW-biased (see progressive.ts), so pad the target rows
-// before slicing to avoid truncating content that actually fits on screen.
+/** Extra rows added to the slice target; see the capRows comment in renderAnsi. */
 const CAP_BUFFER_ROWS = 10
 
 export async function renderAnsi(opts: {
