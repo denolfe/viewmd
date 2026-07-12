@@ -2,7 +2,17 @@
 
 An interactive terminal markdown viewer
 
-> Pre-1.0 beta. Until the first stable release, install the beta explicitly: `npm install -g viewmd-cli@beta`.
+<img src="preview.png" alt="Preview of viewmd rendering a markdown document with various features" width="600"/>
+
+## Features
+
+- **Mermaid diagrams** rendered as ASCII art, via [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid).
+- **Syntax-highlighted code blocks** - tree-sitter highlighting in a bordered box labeled with the language.
+- **Table-of-contents sidebar** - a collapsible tree of the document's headings.
+- **Sticky headers** - as you scroll past a heading, its ancestors stay pinned at the top so you always know where you are.
+- **Ergonomic navigation** - header navigation, page up/down, half-page up/down, and mouse scrolling.
+- **Search** forward and backward, `less`-style.
+- **Images** appear as a labeled, clickable link
 
 ## Install
 
@@ -17,21 +27,9 @@ The package is `viewmd-cli`; the command it installs is `viewmd`.
 ```sh
 viewmd README.md     # open the interactive viewer (needs a TTY)
 viewmd -r README.md  # print a one-shot ANSI render and exit
+cat README.md | viewmd  # pipe input to the interactive viewer (needs a TTY)
+cat README.md | viewmd -r  # pipe input to a one-shot render
 ```
-
-```sh
-viewmd README.md
-```
-
-## Features
-
-- **Mermaid diagrams** rendered as ASCII art, via [beautiful-mermaid](https://github.com/lukilabs/beautiful-mermaid).
-- **Syntax-highlighted code blocks** - tree-sitter highlighting in a bordered box labeled with the language.
-- **Table-of-contents sidebar** - a collapsible tree of the document's headings.
-- **Sticky headers** - as you scroll past a heading, its ancestors stay pinned at the top so you always know where you are.
-- **Ergonomic navigation** - header navigation, page up/down, half-page up/down, and mouse scrolling.
-- **Search** forward and backward, `less`-style.
-- **Images** appear as a labeled, clickable link
 
 ## Keyboard shortcuts
 
@@ -54,9 +52,10 @@ viewmd README.md
 
 ### Sidebar
 
-| Key           | Action             |
-| ------------- | ------------------ |
-| `j` / `k`     | Move down / up     |
-| `Space`       | Expand / collapse  |
-| `Enter`       | Jump to heading    |
-| `Tab` / `Esc` | Back to the viewer |
+| Key           | Action                 |
+| ------------- | ---------------------- |
+| `j` / `k`     | Move down / up         |
+| `t`           | Toggle expand/collapse |
+| `Space`       | Expand / collapse      |
+| `Enter`       | Jump to heading        |
+| `Tab` / `Esc` | Back to the viewer     |
