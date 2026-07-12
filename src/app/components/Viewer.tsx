@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { useTerminalDimensions } from '@opentui/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useRenderer, useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
@@ -8,6 +8,7 @@ import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
+import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
 import { theme } from '../styles/theme'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
@@ -32,6 +33,7 @@ export function Viewer({
   onScroll?: () => void
 }) {
   const { viewerRef, contentWidth } = useAppState()
+  const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
   // Only the status line (1 row) sits below the viewport now — the breadcrumb
@@ -44,16 +46,60 @@ export function Viewer({
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
+  const pendingRef = useRef<PendingTarget | null>(null)
+  const notifyRef = useRef<() => void>(() => {})
+  const needsNotifyRef = useRef(false)
+  // True only while the frame retry itself scrolls, so watchScroll can tell a
+  // retry's own scroll apart from wheel/drag (which must cancel the pending).
+  const completingRef = useRef(false)
+
+  const [mountedCount, setMountedCount] = useState(() =>
+    initialMountCount({ nodes, contentWidth, viewportHeight: height }),
+  )
+  const fullyMounted = mountedCount >= nodes.length
+  const fullyMountedRef = useRef(fullyMounted)
+  fullyMountedRef.current = fullyMounted
+
+  // Grow one chunk per task until the whole doc is mounted. setTimeout(0)
+  // yields between commits so keyboard/scroll stay live during mount.
+  useEffect(() => {
+    if (fullyMounted) return
+    const tid = setTimeout(() => {
+      setMountedCount(c => Math.min(c + CHUNK_SIZE, nodes.length))
+    }, 0)
+    return () => clearTimeout(tid)
+  }, [fullyMounted, mountedCount, nodes])
+
+  const mountedNodes = fullyMounted ? nodes : nodes.slice(0, mountedCount)
+  // Spacer stands in for unmounted content so scrollbar/G read ~right.
+  const estimatedRemaining = useMemo(
+    () => (fullyMounted ? 0 : estimateTotalRows(nodes.slice(mountedCount), contentWidth)),
+    [fullyMounted, nodes, mountedCount, contentWidth],
+  )
 
   useEffect(() => {
     const box = localRef.current
     if (!box) return
     const scrollListeners = new Set<() => void>()
+    // Any explicit navigation supersedes a jump still waiting on its chunk —
+    // otherwise a stale pending target would yank the viewport later.
     const handle: ScrollboxHandle = {
-      scrollBy: delta => box.scrollBy(delta),
-      scrollTo: y => box.scrollTo(y),
-      scrollToBottom: () => box.scrollTo(box.scrollHeight),
-      scrollChildToTop: (id, topOffset) => scrollChildToTop(box, id, topOffset ?? 0),
+      scrollBy: delta => {
+        pendingRef.current = null
+        box.scrollBy(delta)
+      },
+      scrollTo: y => {
+        pendingRef.current = null
+        box.scrollTo(y)
+      },
+      scrollToBottom: () => {
+        pendingRef.current = null
+        box.scrollTo(box.scrollHeight)
+      },
+      scrollChildToTop: (id, topOffset) => {
+        const found = scrollChildToTop(box, id, topOffset ?? 0)
+        pendingRef.current = found ? null : { kind: 'heading', id, topOffset: topOffset ?? 0 }
+      },
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, pattern, activeIndex }) =>
@@ -64,15 +110,9 @@ export function Viewer({
           viewportTop: box.viewport.y,
           dir,
         }),
-      jumpToMatch: ({ match, matches, index, pattern, topOffset }) => {
-        const y = resolveMatchY(box, match, matches, index, pattern)
-        if (y === null) return
-        const delta = matchJumpDelta({
-          matchY: y,
-          viewportTop: box.viewport.y,
-          topOffset: topOffset ?? 0,
-        })
-        if (delta !== 0) box.scrollBy(delta)
+      jumpToMatch: params => {
+        const found = jumpToMatchNow(box, params)
+        pendingRef.current = found ? null : { kind: 'match', params }
       },
       subscribeScroll: cb => {
         scrollListeners.add(cb)
@@ -81,16 +121,54 @@ export function Viewer({
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)
-    const restoreScroll = watchScroll(box, () => {
+    notifyRef.current = () => {
       onScrollRef.current?.()
       for (const cb of scrollListeners) cb()
+    }
+    const restoreScroll = watchScroll(box, () => {
+      // A scroll not initiated by the retry means the user moved (wheel/drag
+      // bypass the handle) — their navigation supersedes the pending jump.
+      if (!completingRef.current) pendingRef.current = null
+      notifyRef.current()
     })
+    // Retries run on the renderer's post-layout `frame` event, not in a React
+    // effect: a just-committed chunk's renderables keep y=0 until the next
+    // layout pass, so effect-time geometry would land the jump at the top.
+    const onFrame = () => {
+      const pending = pendingRef.current
+      if (pending) {
+        // Complete a jump that targeted content unmounted when it was issued.
+        // A completed scroll also triggers watchScroll → notify, keeping the
+        // breadcrumb in sync mid-mount.
+        completingRef.current = true
+        const done =
+          pending.kind === 'heading'
+            ? scrollChildToTop(box, pending.id, pending.topOffset)
+            : jumpToMatchNow(box, pending.params)
+        completingRef.current = false
+        // Done, or unresolvable (the doc is fully mounted and the target still
+        // isn't there) — either way no stale pending survives.
+        if (done || fullyMountedRef.current) pendingRef.current = null
+      }
+      if (needsNotifyRef.current) {
+        needsNotifyRef.current = false
+        notifyRef.current()
+      }
+    }
+    renderer.on('frame', onFrame)
     return () => {
+      renderer.off('frame', onFrame)
       restoreScroll()
       restore()
       viewerRef.current = null
     }
-  }, [viewerRef])
+  }, [viewerRef, renderer])
+
+  // Refresh breadcrumb/marks once the whole doc is mounted — deferred to the
+  // next frame so listeners read post-layout geometry.
+  useEffect(() => {
+    if (fullyMounted) needsNotifyRef.current = true
+  }, [fullyMounted])
 
   return (
     <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
@@ -109,7 +187,8 @@ export function Viewer({
       >
         <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
-          <NodeList nodes={nodes} />
+          <NodeList nodes={mountedNodes} />
+          {!fullyMounted && <box height={estimatedRemaining} />}
         </box>
         <box height={tailSpace} />
       </scrollbox>
@@ -145,11 +224,35 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
   }
 }
 
-function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): void {
+type PendingTarget =
+  | { kind: 'heading'; id: string; topOffset: number }
+  | { kind: 'match'; params: Parameters<ScrollboxHandle['jumpToMatch']>[0] }
+
+/** Scrolls `id` to the viewport top. Returns false if `id` isn't mounted yet. */
+function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): boolean {
   const child = box.content.findDescendantById(id)
-  if (!child) return
+  if (!child) return false
   const delta = child.y - box.viewport.y - PIN_TOP_OFFSET - topOffset
   if (delta !== 0) box.scrollBy(delta)
+  return true
+}
+
+/** Jumps to a search match. Returns false if its block isn't mounted yet. */
+function jumpToMatchNow(
+  box: ScrollBoxRenderable,
+  params: Parameters<ScrollboxHandle['jumpToMatch']>[0],
+): boolean {
+  const { match, matches, index, pattern, topOffset } = params
+  if (!box.content.findDescendantById(match.blockElementId)) return false
+  const y = resolveMatchY(box, match, matches, index, pattern)
+  if (y === null) return false
+  const delta = matchJumpDelta({
+    matchY: y,
+    viewportTop: box.viewport.y,
+    topOffset: topOffset ?? 0,
+  })
+  if (delta !== 0) box.scrollBy(delta)
+  return true
 }
 
 function findHeadingNearTop(

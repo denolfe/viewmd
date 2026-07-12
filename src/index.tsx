@@ -6,7 +6,7 @@ import { ReadStream as TtyReadStream } from 'node:tty'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
-import { parseArgs } from './app/lib/args'
+import { parseArgs, parsePositiveInt } from './app/lib/args'
 import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
@@ -21,7 +21,11 @@ const RENDER_MAX_HEIGHT = 2000
 main()
 
 async function main(): Promise<void> {
-  const { filePath, forceRender } = parseArgs(process.argv.slice(2))
+  const { filePath, forceRender, maxLines, error } = parseArgs(process.argv.slice(2))
+  if (error) {
+    console.error(`viewmd: ${error}`)
+    process.exit(1)
+  }
   const md = await readInput(filePath)
   const { frontmatter, body } = splitFrontmatter(md)
   const processed = replaceMermaidBlocks(body)
@@ -33,11 +37,14 @@ async function main(): Promise<void> {
     const width = clampWidth(
       Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80,
     )
+    // Cap precedence: explicit flag > fzf preview env > none (full document).
+    const capRows = maxLines ?? fzfPreviewLines()
     const out = await renderAnsi({
       nodes,
       frontmatter: frontmatterRows,
       width,
-      maxHeight: RENDER_MAX_HEIGHT,
+      maxHeight: capRows ?? RENDER_MAX_HEIGHT,
+      capRows,
     })
     try {
       await Bun.write(Bun.stdout, out + '\n')
@@ -73,6 +80,11 @@ function isEpipe(e: unknown): boolean {
 
 function clampWidth(w: number): number {
   return Number.isFinite(w) && w >= MIN_WIDTH ? Math.floor(w) : MIN_WIDTH
+}
+
+/** FZF_PREVIEW_LINES is set only inside fzf preview subprocesses. */
+function fzfPreviewLines(): number | undefined {
+  return parsePositiveInt(process.env.FZF_PREVIEW_LINES)
 }
 
 function fileLabel(p?: string): string | undefined {

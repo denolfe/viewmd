@@ -35,7 +35,7 @@ Entry: `src/index.tsx`. Everything else lives under `src/app/`.
 3. **Preprocess** — `replaceMermaidBlocks` (see [Preprocessing](#preprocessing)).
 4. **Build AST** — `buildTree(markdown)` returns `{ nodes, toc, headingIds }`.
 5. **Branch on mode**:
-   - **Render mode** (`forceRender || !process.stdout.isTTY`): `renderAnsi({ nodes, width, maxHeight })` mounts a body-only `<RenderView>` into OpenTUI's headless `createTestRenderer`, waits for visual idle (so async tree-sitter highlight commits), captures one frame via `captureSpans()`, converts spans → 24-bit SGR ANSI, trims trailing blank rows, and writes to stdout via `Bun.write`. Width is `FZF_PREVIEW_COLUMNS` → `process.stdout.columns` → 80, clamped to a minimum of 20. `maxHeight` defaults to 2000.
+   - **Render mode** (`forceRender || !process.stdout.isTTY`): `renderAnsi({ nodes, width, maxHeight, capRows })` mounts a body-only `<RenderView>` into OpenTUI's headless `createTestRenderer`, waits for visual idle (so async tree-sitter highlight commits), captures one frame via `captureSpans()`, converts spans → 24-bit SGR ANSI, trims trailing blank rows, and writes to stdout via `Bun.write`. Width is `FZF_PREVIEW_COLUMNS` → `process.stdout.columns` → 80, clamped to a minimum of 20. `maxHeight` defaults to 2000. `capRows` = `--max-lines` > `FZF_PREVIEW_LINES` > none; when set, only nodes estimated within the cap mount, highlight waits cover only those, and output is truncated to `capRows` lines.
    - **Interactive mode**: `createCliRenderer({ exitOnCtrlC: false })`, then `createRoot(renderer).render(<App ... />)`. `App` receives the AST plus a `fileLabel` derived from `<parentDir>/<basename>`.
 
 Exit on `Ctrl-C` is wired explicitly through the key dispatcher so the same path covers `q`, `Ctrl-C`, and forced teardown.
@@ -155,6 +155,31 @@ On mount, it constructs a `ScrollboxHandle` from the raw `ScrollBoxRenderable` r
 It also installs `installRealisticThumb`, which patches the scrollbar slider's `viewPortSize` to exclude the synthetic tail spacer so the thumb reflects real content size.
 
 `focusable={false}` is intentional — `focused={false}` is a no-op on mount; this avoids click-focus re-enabling OpenTUI's built-in j/k handler that would compete with our dispatcher.
+
+### Progressive mount
+
+Large docs mount in a growing prefix instead of all at once, so first paint isn't gated on
+the whole tree. `initialMountCount` (`src/app/lib/progressive.ts`) picks the initial prefix
+length by walking nodes with low-biased row estimates (`estimateNodeRows`) until the
+cumulative estimate reaches `2×` the viewport height — enough to fill the screen with
+margin for estimate error. After first paint, a `useEffect` grows `mountedCount` by
+`CHUNK_SIZE` (32) nodes per tick, each tick a `setTimeout(0)` so the event loop gets a turn
+between commits and keyboard/scroll stay responsive during mount. `estimateTotalRows` sizes
+an estimated `<box height={estimatedRemaining}>` spacer between the mounted prefix and the
+tail box, standing in for unmounted content so the scrollbar thumb and `G` read
+approximately right until the doc finishes mounting.
+
+Jumps into content that hasn't mounted yet (heading nav, search) can't resolve immediately
+— `scrollChildToTop`/`jumpToMatchNow` return `false` when the target id isn't found, and
+the caller stashes a `PendingTarget` (`{ kind: 'heading' | 'match', ... }`) instead of
+scrolling. The pending target is retried on the renderer's `frame` event (not inside a
+React effect: a just-committed chunk's renderables still read `y=0` until the next layout
+pass, so effect-time geometry would land the jump at the top) and cleared once it resolves
+or the doc is fully mounted with no match. A user-initiated scroll (wheel/drag, or any
+`ScrollboxHandle` call) supersedes a pending jump — otherwise a stale pending would yank the
+viewport back later once its chunk mounts. Once `mountedCount >= nodes.length`, a deferred
+notify (fired on the next `frame`) re-syncs headings/marks so the breadcrumb and scroll
+indicators reflect the now-complete tree.
 
 ### Scroll indicators (`src/app/components/ScrollIndicators.tsx`)
 
