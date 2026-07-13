@@ -1,5 +1,5 @@
 import { TextAttributes } from '@opentui/core'
-import { useKeyboard } from '@opentui/react'
+import { useKeyboard, useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
 import { findMatches } from '../lib/search'
 import { theme } from '../styles/theme'
@@ -7,6 +7,7 @@ import type { Node } from '../lib/ast'
 
 export function SearchBar({ nodes }: { nodes: Node[] }) {
   const { search, setSearch, setFocus, viewerRef, focus } = useAppState()
+  const { width } = useTerminalDimensions()
 
   // Recompute from the input's current string: Enter arriving before React
   // re-renders must not commit a stale (truncated/empty) pattern.
@@ -46,14 +47,23 @@ export function SearchBar({ nodes }: { nodes: Node[] }) {
   const counter = hasPattern
     ? `${search.matches.length ? search.index + 1 : 0} of ${search.matches.length}`
     : ''
+  // Muted counter reads fine on the dark bar; on the red miss bar it would be
+  // illegible, so fall back to the regular bar fg there.
+  const counterFg = isMiss ? theme.searchBarFg : theme.foregroundMuted
+  // Counter column: paddingX + label + pattern + cursor cell + one gap cell.
+  // The typing-mode input stays full-width (sizing it to the pattern lets fast
+  // typing outrun React's width updates, scrolling the buffer irrecoverably),
+  // so the counter overlays it at a computed column instead of flowing after it.
+  const counterLeft = 1 + label.length + search.pattern.length + 2
+  const showCounter = counter.length > 0 && counterLeft + counter.length < width
 
   return (
-    <box flexDirection="row" height={1} paddingX={1} backgroundColor={bg}>
+    <box flexDirection="row" height={1} paddingX={1} backgroundColor={bg} position="relative">
       <text fg={theme.searchBarFg} attributes={TextAttributes.BOLD}>
         {label}
       </text>
-      <box flexGrow={1}>
-        {isTyping ? (
+      {isTyping ? (
+        <box flexGrow={1}>
           <input
             focused
             backgroundColor={bg}
@@ -68,11 +78,15 @@ export function SearchBar({ nodes }: { nodes: Node[] }) {
               if (typeof value === 'string') commit(value)
             }}
           />
-        ) : (
-          <text fg={theme.searchBarFg}>{search.pattern}</text>
-        )}
-      </box>
-      <text fg={theme.searchBarFg}>{counter}</text>
+        </box>
+      ) : (
+        <text fg={theme.searchBarFg}>{search.pattern}</text>
+      )}
+      {showCounter && (
+        <text position="absolute" left={counterLeft} fg={counterFg}>
+          {counter}
+        </text>
+      )}
     </box>
   )
 }

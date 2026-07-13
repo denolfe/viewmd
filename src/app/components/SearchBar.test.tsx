@@ -7,7 +7,7 @@ import { buildTree } from '../lib/ast'
 // 'zebra' appears twice, both visible in the initial viewport.
 const FIXTURE = ['# Title', '', 'zebra one', '', 'zebra two'].join('\n')
 
-const GRAY = { r: 200 / 255, g: 200 / 255, b: 200 / 255 } // theme.searchBarBg #c8c8c8
+const BAR_BG = { r: 45 / 255, g: 45 / 255, b: 45 / 255 } // theme.searchBarBg #2d2d2d (matches stickyBg)
 const RED = { r: 241 / 255, g: 76 / 255, b: 76 / 255 } // theme.searchBarNoMatchBg #f14c4c
 const MATCH_BG = { r: 245 / 255, g: 245 / 255, b: 67 / 255 } // theme.searchMatchBg #f5f543
 
@@ -57,7 +57,7 @@ test('idle: no bottom bar, no idle colon row', async () => {
   const { renderer, captureCharFrame, captureSpans } = await setup()
   expect(bottomRow(captureCharFrame)).not.toContain('search:')
   expect(bottomRow(captureCharFrame).trim()).not.toBe(':')
-  expect(bottomRowHasBg(captureSpans, GRAY)).toBe(false)
+  expect(bottomRowHasBg(captureSpans, BAR_BG)).toBe(false)
   renderer.destroy()
 })
 
@@ -66,7 +66,7 @@ test('/ opens the gray bar with the search: label', async () => {
   await mockInput.typeText('/')
   await settle()
   expect(bottomRow(captureCharFrame)).toContain('search:')
-  expect(bottomRowHasBg(captureSpans, GRAY)).toBe(true)
+  expect(bottomRowHasBg(captureSpans, BAR_BG)).toBe(true)
   renderer.destroy()
 })
 
@@ -91,7 +91,7 @@ test('zero matches tints the whole bar red with 0 of 0', async () => {
   await settle()
   expect(bottomRow(captureCharFrame)).toContain('0 of 0')
   expect(bottomRowHasBg(captureSpans, RED)).toBe(true)
-  expect(bottomRowHasBg(captureSpans, GRAY)).toBe(false)
+  expect(bottomRowHasBg(captureSpans, BAR_BG)).toBe(false)
   renderer.destroy()
 })
 
@@ -105,7 +105,7 @@ test('bar persists after Enter with identical style and counter', async () => {
   await settle()
   expect(bottomRow(captureCharFrame)).toContain('search:')
   expect(bottomRow(captureCharFrame)).toContain('1 of 2')
-  expect(bottomRowHasBg(captureSpans, GRAY)).toBe(true)
+  expect(bottomRowHasBg(captureSpans, BAR_BG)).toBe(true)
   // n advances the counter.
   await mockInput.typeText('n')
   await settle()
@@ -122,7 +122,7 @@ test('escape while typing dismisses the bar and highlights', async () => {
   mockInput.pressEscape()
   await settle()
   expect(bottomRow(captureCharFrame)).not.toContain('search:')
-  expect(bottomRowHasBg(captureSpans, GRAY)).toBe(false)
+  expect(bottomRowHasBg(captureSpans, BAR_BG)).toBe(false)
   expect(anyRowHasBg(captureSpans, MATCH_BG)).toBe(false)
   renderer.destroy()
 })
