@@ -12,6 +12,11 @@ const FIXTURE = [
   '![zebra alt](https://example.com/x.png)',
   '',
   'zebra tail',
+  '',
+  '1. first item',
+  '2. second item',
+  '',
+  '- [x] done task',
 ].join('\n')
 
 const ACTIVE_BG = { r: 245 / 255, g: 158 / 255, b: 31 / 255 }
@@ -104,6 +109,38 @@ test('non-active occurrences carry the plain match background', async () => {
   const plain = spansWithBg(captureSpans, MATCH_BG)
   expect(plain.map(s => s.text).join('')).toBe('zebra')
   expect(plain[0]?.row).not.toBe(active[0]?.row)
+
+  renderer.destroy()
+})
+
+test('a match spanning list marker and item text highlights both', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setup()
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('1. first')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('1. first')
+
+  renderer.destroy()
+})
+
+test('task checkbox marker highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setup()
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('[✓] done')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('[✓] done')
 
   renderer.destroy()
 })
