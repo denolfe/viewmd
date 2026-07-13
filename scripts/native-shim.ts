@@ -13,6 +13,14 @@ export type NativeLib = {
   libFileName: string
 }
 
+/**
+ * Matches src/compiled-runtime.ts as resolved by the bundler. Must accept both
+ * separators: Bun's plugin API hands native paths, so Windows resolves with
+ * backslashes — a forward-slash-only filter silently skips the replacement
+ * there (shipping a binary with no syntax highlighting).
+ */
+export const COMPILED_RUNTIME_FILTER = /src[\\/]compiled-runtime\.ts$/
+
 export function opentuiNativePackageName(platform: Platform): string {
   return `@opentui/core-${platform.os}-${platform.cpu}`
 }

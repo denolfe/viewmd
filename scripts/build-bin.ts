@@ -3,6 +3,7 @@ import { mkdir, rm, writeFile } from 'node:fs/promises'
 import { basename } from 'node:path'
 import pkg from '../package.json'
 import {
+  COMPILED_RUNTIME_FILTER,
   buildShimSource,
   buildWorkerRuntimeSource,
   packageVersion,
@@ -49,6 +50,7 @@ const workerRuntimeSource = buildWorkerRuntimeSource({
 })
 const patches = buildTlaPatches(native.packageName)
 const appliedPatches = new Set<TlaPatch>()
+let workerRuntimeReplaced = false
 
 await Bun.build({
   entrypoints: ['./src/index.tsx'],
@@ -77,10 +79,10 @@ await Bun.build({
           contents: `throw Object.assign(new Error(${JSON.stringify(`${args.path} is not bundled in compiled viewmd`)}), { code: 'ERR_MODULE_NOT_FOUND' })`,
           loader: 'ts',
         }))
-        build.onLoad({ filter: /src\/compiled-runtime\.ts$/ }, () => ({
-          contents: workerRuntimeSource,
-          loader: 'ts',
-        }))
+        build.onLoad({ filter: COMPILED_RUNTIME_FILTER }, () => {
+          workerRuntimeReplaced = true
+          return { contents: workerRuntimeSource, loader: 'ts' }
+        })
         build.onLoad(
           { filter: /@opentui[\\/](core[\\/]index|react[\\/]chunk)-[a-z0-9]+\.js$/ },
           async args => ({
@@ -99,6 +101,11 @@ await Bun.build({
 })
 
 assertPatchesApplied(patches, appliedPatches)
+if (!workerRuntimeReplaced) {
+  throw new Error(
+    'compiled-runtime.ts was not replaced by the worker materializer — the binary would ship without syntax highlighting',
+  )
+}
 
 await writeFile(
   `${outDir}/metadata.json`,
