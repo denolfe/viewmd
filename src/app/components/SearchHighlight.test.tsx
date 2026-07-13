@@ -159,6 +159,31 @@ test('a match in a wrapped table cell highlights', async () => {
   renderer.destroy()
 })
 
+const HTML_FIXTURE = [
+  '# T',
+  '',
+  '<p align="center">',
+  '  <a href="https://example.com/build"><img src="https://img.shields.io/badge/build-passing-brightgreen" alt="Build" /></a>',
+  '  <a href="https://example.com/npm"><img src="https://img.shields.io/npm/v/example" alt="npm" /></a>',
+  '</p>',
+].join('\n')
+
+test('html block image alt highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setupWith(HTML_FIXTURE, 80)
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('Build')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('Build')
+
+  renderer.destroy()
+})
+
 test('task checkbox marker highlights', async () => {
   const { renderer, mockInput, settle, captureSpans } = await setup()
 

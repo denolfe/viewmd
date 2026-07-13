@@ -176,13 +176,3 @@ export function HighlightedText({ value }: { value: string }) {
   if (last < value.length) parts.push(value.slice(last))
   return <>{parts}</>
 }
-
-/** Transitional no-op scope for renderers not yet migrated (removed in Tasks 4–6). */
-export function MatchScope({ children }: { id: string; children: ReactNode }) {
-  return <>{children}</>
-}
-
-/** Transitional stub for CodeBlock's active-match lookup (removed in Task 5). */
-export function activeOccurrenceInBlock(..._args: unknown[]): number {
-  return -1
-}
