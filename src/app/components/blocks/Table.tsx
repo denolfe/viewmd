@@ -1,6 +1,7 @@
 import { Fragment } from 'react'
-import { InlineRenderer, MatchScope } from './InlineRenderer'
+import { InlineRenderer, RunScope } from './InlineRenderer'
 import { inlineVisibleWidth, wrapInline } from '../../lib/inline-width'
+import { inlineText } from '../../lib/visible-text'
 import { useAppState } from '../../state'
 import { theme } from '../../styles/theme'
 import { CONTENT_MAX_WIDTH } from '../../styles/layout'
@@ -28,23 +29,33 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
       marginBottom={1}
       marginX={TABLE_MARGIN_X}
     >
-      {/* One scope for the whole table: cells render header-first then row by
-          row, matching findMatches' scan order across cells. */}
-      <MatchScope id={id}>
-        <text fg={theme.border} height={1}>
-          {topRule}
-        </text>
-        <Row cells={node.header} cellWidths={cellWidths} colWidths={colWidths} isHeader />
-        <text fg={theme.border} height={1}>
-          {midRule}
-        </text>
-        {node.rows.map((row, ri) => (
-          <Row key={ri} cells={row} cellWidths={cellWidths} colWidths={colWidths} />
-        ))}
-        <text fg={theme.border} height={1}>
-          {botRule}
-        </text>
-      </MatchScope>
+      <text fg={theme.border} height={1}>
+        {topRule}
+      </text>
+      <Row
+        cells={node.header}
+        cellWidths={cellWidths}
+        colWidths={colWidths}
+        isHeader
+        blockId={id}
+        runKeyFor={ci => `h${ci}`}
+      />
+      <text fg={theme.border} height={1}>
+        {midRule}
+      </text>
+      {node.rows.map((row, ri) => (
+        <Row
+          key={ri}
+          cells={row}
+          cellWidths={cellWidths}
+          colWidths={colWidths}
+          blockId={id}
+          runKeyFor={ci => `r${ri}c${ci}`}
+        />
+      ))}
+      <text fg={theme.border} height={1}>
+        {botRule}
+      </text>
     </box>
   )
 }
@@ -54,11 +65,15 @@ function Row({
   cellWidths,
   colWidths,
   isHeader,
+  blockId,
+  runKeyFor,
 }: {
   cells: InlineNode[][]
   cellWidths: number[]
   colWidths: number[]
   isHeader?: boolean
+  blockId: string
+  runKeyFor: (ci: number) => string
 }) {
   const cellLines = cells.map((cell, i) => wrapInline(cell, colWidths[i] ?? 0))
   const lineCount = Math.max(1, ...cellLines.map(c => c.length))
@@ -68,17 +83,21 @@ function Row({
       {cellLines.map((lines, i) => (
         <Fragment key={i}>
           <box width={cellWidths[i]} paddingX={CELL_PADDING_X}>
-            {isHeader ? (
-              <text fg={theme.foregroundBright}>
-                <strong>
+            {/* Scope text is the UNWRAPPED cell text, matching the projection;
+                HighlightedText realigns the wrapped pieces into it. */}
+            <RunScope blockId={blockId} runKey={runKeyFor(i)} text={inlineText(cells[i] ?? [])}>
+              {isHeader ? (
+                <text fg={theme.foregroundBright}>
+                  <strong>
+                    <CellLines lines={lines} totalLines={lineCount} />
+                  </strong>
+                </text>
+              ) : (
+                <text>
                   <CellLines lines={lines} totalLines={lineCount} />
-                </strong>
-              </text>
-            ) : (
-              <text>
-                <CellLines lines={lines} totalLines={lineCount} />
-              </text>
-            )}
+                </text>
+              )}
+            </RunScope>
           </box>
           <Pipe height={lineCount} />
         </Fragment>

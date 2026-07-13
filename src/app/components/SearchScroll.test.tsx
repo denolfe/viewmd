@@ -151,8 +151,7 @@ const BLOCK_MIX = [
 
 const ACTIVE_BG = { r: 245 / 255, g: 158 / 255, b: 31 / 255 }
 
-// re-enabled in Task 5 (table/code migration)
-test.skip('active highlight tracks n across code blocks, tables, and image alts', async () => {
+test('active highlight tracks n across code blocks, tables, and image alts', async () => {
   const { nodes, toc, headingIds } = buildTree(BLOCK_MIX)
   const { renderer, mockInput, flush, renderOnce, captureSpans, captureCharFrame } =
     await createTestRenderer({
@@ -225,8 +224,7 @@ const TS_BLOCK_MIX = [
 
 const MATCH_BG = { r: 245 / 255, g: 245 / 255, b: 67 / 255 }
 
-// re-enabled in Task 5 (table/code migration)
-test.skip('search matches highlight inside syntax-highlighted code blocks and track n', async () => {
+test('search matches highlight inside syntax-highlighted code blocks and track n', async () => {
   const { nodes, toc, headingIds } = buildTree(TS_BLOCK_MIX)
   const { renderer, mockInput, flush, renderOnce, captureSpans, captureCharFrame } =
     await createTestRenderer({

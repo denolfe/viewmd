@@ -23,9 +23,13 @@ const ACTIVE_BG = { r: 245 / 255, g: 158 / 255, b: 31 / 255 }
 const MATCH_BG = { r: 245 / 255, g: 245 / 255, b: 67 / 255 }
 
 async function setup() {
-  const { nodes, toc, headingIds } = buildTree(FIXTURE)
+  return setupWith(FIXTURE, 80)
+}
+
+async function setupWith(fixture: string, width: number) {
+  const { nodes, toc, headingIds } = buildTree(fixture)
   const { renderer, mockInput, flush, renderOnce, captureSpans } = await createTestRenderer({
-    width: 80,
+    width,
     height: 24,
   })
   const settle = async () => {
@@ -125,6 +129,32 @@ test('a match spanning list marker and item text highlights both', async () => {
 
   const active = spansWithBg(captureSpans, ACTIVE_BG)
   expect(active.map(s => s.text).join('')).toBe('1. first')
+
+  renderer.destroy()
+})
+
+// Narrow renderer forces the cell to wrap; the range still lands on the right
+// pieces because HighlightedText aligns wrapped chunks into the unwrapped cell text.
+const WRAP_FIXTURE = [
+  '# T',
+  '',
+  '| Col |',
+  '| --- |',
+  '| a wrapped zebra cell with many words forcing a wrap |',
+].join('\n')
+
+test('a match in a wrapped table cell highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setupWith(WRAP_FIXTURE, 40)
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('zebra cell')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('zebra cell')
 
   renderer.destroy()
 })

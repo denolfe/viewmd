@@ -1,10 +1,9 @@
 import { RGBA, infoStringToFiletype } from '@opentui/core'
 import type { TextChunk } from '@opentui/core'
-import { HighlightedText, MatchScope, activeOccurrenceInBlock } from './InlineRenderer'
+import { HighlightedText, RunScope, matchRangesForRun } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
-import { escapeRegex } from '../../lib/regex-util'
 import type { Node } from '../../lib/ast'
 import type { AppState } from '../../state'
 
@@ -20,9 +19,9 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
     return (
       <box id={id} marginX={MARGIN_X}>
         <text wrapMode="none">
-          <MatchScope id={id}>
+          <RunScope blockId={id} text={node.value}>
             <HighlightedText value={node.value} />
-          </MatchScope>
+          </RunScope>
         </text>
       </box>
     )
@@ -58,9 +57,9 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
         />
       ) : (
         <text wrapMode="char">
-          <MatchScope id={id}>
+          <RunScope blockId={id} text={node.value}>
             <HighlightedText value={node.value} />
-          </MatchScope>
+          </RunScope>
         </text>
       )}
     </box>
@@ -74,31 +73,18 @@ const MATCH_FG = RGBA.fromHex(theme.searchMatchFg)
 /**
  * Syntax-highlighted blocks render through tree-sitter, so match spans can't
  * be injected as children; instead this post-processes the styled chunks,
- * splitting them at match boundaries and overriding bg/fg. Chunk text
- * concatenates back to the block's source, so scanning it left-to-right keeps
- * occurrence ordinals aligned with findMatches' scan of `node.value`.
+ * splitting them at match boundaries and overriding bg/fg. The block's 'main'
+ * run text IS `node.value`, and chunk text concatenates back to it, so the
+ * projection-coordinate ranges align 1:1 with offsets in the chunk stream.
  */
 function makeMatchChunkTransform(
   search: AppState['search'],
   blockElementId: string,
 ): ((chunks: TextChunk[]) => TextChunk[]) | undefined {
-  if (!search?.pattern || !search.matches.some(m => m.blockElementId === blockElementId)) {
-    return undefined
-  }
-  const pattern = search.pattern
-  const activeOcc = activeOccurrenceInBlock(search, blockElementId)
+  const ranges = matchRangesForRun(search, blockElementId, 'main')
+  if (!ranges.length) return undefined
   return chunks => {
     const text = chunks.map(c => c.text).join('')
-    const re = new RegExp(escapeRegex(pattern), 'gi')
-    const ranges: { start: number; end: number; isActive: boolean }[] = []
-    let m: RegExpExecArray | null
-    let occ = 0
-    while ((m = re.exec(text)) !== null) {
-      ranges.push({ start: m.index, end: m.index + m[0].length, isActive: occ++ === activeOcc })
-      if (re.lastIndex === m.index) re.lastIndex++ // safety for zero-length match
-    }
-    if (!ranges.length) return chunks
-
     const out: TextChunk[] = []
     let offset = 0
     for (const chunk of chunks) {
