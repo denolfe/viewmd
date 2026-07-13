@@ -13,18 +13,42 @@ import { replaceMermaidBlocks } from './app/lib/preprocess'
 import { parseFrontmatter, splitFrontmatter } from './app/lib/frontmatter'
 import type { FrontmatterRow } from './app/lib/frontmatter'
 import { renderAnsi } from './app/lib/renderAnsi'
+import { version } from '../package.json'
 
 const MIN_WIDTH = 20
 const RENDER_MAX_HEIGHT = 2000
+
+const HELP_TEXT = `
+viewmd - interactive terminal markdown viewer
+
+Usage: viewmd [options] [file.md]
+       cat file.md | viewmd
+
+Options:
+  -r, --render         One-shot ANSI render to stdout (auto when stdout is not a TTY)
+      --max-lines <n>  Cap rendered output to n lines
+
+  -v, --version        Print version
+  -h, --help           Show this help`
 
 // No top-level await: the compiled binary ships bytecode, which requires CJS.
 main()
 
 async function main(): Promise<void> {
-  const { filePath, forceRender, maxLines, error } = parseArgs(process.argv.slice(2))
+  const { filePath, forceRender, maxLines, showHelp, showVersion, error } = parseArgs(
+    process.argv.slice(2),
+  )
   if (error) {
     console.error(`viewmd: ${error}`)
     process.exit(1)
+  }
+  if (showHelp) {
+    console.log(HELP_TEXT)
+    process.exit(0)
+  }
+  if (showVersion) {
+    console.log(version)
+    process.exit(0)
   }
   const md = await readInput(filePath)
   const { frontmatter, body } = splitFrontmatter(md)
@@ -110,6 +134,6 @@ function keyboardStream(): NodeJS.ReadStream {
 async function readInput(filePath?: string): Promise<string> {
   if (filePath) return Bun.file(filePath).text()
   if (!process.stdin.isTTY) return Bun.stdin.text()
-  console.error('Usage: viewmd <file.md>  (or pipe markdown via stdin)')
+  console.error('Usage: viewmd <file.md>  (or pipe markdown via stdin; see viewmd --help)')
   process.exit(1)
 }

@@ -45,6 +45,37 @@ describe('parseArgs', () => {
       error: '--max-lines requires a positive integer',
     })
   })
+  test('--help flag', () => {
+    expect(parseArgs(['--help'])).toEqual({ showHelp: true })
+  })
+  test('-h short flag', () => {
+    expect(parseArgs(['-h'])).toEqual({ showHelp: true })
+  })
+  test('--version flag', () => {
+    expect(parseArgs(['--version'])).toEqual({ showVersion: true })
+  })
+  test('-v short flag', () => {
+    expect(parseArgs(['-v'])).toEqual({ showVersion: true })
+  })
+  test('help alongside a file path', () => {
+    expect(parseArgs(['--help', 'README.md'])).toEqual({
+      showHelp: true,
+      filePath: 'README.md',
+    })
+  })
+  test('unknown long flag is an error', () => {
+    expect(parseArgs(['--hlep'])).toEqual({
+      error: "unknown option '--hlep' (run viewmd --help)",
+    })
+  })
+  test('unknown short flag is an error', () => {
+    expect(parseArgs(['-x', 'doc.md'])).toEqual({
+      error: "unknown option '-x' (run viewmd --help)",
+    })
+  })
+  test('lone dash means stdin (no file path)', () => {
+    expect(parseArgs(['-'])).toEqual({})
+  })
   test('non-integer and non-positive values are errors', () => {
     expect(parseArgs(['--max-lines', 'abc'])).toEqual({
       error: '--max-lines requires a positive integer',
