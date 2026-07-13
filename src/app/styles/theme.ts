@@ -26,6 +26,9 @@ export const theme = {
   searchMatchBg: '#f5f543',
   searchMatchFg: '#000000',
   searchCurrentBg: '#f59e1f',
+  searchBarBg: '#c8c8c8', // light gray full-width bar while a search is active
+  searchBarFg: '#1e1e1e', // near-black text on the bar
+  searchBarNoMatchBg: '#f14c4c', // whole-bar tint when the pattern has no matches — reuse red
   tocCurrent: '#e5e5e5',
   tocFocusBg: '#264f78',
   scrollMarkMatch: '#f5f543', // saturated — reuse searchMatchBg

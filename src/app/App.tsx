@@ -11,7 +11,7 @@ import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import { breadcrumbHeightForHeading, tocContentWidth, toggleTocExpanded } from './lib/toc-util'
-import { StatusLine } from './components/StatusLine'
+import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 
@@ -183,7 +183,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
             </box>
           )}
         </box>
-        <StatusLine nodes={nodes} />
+        <SearchBar nodes={nodes} />
       </box>
     </AppStateContext.Provider>
   )
