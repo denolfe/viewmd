@@ -144,7 +144,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   }, [headingIds])
 
   useKeyboard(ev => {
-    if (focus === 'search') return // Search overlay handles its own keys in Task 11
+    if (focus === 'search') return // SearchBar handles its own keys while typing
     const action = mapKey(ev, focus, { searchActive: !!search })
     dispatch(
       action,

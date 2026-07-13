@@ -36,12 +36,13 @@ export function Viewer({
   const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
-  // Only the status line (1 row) sits below the viewport now — the breadcrumb
-  // overlays the viewer instead of consuming column rows. Tail = viewport - 1
-  // so the last heading can still scroll to the top, minus `tailReserve` (the
-  // last heading's crumb height) so its content stops just below the overlay
-  // rather than sliding up behind it.
-  const tailSpace = Math.max(0, height - 2 - tailReserve)
+  // Nothing sits below the viewport when idle (the search bar only exists
+  // during a search, and the breadcrumb overlays the viewer instead of
+  // consuming column rows). Tail = viewport - 1 so the last heading can still
+  // scroll to the top, minus `tailReserve` (the last heading's crumb height)
+  // so its content stops just below the overlay rather than sliding up
+  // behind it.
+  const tailSpace = Math.max(0, height - 1 - tailReserve)
   const tailRef = useRef(tailSpace)
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
