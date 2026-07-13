@@ -1,0 +1,86 @@
+import { test, expect } from 'bun:test'
+import { createTestRenderer } from '@opentui/core/testing'
+import { createRoot } from '@opentui/react'
+import { App } from '../App'
+import { buildTree } from '../lib/ast'
+
+const FIXTURE = [
+  '# Title',
+  '',
+  'Click [linktext here](https://example.com) please.',
+  '',
+  '![zebra alt](https://example.com/x.png)',
+].join('\n')
+
+const ACTIVE_BG = { r: 245 / 255, g: 158 / 255, b: 31 / 255 }
+
+async function setup() {
+  const { nodes, toc, headingIds } = buildTree(FIXTURE)
+  const { renderer, mockInput, flush, renderOnce, captureSpans } = await createTestRenderer({
+    width: 80,
+    height: 24,
+  })
+  const settle = async () => {
+    await flush({ maxPasses: 20 })
+    await new Promise(r => setTimeout(r, 30))
+    await renderOnce()
+  }
+  createRoot(renderer).render(
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/h.md" />,
+  )
+  await settle()
+  // The very first key is consumed by the terminal capability handshake.
+  await mockInput.typeText('x')
+  await settle()
+  return { renderer, mockInput, settle, captureSpans }
+}
+
+/** Rows of spans whose bg matches `target`, with the span text. */
+function spansWithBg(
+  captureSpans: Awaited<ReturnType<typeof createTestRenderer>>['captureSpans'],
+  target: { r: number; g: number; b: number },
+) {
+  const out: { row: number; text: string }[] = []
+  const frame = captureSpans()
+  const near = (v: number, t: number) => Math.abs(v - t) < 0.02
+  for (let row = 0; row < frame.lines.length; row++) {
+    for (const s of frame.lines[row]?.spans ?? []) {
+      if (near(s.bg.r, target.r) && near(s.bg.g, target.g) && near(s.bg.b, target.b)) {
+        out.push({ row, text: s.text })
+      }
+    }
+  }
+  return out
+}
+
+test('a match spanning text→link renders one contiguous highlight', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setup()
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('Click linktext')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('Click linktext')
+
+  renderer.destroy()
+})
+
+test('image label furniture highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setup()
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('[Image: zebra')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('[Image: zebra')
+
+  renderer.destroy()
+})

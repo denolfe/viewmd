@@ -2,9 +2,8 @@ import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
-import type { Match } from '../../lib/search'
+import type { SearchState } from '../../state'
 import { useAppState } from '../../state'
-import { escapeRegex } from '../../lib/regex-util'
 import { theme } from '../../styles/theme'
 
 // Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
@@ -70,19 +69,24 @@ function InlineOne({ node }: { node: InlineNode }) {
       return (
         <em>
           <span fg={theme.foregroundMuted}>
-            [Image: {node.alt ? <HighlightedText value={node.alt} /> : node.src}
+            <HighlightedText value="[Image: " />
+            <HighlightedText value={node.alt || node.src} />
           </span>
           {node.alt && node.src ? (
             <>
-              <span fg={theme.foregroundMuted}>{' → '}</span>
+              <span fg={theme.foregroundMuted}>
+                <HighlightedText value=" → " />
+              </span>
               <a href={node.src}>
                 <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
-                  {node.src}
+                  <HighlightedText value={node.src} />
                 </span>
               </a>
             </>
           ) : null}
-          <span fg={theme.foregroundMuted}>]</span>
+          <span fg={theme.foregroundMuted}>
+            <HighlightedText value="]" />
+          </span>
         </em>
       )
     case 'br':
@@ -96,67 +100,87 @@ function InlineOne({ node }: { node: InlineNode }) {
   }
 }
 
-// Per-block scope for active-match identification. Each block that renders
-// highlightable inline content provides its element id plus an occurrence
-// counter; the counter object is recreated on every render, keeping ordinals
-// aligned with findMatches' within-block order. Syntax-highlighted code blocks
-// highlight through their own chunk transform (CodeBlock) instead of a scope.
-type MatchScopeValue = { id: string; counter: { n: number } }
-const MatchScopeContext = createContext<MatchScopeValue | null>(null)
+/**
+ * Per-run scope for range-based highlighting. `text` is the run's projected
+ * visible text; ranges are match offsets within it. The cursor is recreated
+ * every render and advanced by each HighlightedText in render order, aligning
+ * leaf values into the run text by ordered indexOf (robust to pill glyphs and
+ * to wrapInline's dropped whitespace in tables).
+ */
+export type HighlightRange = { start: number; end: number; isActive: boolean }
+type RunScopeValue = { text: string; ranges: HighlightRange[]; cursor: { pos: number } }
+const RunScopeContext = createContext<RunScopeValue | null>(null)
 
-export function MatchScope({ id, children }: { id: string; children: ReactNode }) {
+export function matchRangesForRun(
+  search: Pick<SearchState, 'matches' | 'index'> | null,
+  blockElementId: string,
+  runKey: string,
+): HighlightRange[] {
+  if (!search?.matches.length) return []
+  const active = search.index >= 0 ? search.matches[search.index] : undefined
+  const out: HighlightRange[] = []
+  for (const m of search.matches) {
+    if (m.blockElementId !== blockElementId || m.runKey !== runKey) continue
+    out.push({ start: m.start, end: m.start + m.length, isActive: m === active })
+  }
+  return out
+}
+
+export function RunScope({
+  blockId,
+  runKey = 'main',
+  text,
+  children,
+}: {
+  blockId: string
+  runKey?: string
+  text: string
+  children: ReactNode
+}) {
+  const { search } = useAppState()
+  const ranges = matchRangesForRun(search, blockId, runKey)
   return (
-    <MatchScopeContext.Provider value={{ id, counter: { n: 0 } }}>
+    <RunScopeContext.Provider value={{ text, ranges, cursor: { pos: 0 } }}>
       {children}
-    </MatchScopeContext.Provider>
+    </RunScopeContext.Provider>
   )
 }
 
-/**
- * Occurrence ordinal (within its block) of the active match, or -1 when the
- * active match lives in a different block. Mirrors the k-counting in the
- * Viewer's resolveMatchY.
- */
-export function activeOccurrenceInBlock(
-  search: { matches: Match[]; index: number },
-  blockElementId: string,
-): number {
-  if (search.index < 0) return -1
-  const active = search.matches[search.index]
-  if (!active || active.blockElementId !== blockElementId) return -1
-  let occ = 0
-  for (let i = 0; i < search.index; i++) {
-    if (search.matches[i]?.blockElementId === blockElementId) occ++
-  }
-  return occ
-}
-
 export function HighlightedText({ value }: { value: string }) {
-  const { search } = useAppState()
-  const scope = useContext(MatchScopeContext)
-  if (!search?.pattern || !search.matches.length) return <>{value}</>
-  const activeOcc = scope ? activeOccurrenceInBlock(search, scope.id) : -1
-  const pattern = search.pattern
-  const re = new RegExp(escapeRegex(pattern), 'gi')
+  const scope = useContext(RunScopeContext)
+  if (!scope || scope.ranges.length === 0 || !value) return <>{value}</>
+  const found = scope.text.indexOf(value, scope.cursor.pos)
+  const base = found >= 0 ? found : scope.cursor.pos
+  scope.cursor.pos = base + value.length
   const parts: ReactNode[] = []
   let last = 0
-  let m: RegExpExecArray | null
   let keyIdx = 0
-  while ((m = re.exec(value)) !== null) {
-    if (m.index > last) parts.push(value.slice(last, m.index))
-    const isActive = scope !== null && scope.counter.n++ === activeOcc
+  for (const r of scope.ranges) {
+    const s = Math.max(0, r.start - base)
+    const e = Math.min(value.length, r.end - base)
+    if (e <= s || e <= last) continue
+    if (s > last) parts.push(value.slice(last, s))
     parts.push(
       <span
         key={`m${keyIdx++}`}
-        bg={isActive ? theme.searchCurrentBg : theme.searchMatchBg}
+        bg={r.isActive ? theme.searchCurrentBg : theme.searchMatchBg}
         fg={theme.searchMatchFg}
       >
-        {m[0]}
+        {value.slice(Math.max(s, last), e)}
       </span>,
     )
-    last = m.index + m[0].length
-    if (re.lastIndex === m.index) re.lastIndex++ // safety for zero-length match
+    last = e
   }
   if (last < value.length) parts.push(value.slice(last))
   return <>{parts}</>
+}
+
+/** Transitional no-op scope for renderers not yet migrated (removed in Tasks 4–6). */
+export function MatchScope({ children }: { id: string; children: ReactNode }) {
+  return <>{children}</>
+}
+
+/** Transitional stub for CodeBlock's active-match lookup (removed in Task 5). */
+export function activeOccurrenceInBlock(..._args: unknown[]): number {
+  return -1
 }

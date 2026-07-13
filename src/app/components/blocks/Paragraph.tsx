@@ -1,4 +1,5 @@
-import { InlineRenderer, MatchScope } from './InlineRenderer'
+import { InlineRenderer, RunScope } from './InlineRenderer'
+import { inlineText } from '../../lib/visible-text'
 import type { Node } from '../../lib/ast'
 
 export function Paragraph({
@@ -11,9 +12,9 @@ export function Paragraph({
   return (
     <box id={id} paddingX={2}>
       <text>
-        <MatchScope id={id}>
+        <RunScope blockId={id} text={inlineText(node.inline)}>
           <InlineRenderer nodes={node.inline} />
-        </MatchScope>
+        </RunScope>
       </text>
     </box>
   )

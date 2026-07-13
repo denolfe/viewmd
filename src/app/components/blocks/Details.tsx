@@ -1,5 +1,6 @@
-import { InlineRenderer, MatchScope } from './InlineRenderer'
+import { InlineRenderer, RunScope } from './InlineRenderer'
 import { NodeList } from './NodeRenderer'
+import { inlineText } from '../../lib/visible-text'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
 import type { Node } from '../../lib/ast'
@@ -19,9 +20,9 @@ export function Details({
     <box id={blockId(path)} paddingX={2}>
       <text fg={theme.foregroundMuted}>
         {'▾ '}
-        <MatchScope id={blockId(path)}>
+        <RunScope blockId={blockId(path)} runKey="summary" text={'▾ ' + inlineText(node.summary)}>
           <InlineRenderer nodes={node.summary} />
-        </MatchScope>
+        </RunScope>
       </text>
       <box paddingLeft={2}>
         <NodeList nodes={node.children} pathPrefix={path} />
