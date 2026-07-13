@@ -18,7 +18,7 @@ export function SearchInput({ nodes }: { nodes: Node[] }) {
     const index = matches.length
       ? (viewerRef.current?.seedMatchIndex({ matches, pattern, dir: search.dir }) ?? 0)
       : -1
-    setSearch({ ...search, pattern, matches, index })
+    setSearch({ ...search, pattern, matches, index, committed: true })
     setFocus('viewer')
   }
 

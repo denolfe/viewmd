@@ -77,7 +77,7 @@ export function dispatch(
       return
     }
     case 'startSearch':
-      state.setSearch({ pattern: '', matches: [], index: -1, dir: action.dir })
+      state.setSearch({ pattern: '', matches: [], index: -1, dir: action.dir, committed: false })
       state.setFocus('search')
       return
     case 'nextMatch':

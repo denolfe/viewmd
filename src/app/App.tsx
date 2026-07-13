@@ -112,14 +112,15 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   )
 
   useEffect(() => {
-    if (!search || search.index < 0) return
+    if (!search?.committed || search.index < 0) return
     const m = search.matches[search.index]
     if (!m) return
     const v = viewerRef.current
     if (!v) return
     // Less-style jump: the match line scrolls to the top of the viewport,
     // below the breadcrumb overlay. The scroll listener re-syncs breadcrumb
-    // state, so no heading bookkeeping here.
+    // state, so no heading bookkeeping here. Uncommitted (live-typing) search
+    // updates must never scroll — only Enter commits.
     const target = matchScrollTarget({ nodes, toc, match: m, fileLabel })
     v.jumpToMatch({
       match: m,
@@ -128,7 +129,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       pattern: search.pattern,
       topOffset: target?.topOffset ?? 0,
     })
-  }, [search?.index, search?.pattern])
+  }, [search?.index, search?.pattern, search?.committed])
 
   // Populate visibleHeadingIds once after first layout so the breadcrumb's
   // hide-when-visible rule fires before the user touches a key.
