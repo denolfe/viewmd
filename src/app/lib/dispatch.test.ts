@@ -256,17 +256,30 @@ describe('dispatch', () => {
   test('clearSearch clears search and returns to viewer when in search focus', () => {
     const state = makeState({
       focus: 'search',
-      search: { pattern: 'x', matches: [], index: -1, dir: 'forward' },
+      search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: false },
     })
     dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
     expect(state.setSearch).toHaveBeenCalledWith(null)
     expect(state.setFocus).toHaveBeenCalledWith('viewer')
   })
 
+  test('startSearch opens an empty uncommitted search and focuses the input', () => {
+    const state = makeState()
+    dispatch({ kind: 'startSearch', dir: 'forward' }, state, toc, headingIds, 24, () => {})
+    expect(state.setSearch).toHaveBeenCalledWith({
+      pattern: '',
+      matches: [],
+      index: -1,
+      dir: 'forward',
+      committed: false,
+    })
+    expect(state.setFocus).toHaveBeenCalledWith('search')
+  })
+
   test('clearSearch does not refocus when already in viewer', () => {
     const state = makeState({
       focus: 'viewer',
-      search: { pattern: 'x', matches: [], index: -1, dir: 'forward' },
+      search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: false },
     })
     dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
     expect(state.setSearch).toHaveBeenCalledWith(null)

@@ -69,6 +69,8 @@ export type SearchState = {
   matches: Match[]
   index: number
   dir: 'forward' | 'backward'
+  /** False while the pattern is being typed; true once Enter commits. Only a committed search may scroll the viewer. */
+  committed: boolean
 }
 
 export type AppState = {

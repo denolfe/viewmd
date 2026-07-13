@@ -41,12 +41,12 @@ const mount = async (md: string) => {
     }
     throw new Error(`condition not met after 40 settles:\n${setup.captureCharFrame()}`)
   }
-  const searchPromptShows = (text: string) => (frame: string) =>
-    frame.split('\n').some(line => line.trimStart().startsWith(text))
-  // The committed pattern also echoes in the status line as `/<pattern> match
-  // n/m` — only a line without the prompt prefix proves the body text mounted.
+  const searchPromptShows = (pattern: string) => (frame: string) =>
+    frame.split('\n').some(line => line.includes(`search: ${pattern}`))
+  // The committed pattern also echoes in the search bar as `search: <pattern>
+  // N of M` — only a line without the bar's label proves the body text mounted.
   const bodyLineShows = (text: string) => (frame: string) =>
-    frame.split('\n').some(line => line.includes(text) && !line.includes(`/${text}`))
+    frame.split('\n').some(line => line.includes(text) && !line.includes(`search: ${text}`))
   createRoot(setup.renderer).render(
     <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/f.md" />,
   )
@@ -71,9 +71,9 @@ test('after settling, the last node is reachable and mounted (spacer gone)', asy
   await setup.mockInput.typeText('x') // handshake consumes first key
   await settle()
   await setup.mockInput.typeText('/')
-  await settleUntil(searchPromptShows('/'))
+  await settleUntil(searchPromptShows(''))
   await setup.mockInput.typeText('THE-FINAL-LINE')
-  await settleUntil(searchPromptShows('/THE-FINAL-LINE'))
+  await settleUntil(searchPromptShows('THE-FINAL-LINE'))
   setup.mockInput.pressEnter()
   await settleUntil(bodyLineShows('THE-FINAL-LINE'))
   expect(bodyLineShows('THE-FINAL-LINE')(setup.captureCharFrame())).toBe(true)
@@ -186,9 +186,9 @@ test('search jump issued before mount completes lands once the target mounts', a
   await setup.mockInput.typeText('x') // handshake consumes first key
   await settle()
   await setup.mockInput.typeText('/')
-  await settleUntil(searchPromptShows('/'))
+  await settleUntil(searchPromptShows(''))
   await setup.mockInput.typeText('THE-FINAL-LINE')
-  await settleUntil(searchPromptShows('/THE-FINAL-LINE'))
+  await settleUntil(searchPromptShows('THE-FINAL-LINE'))
   setup.mockInput.pressEnter()
   await settleUntil(bodyLineShows('THE-FINAL-LINE'))
   expect(bodyLineShows('THE-FINAL-LINE')(setup.captureCharFrame())).toBe(true)

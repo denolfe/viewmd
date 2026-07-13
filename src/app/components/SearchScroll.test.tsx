@@ -306,6 +306,25 @@ test('search matches highlight inside syntax-highlighted code blocks and track n
   renderer.destroy()
 })
 
+test('typing a search does not scroll the viewer; Enter jumps', async () => {
+  const { renderer, mockInput, settle, captureCharFrame } = await setup()
+
+  expect(rowOf(captureCharFrame(), 'quokka three')).toBe(-1)
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('quokka')
+  await settle()
+  // Live matches exist, but an uncommitted search must not move the view.
+  expect(rowOf(captureCharFrame(), 'quokka three')).toBe(-1)
+
+  mockInput.pressEnter()
+  await settle()
+  expect(rowOf(captureCharFrame(), 'quokka three')).toBe(JUMP_ROW)
+
+  renderer.destroy()
+})
+
 test('a far jump lands the match at the top of the view', async () => {
   const { renderer, mockInput, settle, captureCharFrame } = await setup()
 
