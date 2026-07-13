@@ -1,144 +1,54 @@
-import type { InlineNode, Node } from './ast'
+import type { Node } from './ast'
 import { escapeRegex } from './regex-util'
-import { blockId } from './scroll-marks'
+import { projectDocument, runText } from './visible-text'
+import type { Run } from './visible-text'
 
 /**
- * Identifies a single search match's position in the AST.
- *
- * `blockPath` is the index path through nested block nodes from the top-level
- * `Node[]`. For containers:
- *   - `list`: `[...parents, listIndex, itemIndex]` (items are `Node[]` arrays)
- *   - `blockquote`: `[...parents, blockquoteIndex, childIndex]`
- *   - `table`: `[...parents, tableIndex]` (cells live in `inlinePath`)
- *
- * `inlinePath` is the index path through nested inline nodes.
- *   - For tables: `[rowIndex, columnIndex]`, where `rowIndex === -1`
- *     means the match is in a header cell.
- *   - For non-table blocks: `[topInlineIndex, ...nestedInlineIndices]`.
- *
- * `offset` is the visible-character offset of the match within the leaf text
- * node (text, codespan, or kbd value). `length` is the match length.
+ * A search hit in a block's visible text.
+ * `start`/`length` are offsets in the run's joined visible text (see
+ * visible-text.ts); `runKey` selects the run within the block. `blockPath` is
+ * the AST index path (match-nav derives the preceding heading from its head).
  */
 export type Match = {
   blockPath: number[]
-  inlinePath: number[]
-  offset: number
-  length: number
-  /** DOM id of the block box this match lives in: heading slug, else `blockId(blockPath)`. */
+  /** DOM id of the box the match lives in: heading slug, list-item row id, else blockId(path). */
   blockElementId: string
+  runKey: string
+  start: number
+  length: number
 }
 
 export function findMatches(nodes: Node[], pattern: string): Match[] {
   if (!pattern) return []
   const re = new RegExp(escapeRegex(pattern), 'gi')
   const out: Match[] = []
-  walkBlocks(nodes, [], re, out)
+  for (const proj of projectDocument(nodes)) {
+    for (const run of proj.runs) {
+      const text = runText(run)
+      re.lastIndex = 0
+      let m: RegExpExecArray | null
+      while ((m = re.exec(text)) !== null) {
+        if (re.lastIndex === m.index) re.lastIndex++ // safety for zero-length match
+        if (m[0].length === 0 || overlapsUnsearchable(run, m.index, m[0].length)) continue
+        out.push({
+          blockPath: proj.blockPath,
+          blockElementId: proj.blockElementId,
+          runKey: run.key,
+          start: m.index,
+          length: m[0].length,
+        })
+      }
+    }
+  }
   return out
 }
 
-function walkBlocks(nodes: Node[], path: number[], re: RegExp, out: Match[]): void {
-  for (let i = 0; i < nodes.length; i++) {
-    const p = [...path, i]
-    const n = nodes[i]
-    if (!n) continue
-    const elementId = n.kind === 'heading' ? n.id : blockId(p)
-    switch (n.kind) {
-      case 'heading':
-        walkInline(n.text, p, [], re, out, elementId)
-        break
-      case 'paragraph':
-        walkInline(n.inline, p, [], re, out, elementId)
-        break
-      case 'code':
-        scanText(n.value, p, [], re, out, elementId)
-        break
-      case 'list':
-        for (let j = 0; j < n.items.length; j++) {
-          const item = n.items[j]
-          if (item) walkBlocks(item.children, [...p, j], re, out)
-        }
-        break
-      case 'blockquote':
-        walkBlocks(n.children, p, re, out)
-        break
-      case 'table':
-        n.header.forEach((cell, j) => walkInline(cell, p, [-1, j], re, out, elementId))
-        n.rows.forEach((row, ri) =>
-          row.forEach((cell, j) => walkInline(cell, p, [ri, j], re, out, elementId)),
-        )
-        break
-      case 'html':
-        scanText(n.value, p, [], re, out, elementId)
-        break
-      case 'image':
-        scanText(n.alt, p, [], re, out, elementId)
-        break
-      case 'details':
-        walkInline(n.summary, p, [], re, out, elementId)
-        walkBlocks(n.children, p, re, out)
-        break
-    }
+function overlapsUnsearchable(run: Run, start: number, length: number): boolean {
+  let pos = 0
+  for (const s of run.segments) {
+    const end = pos + s.text.length
+    if (!s.searchable && start < end && start + length > pos) return true
+    pos = end
   }
-}
-
-function walkInline(
-  inlines: InlineNode[],
-  blockPath: number[],
-  inlinePath: number[],
-  re: RegExp,
-  out: Match[],
-  elementId: string,
-): void {
-  for (let i = 0; i < inlines.length; i++) {
-    const ip = [...inlinePath, i]
-    const n = inlines[i]
-    if (!n) continue
-    switch (n.kind) {
-      case 'text':
-        scanText(n.value, blockPath, ip, re, out, elementId)
-        break
-      case 'codespan':
-        scanText(n.value, blockPath, ip, re, out, elementId)
-        break
-      case 'kbd':
-        scanText(n.value, blockPath, ip, re, out, elementId)
-        break
-      case 'strong':
-        walkInline(n.children, blockPath, ip, re, out, elementId)
-        break
-      case 'em':
-        walkInline(n.children, blockPath, ip, re, out, elementId)
-        break
-      case 'link':
-        walkInline(n.children, blockPath, ip, re, out, elementId)
-        break
-      case 'image':
-        scanText(n.alt, blockPath, ip, re, out, elementId)
-        break
-      case 'br':
-        // No textual content; intentionally skipped.
-        break
-    }
-  }
-}
-
-function scanText(
-  text: string,
-  blockPath: number[],
-  inlinePath: number[],
-  re: RegExp,
-  out: Match[],
-  elementId: string,
-): void {
-  re.lastIndex = 0
-  let m: RegExpExecArray | null
-  while ((m = re.exec(text)) !== null) {
-    out.push({
-      blockPath,
-      inlinePath,
-      offset: m.index,
-      length: m[0].length,
-      blockElementId: elementId,
-    })
-  }
+  return false
 }
