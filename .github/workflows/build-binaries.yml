@@ -36,6 +36,7 @@ jobs:
           name: viewmd-${{ matrix.id }}
           path: dist/bin/
           if-no-files-found: error
+          retention-days: 1
 
   stage:
     needs: build
@@ -57,3 +58,4 @@ jobs:
           name: staged-npm
           path: dist/release/npm/
           if-no-files-found: error
+          retention-days: 1

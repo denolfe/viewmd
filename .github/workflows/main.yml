@@ -63,3 +63,4 @@ jobs:
           name: bench-json
           path: bench.json
           if-no-files-found: ignore
+          retention-days: 1
