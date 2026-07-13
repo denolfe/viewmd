@@ -8,25 +8,24 @@ import type { Node } from '../lib/ast'
 export function SearchBar({ nodes }: { nodes: Node[] }) {
   const { search, setSearch, setFocus, viewerRef, focus } = useAppState()
 
-  // Recompute from the submitted value: Enter arriving before React re-renders
-  // must not commit a stale (truncated/empty) pattern.
-  const commit = (pattern: string) => {
+  // Recompute from the input's current string: Enter arriving before React
+  // re-renders must not commit a stale (truncated/empty) pattern.
+  const applyPattern = (pattern: string, committed: boolean) => {
     if (!search) return
     const matches = findMatches(nodes, pattern)
     const index = matches.length
       ? (viewerRef.current?.seedMatchIndex({ matches, pattern, dir: search.dir }) ?? 0)
       : -1
-    setSearch({ ...search, pattern, matches, index, committed: true })
+    setSearch({ ...search, pattern, matches, index, committed })
+  }
+
+  const commit = (pattern: string) => {
+    applyPattern(pattern, true)
     setFocus('viewer')
   }
 
   const onInput = (pattern: string) => {
-    if (!search) return
-    const matches = findMatches(nodes, pattern)
-    const index = matches.length
-      ? (viewerRef.current?.seedMatchIndex({ matches, pattern, dir: search.dir }) ?? 0)
-      : -1
-    setSearch({ ...search, pattern, matches, index, committed: false })
+    applyPattern(pattern, false)
   }
 
   useKeyboard(ev => {
