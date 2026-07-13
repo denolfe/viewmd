@@ -105,8 +105,10 @@ function InlineOne({ node }: { node: InlineNode }) {
  * visible text; ranges are match offsets within it. The cursor is recreated
  * every render and advanced by each HighlightedText in render order, aligning
  * leaf values into the run text by ordered indexOf (robust to pill glyphs and
- * to wrapInline's dropped whitespace in tables).
+ * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode
+ * and no memoized consumers — double-invoke or memoization would desync the cursor.
  */
+/** Ranges are consumed in ascending, non-overlapping order (findMatches' regex emission order). */
 export type HighlightRange = { start: number; end: number; isActive: boolean }
 type RunScopeValue = { text: string; ranges: HighlightRange[]; cursor: { pos: number } }
 const RunScopeContext = createContext<RunScopeValue | null>(null)

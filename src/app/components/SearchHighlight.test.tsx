@@ -10,9 +10,12 @@ const FIXTURE = [
   'Click [linktext here](https://example.com) please.',
   '',
   '![zebra alt](https://example.com/x.png)',
+  '',
+  'zebra tail',
 ].join('\n')
 
 const ACTIVE_BG = { r: 245 / 255, g: 158 / 255, b: 31 / 255 }
+const MATCH_BG = { r: 245 / 255, g: 245 / 255, b: 67 / 255 }
 
 async function setup() {
   const { nodes, toc, headingIds } = buildTree(FIXTURE)
@@ -81,6 +84,26 @@ test('image label furniture highlights', async () => {
 
   const active = spansWithBg(captureSpans, ACTIVE_BG)
   expect(active.map(s => s.text).join('')).toBe('[Image: zebra')
+
+  renderer.destroy()
+})
+
+test('non-active occurrences carry the plain match background', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setup()
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('zebra')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  // Two occurrences (image alt, trailing paragraph): one active, one plain.
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('zebra')
+  const plain = spansWithBg(captureSpans, MATCH_BG)
+  expect(plain.map(s => s.text).join('')).toBe('zebra')
+  expect(plain[0]?.row).not.toBe(active[0]?.row)
 
   renderer.destroy()
 })
