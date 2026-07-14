@@ -110,8 +110,6 @@ export function Viewer({
       },
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
-      // `pattern` in the public params is unused here — matches already carry
-      // exact projection offsets.
       getScrollMarks: ({ matches, activeIndex }) =>
         resolveScrollMarks(box, tailRef.current, projectionsRef.current, { matches, activeIndex }),
       seedMatchIndex: ({ matches, dir }) =>

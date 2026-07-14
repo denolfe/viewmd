@@ -1,6 +1,6 @@
 import type { Node } from './ast'
 import { escapeRegex } from './regex-util'
-import { projectDocument, runText } from './visible-text'
+import { projectionMap, runText } from './visible-text'
 import type { Run } from './visible-text'
 
 /**
@@ -22,14 +22,13 @@ export function findMatches(nodes: Node[], pattern: string): Match[] {
   if (!pattern) return []
   const re = new RegExp(escapeRegex(pattern), 'gi')
   const out: Match[] = []
-  for (const proj of projectDocument(nodes)) {
+  for (const proj of projectionMap(nodes).values()) {
     for (const run of proj.runs) {
       const text = runText(run)
       re.lastIndex = 0
       let m: RegExpExecArray | null
       while ((m = re.exec(text)) !== null) {
-        if (re.lastIndex === m.index) re.lastIndex++ // safety for zero-length match
-        if (m[0].length === 0 || overlapsUnsearchable(run, m.index, m[0].length)) continue
+        if (overlapsUnsearchable(run, m.index, m[0].length)) continue
         out.push({
           blockPath: proj.blockPath,
           blockElementId: proj.blockElementId,

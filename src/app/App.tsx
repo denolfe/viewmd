@@ -126,7 +126,6 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       match: m,
       matches: search.matches,
       index: search.index,
-      pattern: search.pattern,
       topOffset: target?.topOffset ?? 0,
     })
   }, [search?.index, search?.pattern, search?.committed])

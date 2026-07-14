@@ -33,7 +33,7 @@ export type ScrollboxHandle = {
    * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry
    * for `computeTrackCells`. Unresolvable marks are omitted (never throws).
    */
-  getScrollMarks: (params: { matches: Match[]; pattern: string; activeIndex: number }) => {
+  getScrollMarks: (params: { matches: Match[]; activeIndex: number }) => {
     marks: ResolvedMark[]
     scrollTop: number
     scrollHeight: number
@@ -48,18 +48,13 @@ export type ScrollboxHandle = {
     match: Match
     matches: Match[]
     index: number
-    pattern: string
     topOffset?: number
   }) => void
   /**
    * Seed index for a freshly committed search: the nearest match in the search
    * direction relative to the viewport top (wrapping). See `seedMatchIndex`.
    */
-  seedMatchIndex: (params: {
-    matches: Match[]
-    pattern: string
-    dir: 'forward' | 'backward'
-  }) => number
+  seedMatchIndex: (params: { matches: Match[]; dir: 'forward' | 'backward' }) => number
   /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
   subscribeScroll: (cb: () => void) => () => void
 }
