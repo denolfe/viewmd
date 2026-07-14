@@ -10,7 +10,13 @@ import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import { breadcrumbHeightForHeading, tocContentWidth, toggleTocExpanded } from './lib/toc-util'
+import {
+  breadcrumbHeightForHeading,
+  tocContentWidth,
+  toggleTocExpanded,
+  truncateLabelLeft,
+} from './lib/toc-util'
+import { theme } from './styles/theme'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
@@ -177,8 +183,15 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
               settles. `visible={false}` still frees the column so the viewer reclaims
               the width. */}
           {toc.length > 0 && (
-            <box width={tocWidth} border={false} visible={isTocShown}>
+            <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
               <Toc toc={toc} />
+              {fileLabel && (
+                <box paddingLeft={3} paddingRight={1}>
+                  <text fg={theme.foregroundMuted}>
+                    {truncateLabelLeft(fileLabel, tocWidth - 4)}
+                  </text>
+                </box>
+              )}
             </box>
           )}
         </box>

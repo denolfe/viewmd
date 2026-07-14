@@ -31,6 +31,14 @@ export function findToc(toc: TocEntry[], pred: (e: TocEntry) => boolean): TocEnt
   return null
 }
 
+/** Left-truncate to fit `maxWidth`, keeping the tail (filename) visible. */
+export function truncateLabelLeft(label: string, maxWidth: number): string {
+  if (maxWidth <= 0) return ''
+  if (label.length <= maxWidth) return label
+  if (maxWidth === 1) return '…'
+  return `…${label.slice(label.length - maxWidth + 1)}`
+}
+
 export function tocContentWidth(toc: TocEntry[]): number {
   let max = 0
   walkToc(toc, e => {
