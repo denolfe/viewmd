@@ -26,7 +26,6 @@ export const theme = {
   searchMatchBg: '#f5f543',
   searchMatchFg: '#000000',
   searchCurrentBg: '#f59e1f',
-  searchBarBg: '#2d2d2d', // same surface as stickyBg (breadcrumb)
   searchBarFg: '#d4d4d4', // matches foreground
   searchBarNoMatchBg: '#f14c4c', // whole-bar tint when the pattern has no matches — reuse red
   tocCurrent: '#e5e5e5',

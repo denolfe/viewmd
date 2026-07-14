@@ -41,12 +41,13 @@ const mount = async (md: string) => {
     }
     throw new Error(`condition not met after 40 settles:\n${setup.captureCharFrame()}`)
   }
+  // The search overlay renders on the top row of the frame.
   const searchPromptShows = (pattern: string) => (frame: string) =>
-    frame.split('\n').some(line => line.includes(`search: ${pattern}`))
-  // The committed pattern also echoes in the search bar as `search: <pattern>
-  // N of M` — only a line without the bar's label proves the body text mounted.
+    (frame.split('\n')[0] ?? '').includes(`/${pattern}`)
+  // The committed pattern also echoes in the top-row search overlay — only a
+  // line below it proves the body text mounted.
   const bodyLineShows = (text: string) => (frame: string) =>
-    frame.split('\n').some(line => line.includes(text) && !line.includes(`search: ${text}`))
+    frame.split('\n').some((line, i) => i > 0 && line.includes(text))
   createRoot(setup.renderer).render(
     <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/f.md" />,
   )
