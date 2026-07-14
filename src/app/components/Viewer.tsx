@@ -359,9 +359,14 @@ function visualLineForOffset(lineStartCols: number[], offset: number): number {
   return line
 }
 
-/** Border/pipe-only text renderables (table rules, │ pipes) — not content elements. */
+/**
+ * Border/pipe-only text renderables (table rules, │ pipes) — not content
+ * elements. Requires at least one rule glyph: purely-whitespace bearers are
+ * content (an empty table cell in a wrapped row renders '\n') and must keep
+ * their element slot.
+ */
 export function isRuleBearer(plainText: string): boolean {
-  return plainText.length > 0 && /^[\s│┌┐└┘├┤┬┴┼─]+$/.test(plainText)
+  return /^[\s│┌┐└┘├┤┬┴┼─]+$/.test(plainText) && /[│┌┐└┘├┤┬┴┼─]/.test(plainText)
 }
 
 /**

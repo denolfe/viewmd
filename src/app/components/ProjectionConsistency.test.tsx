@@ -33,9 +33,13 @@ const FIXTURE = [
   '',
   '> block quoted text',
   '',
+  // Empty cells (one in the wrapping row, one in a single-line row) exercise
+  // the empty-run clamp: the cells after them must keep their element slots.
   '| Col | Wide |',
   '| --- | ---- |',
-  '| ab | a wrapped zebra cell with many words forcing a wrap |',
+  '| | a wrapped zebra cell with many words forcing a wrap |',
+  '| | zebra after empty |',
+  '| ab | plain row |',
   '',
   '```ts',
   'const zebra = 1',
@@ -117,6 +121,15 @@ test('every projected run aligns into its block’s rendered text', async () => 
             `${p.blockElementId} run ${run.key} element ${el} drift:\n` +
               `  projected ${JSON.stringify(projected)}\n` +
               `  rendered  ${JSON.stringify(rendered)}`,
+          )
+        }
+        // Each bearer is fully owned by its (run, element): anything past the
+        // aligned end must be wrap/padding whitespace, never unprojected text.
+        const tail = bearer.plainText.slice(end)
+        if (normalize(tail) !== '') {
+          throw new Error(
+            `${p.blockElementId} run ${run.key} element ${el} suffix drift:\n` +
+              `  rendered tail ${JSON.stringify(tail)}`,
           )
         }
       }
