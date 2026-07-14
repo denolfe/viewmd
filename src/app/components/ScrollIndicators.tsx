@@ -25,7 +25,6 @@ export function ScrollIndicators() {
       if (!v) return
       const geo = v.getScrollMarks({
         matches: search?.matches ?? [],
-        pattern: search?.pattern ?? '',
         activeIndex: search?.index ?? -1,
       })
       setCells(computeTrackCells(geo))

@@ -1,35 +1,47 @@
-import { InlineRenderer, MatchScope } from './InlineRenderer'
+import { HighlightedText, InlineRenderer, RunScope } from './InlineRenderer'
 import { NodeList, NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
+import { listItemRowId, listItemRunText, listMarkerText } from '../../lib/visible-text'
 import type { ListItem, Node } from '../../lib/ast'
 
 export function List({ node, path }: { node: Extract<Node, { kind: 'list' }>; path: number[] }) {
   return (
     <box paddingLeft={2}>
-      {node.items.map((item, i) => (
-        <box key={i} flexDirection="row">
-          <Marker item={item} ordered={node.ordered} index={i} />
-          <box flexGrow={1}>
-            <ItemBody nodes={item.children} pathPrefix={[...path, i]} />
+      {node.items.map((item, i) => {
+        const itemPath = [...path, i]
+        const marker = listMarkerText(item, node.ordered, i)
+        const runText = listItemRunText({ item, ordered: node.ordered, index: i })
+        return (
+          <box key={i} id={listItemRowId(itemPath)} flexDirection="row">
+            <RunScope blockId={listItemRowId(itemPath)} text={runText}>
+              <Marker item={item} text={marker} />
+              <box flexGrow={1}>
+                <ItemBody nodes={item.children} pathPrefix={itemPath} />
+              </box>
+            </RunScope>
           </box>
-        </box>
-      ))}
+        )
+      })}
     </box>
   )
 }
 
-function Marker({ item, ordered, index }: { item: ListItem; ordered: boolean; index: number }) {
+function Marker({ item, text }: { item: ListItem; text: string }) {
   if (item.task) {
     return (
       <text>
         <span fg={item.checked ? theme.green : theme.foregroundMuted}>
-          {item.checked ? '[✓] ' : '[ ] '}
+          <HighlightedText value={text} />
         </span>
       </text>
     )
   }
-  return <text>{ordered ? `${index + 1}. ` : '- '}</text>
+  return (
+    <text>
+      <HighlightedText value={text} />
+    </text>
+  )
 }
 
 function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }) {
@@ -38,9 +50,7 @@ function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }
     return (
       <>
         <text id={blockId([...pathPrefix, 0])}>
-          <MatchScope id={blockId([...pathPrefix, 0])}>
-            <InlineRenderer nodes={first.inline} />
-          </MatchScope>
+          <InlineRenderer nodes={first.inline} />
         </text>
         {/* rest[i] is nodes[i+1] since the first child was destructured off index 0 */}
         {rest.map((n, i) => (

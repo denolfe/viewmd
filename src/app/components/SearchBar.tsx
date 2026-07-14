@@ -15,7 +15,7 @@ export function SearchBar({ nodes }: { nodes: Node[] }) {
     if (!search) return
     const matches = findMatches(nodes, pattern)
     const index = matches.length
-      ? (viewerRef.current?.seedMatchIndex({ matches, pattern, dir: search.dir }) ?? 0)
+      ? (viewerRef.current?.seedMatchIndex({ matches, dir: search.dir }) ?? 0)
       : -1
     setSearch({ ...search, pattern, matches, index, committed })
   }

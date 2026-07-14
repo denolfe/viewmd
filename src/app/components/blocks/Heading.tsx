@@ -1,4 +1,5 @@
-import { InlineRenderer, MatchScope } from './InlineRenderer'
+import { HighlightedText, InlineRenderer, RunScope } from './InlineRenderer'
+import { headingPrefixText, inlineText } from '../../lib/visible-text'
 import { theme } from '../../styles/theme'
 import type { Node } from '../../lib/ast'
 
@@ -9,9 +10,9 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
         <text bg={theme.h1Bg} fg={theme.h1Fg}>
           <strong>
             {` `}
-            <MatchScope id={node.id}>
+            <RunScope blockId={node.id} text={' ' + inlineText(node.text) + ' '}>
               <InlineRenderer nodes={node.text} />
-            </MatchScope>
+            </RunScope>
             {` `}
           </strong>
         </text>
@@ -22,10 +23,10 @@ export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) 
     <box id={node.id} marginBottom={1} paddingX={2}>
       <text fg={theme.heading}>
         <strong>
-          {'#'.repeat(node.level)}{' '}
-          <MatchScope id={node.id}>
+          <RunScope blockId={node.id} text={headingPrefixText(node.level) + inlineText(node.text)}>
+            <HighlightedText value={headingPrefixText(node.level)} />
             <InlineRenderer nodes={node.text} />
-          </MatchScope>
+          </RunScope>
         </strong>
       </text>
     </box>

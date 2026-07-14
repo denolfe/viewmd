@@ -1,6 +1,8 @@
 import { TextAttributes } from '@opentui/core'
 import type { HtmlSegment } from '../../lib/html'
+import { htmlText } from '../../lib/visible-text'
 import { theme } from '../../styles/theme'
+import { HighlightedText, RunScope } from './InlineRenderer'
 
 // Renders raw HTML segments preserving anchors and images. Used for
 // block-level <html> nodes where badge rows / nav lists / clickable banner
@@ -10,7 +12,9 @@ export function HtmlBlock({ segments, id }: { segments: HtmlSegment[]; id: strin
   return (
     <box id={id} marginBottom={1} paddingX={2}>
       <text fg={theme.foregroundMuted}>
-        <SegmentList segments={segments} inLink={false} />
+        <RunScope blockId={id} text={htmlText(segments)}>
+          <SegmentList segments={segments} inLink={false} />
+        </RunScope>
       </text>
     </box>
   )
@@ -27,29 +31,36 @@ function SegmentList({ segments, inLink }: { segments: HtmlSegment[]; inLink: bo
 }
 
 function SegmentOne({ seg, inLink }: { seg: HtmlSegment; inLink: boolean }) {
-  if (seg.kind === 'text') return <>{seg.value}</>
+  if (seg.kind === 'text') return <HighlightedText value={seg.value} />
 
   if (seg.kind === 'image') {
     const label = seg.alt || seg.src
     // When wrapped in a link, the surrounding <a> carries the click target;
     // suppress the redundant " → src" tail so the label reads cleanly.
     if (inLink) {
-      return <em>[Image: {label}]</em>
+      return (
+        <em>
+          <HighlightedText value="[Image: " />
+          <HighlightedText value={label} />
+          <HighlightedText value="]" />
+        </em>
+      )
     }
     return (
       <em>
-        [Image: {label}
+        <HighlightedText value="[Image: " />
+        <HighlightedText value={label} />
         {seg.alt && seg.src ? (
           <>
-            {' → '}
+            <HighlightedText value=" → " />
             <a href={seg.src}>
               <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
-                {seg.src}
+                <HighlightedText value={seg.src} />
               </span>
             </a>
           </>
         ) : null}
-        ]
+        <HighlightedText value="]" />
       </em>
     )
   }

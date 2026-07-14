@@ -151,7 +151,7 @@ test('jumpToMatch to an unmounted block completes once its chunk mounts', async 
   const match = matches[0]
   if (!match) throw new Error('fixture must contain the search target')
   // The match's block is still behind the spacer — jumpToMatch must record it.
-  viewerRef.current?.jumpToMatch({ match, matches, index: 0, pattern: 'THE-FINAL-LINE' })
+  viewerRef.current?.jumpToMatch({ match, matches, index: 0 })
   for (let i = 0; i < 40; i++) await settle()
   expect(setup.captureCharFrame()).toContain('THE-FINAL-LINE')
   // Mount completion + the completed jump must have fired the scroll listeners.
