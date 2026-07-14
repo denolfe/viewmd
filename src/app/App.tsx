@@ -166,6 +166,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       <box flexDirection="column" height="100%">
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} />
+          <SearchBar nodes={nodes} toc={toc} fileLabel={fileLabel} />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
@@ -182,7 +183,6 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
             </box>
           )}
         </box>
-        <SearchBar nodes={nodes} />
       </box>
     </AppStateContext.Provider>
   )

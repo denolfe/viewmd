@@ -43,7 +43,9 @@ async function setup() {
 }
 
 function rowOf(frame: string, needle: string): number {
-  return frame.split('\n').findIndex(l => l.includes(needle))
+  // Skip row 0: the search overlay echoes the pattern there, and its trailing
+  // bg spaces can complete a `needle ` match (e.g. pattern 'filler 12').
+  return frame.split('\n').findIndex((l, i) => i > 0 && l.includes(needle))
 }
 
 // Row where a jumped-to match lands: JUMP_CONTEXT_ROWS (5) below the two-row
