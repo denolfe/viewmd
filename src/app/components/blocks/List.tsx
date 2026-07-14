@@ -2,7 +2,7 @@ import { HighlightedText, InlineRenderer, RunScope } from './InlineRenderer'
 import { NodeList, NodeRenderer } from './NodeRenderer'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
-import { inlineText, listItemRowId, listMarkerText } from '../../lib/visible-text'
+import { listItemRowId, listItemRunText, listMarkerText } from '../../lib/visible-text'
 import type { ListItem, Node } from '../../lib/ast'
 
 export function List({ node, path }: { node: Extract<Node, { kind: 'list' }>; path: number[] }) {
@@ -10,9 +10,8 @@ export function List({ node, path }: { node: Extract<Node, { kind: 'list' }>; pa
     <box paddingLeft={2}>
       {node.items.map((item, i) => {
         const itemPath = [...path, i]
-        const [first] = item.children
         const marker = listMarkerText(item, node.ordered, i)
-        const runText = first?.kind === 'paragraph' ? marker + inlineText(first.inline) : marker
+        const runText = listItemRunText({ item, ordered: node.ordered, index: i })
         return (
           <box key={i} id={listItemRowId(itemPath)} flexDirection="row">
             <RunScope blockId={listItemRowId(itemPath)} text={runText}>

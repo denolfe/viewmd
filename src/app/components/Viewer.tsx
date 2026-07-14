@@ -9,7 +9,9 @@ import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
 import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
+import { alignOffset, projectionMap, runElementCount } from '../lib/visible-text'
 import { theme } from '../styles/theme'
+import type { BlockProjection } from '../lib/visible-text'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
@@ -53,6 +55,11 @@ export function Viewer({
   // True only while the frame retry itself scrolls, so watchScroll can tell a
   // retry's own scroll apart from wheel/drag (which must cancel the pending).
   const completingRef = useRef(false)
+
+  // Ref'd so the once-mounted handle effect always reads the current map.
+  const projections = useMemo(() => projectionMap(nodes), [nodes])
+  const projectionsRef = useRef(projections)
+  projectionsRef.current = projections
 
   const [mountedCount, setMountedCount] = useState(() =>
     initialMountCount({ nodes, contentWidth, viewportHeight: height }),
@@ -103,16 +110,18 @@ export function Viewer({
       },
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
-      getScrollMarks: ({ matches, pattern, activeIndex }) =>
-        resolveScrollMarks(box, tailRef.current, { matches, pattern, activeIndex }),
-      seedMatchIndex: ({ matches, pattern, dir }) =>
+      // `pattern` in the public params is unused here — matches already carry
+      // exact projection offsets.
+      getScrollMarks: ({ matches, activeIndex }) =>
+        resolveScrollMarks(box, tailRef.current, projectionsRef.current, { matches, activeIndex }),
+      seedMatchIndex: ({ matches, dir }) =>
         seedMatchIndex({
-          matchYs: matches.map((m, i) => resolveMatchY(box, m, matches, i, pattern)),
+          matchYs: matches.map(m => resolveMatchY(box, m, projectionsRef.current)),
           viewportTop: box.viewport.y,
           dir,
         }),
       jumpToMatch: params => {
-        const found = jumpToMatchNow(box, params)
+        const found = jumpToMatchNow(box, projectionsRef.current, params)
         pendingRef.current = found ? null : { kind: 'match', params }
       },
       subscribeScroll: cb => {
@@ -145,7 +154,7 @@ export function Viewer({
         const done =
           pending.kind === 'heading'
             ? scrollChildToTop(box, pending.id, pending.topOffset)
-            : jumpToMatchNow(box, pending.params)
+            : jumpToMatchNow(box, projectionsRef.current, pending.params)
         completingRef.current = false
         // Done, or unresolvable (the doc is fully mounted and the target still
         // isn't there) — either way no stale pending survives.
@@ -241,11 +250,11 @@ function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: numbe
 /** Jumps to a search match. Returns false if its block isn't mounted yet. */
 function jumpToMatchNow(
   box: ScrollBoxRenderable,
+  projections: Map<string, BlockProjection>,
   params: Parameters<ScrollboxHandle['jumpToMatch']>[0],
 ): boolean {
-  const { match, matches, index, pattern, topOffset } = params
-  if (!box.content.findDescendantById(match.blockElementId)) return false
-  const y = resolveMatchY(box, match, matches, index, pattern)
+  const { match, topOffset } = params
+  const y = resolveMatchY(box, match, projections)
   if (y === null) return false
   const delta = matchJumpDelta({
     matchY: y,
@@ -322,10 +331,13 @@ function asTextBearer(node: unknown): TextBearer | null {
 
 /**
  * All text-bearing descendants in tree order. Multi-text blocks (tables,
- * blockquotes) render one text renderable per cell/paragraph; occurrence
- * counting must span them all to land on the right one.
+ * blockquotes) render one text renderable per cell/paragraph; element-ordinal
+ * indexing must span them all to land on the right one.
  */
-function collectTextBearers(node: { getChildren(): unknown[] }, out: TextBearer[]): TextBearer[] {
+export function collectTextBearers(
+  node: { getChildren(): unknown[] },
+  out: TextBearer[],
+): TextBearer[] {
   const self = asTextBearer(node)
   if (self) {
     out.push(self)
@@ -347,41 +359,68 @@ function visualLineForOffset(lineStartCols: number[], offset: number): number {
   return line
 }
 
+/** Border/pipe-only text renderables (table rules, │ pipes) — not content elements. */
+export function isRuleBearer(plainText: string): boolean {
+  return plainText.length > 0 && /^[\s│┌┐└┘├┤┬┴┼─]+$/.test(plainText)
+}
+
+/**
+ * Screen row of a match's first character: locate the run's target element
+ * among the block's text bearers by element ordinal, then align the match's
+ * projection offset into the bearer's rendered text.
+ */
 function resolveMatchY(
   box: ScrollBoxRenderable,
   match: Match,
-  matches: Match[],
-  matchIndex: number,
-  pattern: string,
+  projections: Map<string, BlockProjection>,
 ): number | null {
   const blockBox = box.content.findDescendantById(match.blockElementId)
   if (!blockBox) return null
-  const bearers = collectTextBearers(blockBox, [])
-  if (bearers.length === 0) return blockBox.y
-  // The match is the kth occurrence of the pattern within this block; walk the
-  // block's text renderables in tree order (matching findMatches' AST order)
-  // counting occurrences until the kth is reached.
-  let k = 0
-  for (let i = 0; i < matchIndex; i++) {
-    if (matches[i]?.blockElementId === match.blockElementId) k++
+  const proj = projections.get(match.blockElementId)
+  const run = proj?.runs.find(r => r.key === match.runKey)
+  if (!proj || !run) return blockBox.y
+  const bearers = collectTextBearers(blockBox, []).filter(b => !isRuleBearer(b.plainText))
+
+  // Element ordinal of this run's first element among the block's content bearers.
+  // Empty runs still mount an empty <text> bearer, so clamp each run to ≥1.
+  let elementBase = 0
+  for (const r of proj.runs) {
+    if (r === run) break
+    elementBase += Math.max(1, runElementCount(r))
   }
-  const needle = pattern.toLowerCase()
-  for (const bearer of bearers) {
-    const hay = bearer.plainText.toLowerCase()
-    let found = hay.indexOf(needle)
-    while (found >= 0) {
-      if (k === 0) return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, found)
-      k--
-      found = hay.indexOf(needle, found + Math.max(1, needle.length))
+  // Find the segment containing match.start, then its offset within that
+  // segment's element (segments of one element are contiguous in run order).
+  let target: { element: number; offsetInElement: number } | null = null
+  let pos = 0
+  for (const s of run.segments) {
+    if (match.start < pos + s.text.length) {
+      let before = 0
+      for (const t of run.segments) {
+        if (t === s) break
+        if (t.element === s.element) before += t.text.length
+      }
+      target = { element: s.element, offsetInElement: before + (match.start - pos) }
+      break
     }
+    pos += s.text.length
   }
-  return blockBox.y
+  if (!target) return blockBox.y
+  const found = target
+  const targetText = run.segments
+    .filter(s => s.element === found.element)
+    .map(s => s.text)
+    .join('')
+  const bearer = bearers[elementBase + found.element]
+  if (!bearer) return blockBox.y
+  const aligned = alignOffset(targetText, bearer.plainText, found.offsetInElement)
+  return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, aligned)
 }
 
 function resolveScrollMarks(
   box: ScrollBoxRenderable,
   tail: number,
-  params: { matches: Match[]; pattern: string; activeIndex: number },
+  projections: Map<string, BlockProjection>,
+  params: { matches: Match[]; activeIndex: number },
 ): {
   marks: ResolvedMark[]
   scrollTop: number
@@ -389,20 +428,18 @@ function resolveScrollMarks(
   viewportHeight: number
   realContentHeight: number
 } {
-  const { matches, pattern, activeIndex } = params
+  const { matches, activeIndex } = params
   const marks: ResolvedMark[] = []
   // Renderable `.y` is screen-absolute and includes the scroll translation
   // (content.translateY = -scrollTop). Convert to document space so marks stay
   // fixed on the track while scrolling: docY = screenY - viewportScreenY + scrollTop.
   const screenToDoc = box.scrollTop - box.viewport.y
-  if (pattern) {
-    for (let i = 0; i < matches.length; i++) {
-      const match = matches[i]
-      if (!match) continue
-      const y = resolveMatchY(box, match, matches, i, pattern)
-      if (y === null) continue
-      marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
-    }
+  for (let i = 0; i < matches.length; i++) {
+    const match = matches[i]
+    if (!match) continue
+    const y = resolveMatchY(box, match, projections)
+    if (y === null) continue
+    marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
   }
   return {
     marks,

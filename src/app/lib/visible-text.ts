@@ -64,6 +64,56 @@ export function listItemRowId(itemPath: number[]): string {
   return `itm-${itemPath.join('-')}`
 }
 
+/**
+ * Visible text of a list-item row: marker + first-paragraph inline text
+ * (marker-only when the first child isn't a paragraph). Single source of
+ * truth for both the projection and List.tsx's RunScope text.
+ */
+export function listItemRunText(params: {
+  item: ListItem
+  ordered: boolean
+  index: number
+}): string {
+  return listItemSegments(params)
+    .map(s => s.text)
+    .join('')
+}
+
+/**
+ * Maps an offset in projected text to the corresponding offset in rendered
+ * text, tolerating whitespace dropped or inserted by rendering (wrapInline's
+ * wrap-point spaces become newlines or vanish). Best effort: on divergence
+ * beyond whitespace, returns the rendered position reached so far.
+ */
+export function alignOffset(projected: string, rendered: string, offset: number): number {
+  let i = 0
+  let j = 0
+  while (i < offset && j < rendered.length) {
+    if (projected[i] === rendered[j]) {
+      i++
+      j++
+      continue
+    }
+    const projectedWs = /\s/.test(projected[i] ?? '')
+    const renderedWs = /\s/.test(rendered[j] ?? '')
+    if (projectedWs && renderedWs) {
+      i++
+      j++
+      continue
+    }
+    if (projectedWs) {
+      i++
+      continue
+    }
+    if (renderedWs) {
+      j++
+      continue
+    }
+    break
+  }
+  return j
+}
+
 export function listMarkerText(item: ListItem, ordered: boolean, index: number): string {
   if (item.task) return item.checked ? '[✓] ' : '[ ] '
   return ordered ? `${index + 1}. ` : '- '
@@ -169,13 +219,11 @@ function projectListItems(
     if (!item) continue
     const itemPath = [...listPath, j]
     const [first, ...rest] = item.children
-    const marker = seg(listMarkerText(item, ordered, j), 0)
     const isFirstParagraph = first?.kind === 'paragraph'
-    const joined = isFirstParagraph ? [marker, ...inlineSegments(first.inline, 1)] : [marker]
     out.push({
       blockElementId: listItemRowId(itemPath),
       blockPath: itemPath,
-      runs: [{ key: 'main', segments: joined }],
+      runs: [{ key: 'main', segments: listItemSegments({ item, ordered, index: j }) }],
     })
     // Child paths must match render paths (List.tsx ItemBody) even though the
     // first child was consumed by the joined marker run above.
@@ -186,6 +234,14 @@ function projectListItems(
       if (child) walkChild(child, [...itemPath, restBase + k], out)
     }
   }
+}
+
+/** Segments for a list-item row's 'main' run: marker (element 0) + first-paragraph inline (element 1). */
+function listItemSegments(params: { item: ListItem; ordered: boolean; index: number }): Segment[] {
+  const { item, ordered, index } = params
+  const marker = seg(listMarkerText(item, ordered, index), 0)
+  const [first] = item.children
+  return first?.kind === 'paragraph' ? [marker, ...inlineSegments(first.inline, 1)] : [marker]
 }
 
 function inlineSegments(nodes: InlineNode[], element: number): Segment[] {

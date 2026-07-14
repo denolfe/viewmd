@@ -143,6 +143,22 @@ const WRAP_FIXTURE = [
   '| a wrapped zebra cell with many words forcing a wrap |',
 ].join('\n')
 
+test('a match in a table header cell highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setupWith(WRAP_FIXTURE, 40)
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('Col')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('Col')
+
+  renderer.destroy()
+})
+
 test('a match in a wrapped table cell highlights', async () => {
   const { renderer, mockInput, settle, captureSpans } = await setupWith(WRAP_FIXTURE, 40)
 
@@ -180,6 +196,26 @@ test('html block image alt highlights', async () => {
 
   const active = spansWithBg(captureSpans, ACTIVE_BG)
   expect(active.map(s => s.text).join('')).toBe('Build')
+
+  renderer.destroy()
+})
+
+const BARE_IMG_FIXTURE = ['# T', '', '<img alt="Logo" src="https://example.com/logo.png" />'].join(
+  '\n',
+)
+
+test('non-link-wrapped html image alt highlights', async () => {
+  const { renderer, mockInput, settle, captureSpans } = await setupWith(BARE_IMG_FIXTURE, 80)
+
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('Logo')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const active = spansWithBg(captureSpans, ACTIVE_BG)
+  expect(active.map(s => s.text).join('')).toBe('Logo')
 
   renderer.destroy()
 })

@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'bun:test'
 import { buildTree } from './ast'
-import { projectDocument, runText, listItemRowId } from './visible-text'
+import {
+  alignOffset,
+  listItemRowId,
+  listItemRunText,
+  projectDocument,
+  runText,
+} from './visible-text'
 
 function projectMd(md: string) {
   return projectDocument(buildTree(md).nodes)
@@ -82,11 +88,50 @@ describe('projectDocument', () => {
     expect(texts('a  \nb')[0]).toBe('a\nb')
   })
 
+  test('list item whose first child is not a paragraph projects a marker-only run', () => {
+    // `- > quoted` parses to an item whose first child is a blockquote.
+    const projs = projectMd('- > quoted')
+    expect(projs[0]?.blockElementId).toBe(listItemRowId([0, 0]))
+    const main = projs[0]?.runs[0]
+    expect(main && runText(main)).toBe('- ')
+    expect(projs.some(p => p.runs.some(r => runText(r) === 'quoted'))).toBe(true)
+  })
+
+  test('listItemRunText matches the projected main run text', () => {
+    const { nodes } = buildTree('1. first item\n2. second item')
+    const list = nodes[0]
+    expect(list?.kind).toBe('list')
+    if (list?.kind !== 'list') return
+    const projs = projectDocument(nodes)
+    list.items.forEach((item, i) => {
+      const run = projs[i]?.runs[0]
+      expect(run && runText(run)).toBe(listItemRunText({ item, ordered: list.ordered, index: i }))
+    })
+  })
+
   test('blockquote children project with their own block ids', () => {
     const projs = projectMd('> quoted text')
     expect(projs[0]?.blockElementId).toBe('blk-0-0')
     expect(projs[0]?.runs[0]).toBeDefined()
     if (!projs[0]?.runs[0]) return
     expect(runText(projs[0].runs[0])).toBe('quoted text')
+  })
+})
+
+describe('alignOffset', () => {
+  test('identity when projected and rendered are equal', () => {
+    expect(alignOffset('abc def', 'abc def', 4)).toBe(4)
+  })
+
+  test('wrap turned a space into a newline', () => {
+    expect(alignOffset('aa bb', 'aa\nbb', 3)).toBe(3)
+  })
+
+  test('wrap dropped the space entirely', () => {
+    expect(alignOffset('aa bb cc', 'aa bb\ncc', 6)).toBe(6)
+  })
+
+  test('rendered inserted a newline mid-word (hard break)', () => {
+    expect(alignOffset('longword', 'long\nword', 6)).toBe(7)
   })
 })
