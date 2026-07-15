@@ -12,7 +12,7 @@ import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import {
   breadcrumbHeightForHeading,
-  tocContentWidth,
+  tocVisibleContentWidth,
   toggleTocExpanded,
   truncateLabelLeft,
 } from './lib/toc-util'
@@ -59,10 +59,12 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
   const { width: termWidth } = useTerminalDimensions()
   // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
   const TOC_PADDING = 3
-  // Size the TOC to its content, but never below 16 cols nor above 40% of the terminal.
+  // Size the TOC to its visible content, but never below 16 cols nor above 40%
+  // of the terminal. Measuring only visible rows lets collapsing a wide subtree
+  // shrink the sidebar so the viewer reclaims the freed columns.
   const tocWidth = Math.min(
     Math.floor(termWidth * 0.4),
-    Math.max(16, tocContentWidth(toc) + TOC_PADDING),
+    Math.max(16, tocVisibleContentWidth(toc, expanded) + TOC_PADDING),
   )
   // Viewer reserves 1 col for the vertical scrollbar and the inner box adds paddingRight={1}.
   const VIEWER_OVERHEAD = 2

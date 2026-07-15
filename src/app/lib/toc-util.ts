@@ -39,12 +39,30 @@ export function truncateLabelLeft(label: string, maxWidth: number): string {
   return `…${label.slice(label.length - maxWidth + 1)}`
 }
 
+function tocEntryWidth(e: TocEntry): number {
+  return INDENT_PER_LEVEL * (e.level - 1) + MARKER_WIDTH + inlineVisibleWidth(e.inline)
+}
+
+// Widest row across the whole tree, regardless of collapse state: the maximum
+// the sidebar could ever need.
 export function tocContentWidth(toc: TocEntry[]): number {
   let max = 0
   walkToc(toc, e => {
-    const w = INDENT_PER_LEVEL * (e.level - 1) + MARKER_WIDTH + inlineVisibleWidth(e.inline)
+    const w = tocEntryWidth(e)
     if (w > max) max = w
   })
+  return max
+}
+
+// Widest row among currently-visible entries. Collapsing a subtree that holds a
+// wide heading drops it from the measurement, so the sidebar can shrink and the
+// viewer reclaim the freed columns.
+export function tocVisibleContentWidth(toc: TocEntry[], expanded: Map<string, boolean>): number {
+  let max = 0
+  for (const e of flattenVisible(toc, expanded)) {
+    const w = tocEntryWidth(e)
+    if (w > max) max = w
+  }
   return max
 }
 

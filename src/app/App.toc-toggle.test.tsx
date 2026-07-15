@@ -83,6 +83,53 @@ describe('TOC expand', () => {
   })
 })
 
+describe('TOC collapse sizing', () => {
+  // Leftmost column carrying a scrollbar thumb glyph — marks the viewer's right
+  // edge, so a larger value means a wider viewer.
+  function viewerScrollbarCol(frame: string): number {
+    let min = Infinity
+    for (const line of frame.split('\n')) {
+      for (let c = 0; c < line.length; c++) {
+        if ('█▀▄'.includes(line[c]!)) min = Math.min(min, c)
+      }
+    }
+    return min
+  }
+
+  // Regression: the sidebar was sized from the widest heading in the whole tree,
+  // ignoring collapse state, so collapsing a wide subtree never let the viewer
+  // reclaim the freed columns. Collapsing the subtree holding the widest heading
+  // must now widen the viewer.
+  test('collapsing the widest subtree widens the viewer', async () => {
+    const md =
+      '# Doc\n\nBody text that wraps at narrow widths for this test.\n\n' +
+      '## Alpha\n\nBody.\n\n' +
+      '### This Is An Extremely Long Nested Subsection Heading That Dominates Width\n\nBody.\n\n' +
+      '## Beta\n\nBody.\n'
+    const { nodes, toc, headingIds } = buildTree(md)
+    const setup = await testRender(
+      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="doc.md" />,
+      { width: 70, height: 25 },
+    )
+    await setup.flush()
+
+    await act(async () => pressKey(setup, 'x')) // consume handshake keypress
+    await setup.flush()
+    const before = viewerScrollbarCol(setup.captureCharFrame())
+
+    await act(async () => pressKey(setup, 'tab', '\t')) // focus sidebar (cursor on Doc)
+    await act(async () => pressKey(setup, 'j')) // Alpha
+    await act(async () => pressKey(setup, 'space', ' ')) // collapse Alpha, hiding the long h3
+    await setup.flush()
+    await setup.renderOnce()
+    const after = viewerScrollbarCol(setup.captureCharFrame())
+
+    expect(after).toBeGreaterThan(before)
+
+    setup.renderer.destroy()
+  })
+})
+
 describe('TOC toggle', () => {
   // Regression: re-showing the TOC used to remount its scrollbox, which drew
   // the TOC's vertical scrollbar for a single frame before layout settled —

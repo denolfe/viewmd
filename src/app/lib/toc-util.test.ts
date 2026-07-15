@@ -9,6 +9,7 @@ import {
   flattenVisible,
   inlineVisibleWidth,
   tocContentWidth,
+  tocVisibleContentWidth,
   toggleTocExpanded,
   truncateLabelLeft,
   walkToc,
@@ -99,6 +100,51 @@ describe('tocContentWidth', () => {
   })
   test('empty tree is 0', () => {
     expect(tocContentWidth([])).toBe(0)
+  })
+})
+
+describe('tocVisibleContentWidth', () => {
+  // a > b > c(wide), d — c is the widest but lives under b.
+  const wide: TocEntry[] = [
+    {
+      id: 'a',
+      level: 1,
+      text: 'A',
+      inline: [{ kind: 'text', value: 'A' }],
+      children: [
+        {
+          id: 'b',
+          level: 2,
+          text: 'B',
+          inline: [{ kind: 'text', value: 'B' }],
+          children: [
+            {
+              id: 'c',
+              level: 3,
+              text: 'wide label here',
+              inline: [{ kind: 'text', value: 'wide label here' }],
+              children: [],
+            },
+          ],
+        },
+      ],
+    },
+    { id: 'd', level: 1, text: 'D', inline: [{ kind: 'text', value: 'D' }], children: [] },
+  ]
+
+  test('all expanded matches the full-tree width', () => {
+    expect(tocVisibleContentWidth(wide, new Map())).toBe(tocContentWidth(wide))
+  })
+
+  test('collapsing the subtree holding the widest entry narrows the result', () => {
+    // c: 2*(3-1) + 2 + 15 = 21 (widest). With b collapsed, widest visible is
+    // b: 2*(2-1) + 2 + 1 = 5.
+    expect(tocVisibleContentWidth(wide, new Map())).toBe(21)
+    expect(tocVisibleContentWidth(wide, new Map([['b', false]]))).toBe(5)
+  })
+
+  test('empty tree is 0', () => {
+    expect(tocVisibleContentWidth([], new Map())).toBe(0)
   })
 })
 
