@@ -20,8 +20,10 @@ async function setup(fixture = FIXTURE) {
     await new Promise(r => setTimeout(r, 30))
     await renderOnce()
   }
+  // Slash-free label: the file footer occupies the bottom row, and the overlay
+  // tests assert the search prompt ('/') is absent there.
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/bar.md" />,
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="bar.md" />,
   )
   await settle()
   // The very first key is consumed by the terminal capability handshake.
