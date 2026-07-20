@@ -23,4 +23,15 @@ describe('buildDocument', () => {
     const doc = buildDocument('---\ntitle: Hi\n---\n\n# Body\n', '/tmp/a.md')
     expect(doc.frontmatter.length).toBeGreaterThan(0)
   })
+
+  test('maps heading ids to source lines', () => {
+    const doc = buildDocument('# Title\n\nbody\n\n## Sub\n', '/tmp/a.md')
+    expect(doc.headingLines).toEqual({ title: 1, sub: 5 })
+  })
+
+  test('offsets heading lines by the frontmatter block', () => {
+    // ---\ntitle: x\n---\n\n# Head\n  => `# Head` is line 5 in the file
+    const doc = buildDocument('---\ntitle: x\n---\n\n# Head\n', '/tmp/a.md')
+    expect(doc.headingLines.head).toBe(5)
+  })
 })

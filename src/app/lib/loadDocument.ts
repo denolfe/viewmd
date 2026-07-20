@@ -3,12 +3,14 @@ import { buildTree } from './ast'
 import type { Node, TocEntry } from './ast'
 import { parseFrontmatter, splitFrontmatter } from './frontmatter'
 import type { FrontmatterRow } from './frontmatter'
+import { computeHeadingLines, countNewlines } from './headingLines'
 import { replaceMermaidBlocks } from './preprocess'
 
 export type LoadedDocument = {
   nodes: Node[]
   toc: TocEntry[]
   headingIds: string[]
+  headingLines: Record<string, number>
   frontmatter: FrontmatterRow[]
   fileLabel?: string
 }
@@ -16,10 +18,12 @@ export type LoadedDocument = {
 /** Parses raw markdown into the shape `App` renders from. */
 export function buildDocument(md: string, filePath?: string): LoadedDocument {
   const { frontmatter, body } = splitFrontmatter(md)
+  const offset = countNewlines(md.slice(0, md.length - body.length))
+  const headingLines = computeHeadingLines({ body, offset })
   const processed = replaceMermaidBlocks(body)
   const { nodes, toc, headingIds } = buildTree(processed)
   const rows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
-  return { nodes, toc, headingIds, frontmatter: rows, fileLabel: fileLabel(filePath) }
+  return { nodes, toc, headingIds, headingLines, frontmatter: rows, fileLabel: fileLabel(filePath) }
 }
 
 /** Reads `filePath` and parses it via `buildDocument`. */
