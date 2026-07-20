@@ -1,5 +1,6 @@
-import { describe, expect, test } from 'bun:test'
-import { resolveEditorCommand, buildEditorArgv } from './editor'
+import { describe, expect, test, mock } from 'bun:test'
+import { resolveEditorCommand, buildEditorArgv, openInEditor } from './editor'
+import type { CliRenderer } from '@opentui/core'
 
 describe('resolveEditorCommand', () => {
   test('prefers VIEWMD_EDITOR_COMMAND over EDITOR', () => {
@@ -47,5 +48,36 @@ describe('buildEditorArgv', () => {
   })
   test('whitespace-only command collapses to default vi', () => {
     expect(buildEditorArgv({ command: '   ', filePath: '/a/b.md' })).toEqual(['vi', '/a/b.md'])
+  })
+})
+
+function makeRenderer(): { renderer: CliRenderer; calls: string[] } {
+  const calls: string[] = []
+  const renderer = {
+    suspend: () => calls.push('suspend'),
+    resume: () => calls.push('resume'),
+  } as unknown as CliRenderer
+  return { renderer, calls }
+}
+
+describe('openInEditor', () => {
+  test('suspends, spawns argv, resumes; returns ok with exit code', () => {
+    const { renderer, calls } = makeRenderer()
+    const spawnSync = mock((_cmd: string[]) => ({ exitCode: 0 }))
+    const result = openInEditor({ renderer, argv: ['vi', '/a/b.md'], spawnSync })
+    expect(result).toEqual({ ok: true, code: 0 })
+    expect(calls).toEqual(['suspend', 'resume'])
+    expect(spawnSync.mock.calls[0]?.[0]).toEqual(['vi', '/a/b.md'])
+  })
+
+  test('resumes and returns error when spawn throws', () => {
+    const { renderer, calls } = makeRenderer()
+    const spawnSync = mock(() => {
+      throw new Error('spawn vi ENOENT')
+    })
+    const result = openInEditor({ renderer, argv: ['vi', '/a/b.md'], spawnSync })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('ENOENT')
+    expect(calls).toEqual(['suspend', 'resume'])
   })
 })
