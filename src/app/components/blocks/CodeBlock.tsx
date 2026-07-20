@@ -4,6 +4,7 @@ import { HighlightedText, RunScope, matchRangesForRun } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
+import { MERMAID_ASCII_LANG } from '../../lib/preprocess'
 import type { Node } from '../../lib/ast'
 import type { AppState } from '../../state'
 
@@ -14,8 +15,10 @@ const MARGIN_X = 2
 export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>; id: string }) {
   const { contentWidth, search } = useAppState()
 
-  // Mermaid ASCII already carries its own frame; render it bare.
-  if (node.lang === 'mermaid') {
+  // Rendered mermaid ASCII already carries its own frame; render it bare.
+  // Unrendered mermaid source keeps lang 'mermaid' and falls through as a
+  // normal framed code block below.
+  if (node.lang === MERMAID_ASCII_LANG) {
     return (
       <box id={id} marginX={MARGIN_X}>
         <text wrapMode="none">
@@ -28,7 +31,9 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
   }
 
   const rawLang = node.lang && node.lang !== 'text' ? node.lang : undefined
-  const filetype = rawLang ? infoStringToFiletype(rawLang) : undefined
+  // Unrendered mermaid keeps its 'mermaid' title but skips tree-sitter (no
+  // grammar for it) — render the raw source as plain highlighted text.
+  const filetype = rawLang && rawLang !== 'mermaid' ? infoStringToFiletype(rawLang) : undefined
   const title = rawLang ? ` ${rawLang} ` : undefined
 
   const lines = node.value.split('\n')

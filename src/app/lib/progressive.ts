@@ -3,6 +3,7 @@
 // short); overestimating leaves blank rows on first paint and overshoots the
 // `--render` cap.
 import { inlineVisibleWidth } from './inline-width'
+import { MERMAID_ASCII_LANG } from './preprocess'
 import type { ListItem, Node } from './ast'
 
 /** Nodes appended per growth tick after first paint. */
@@ -56,8 +57,9 @@ export function estimateNodeRows(node: Node, contentWidth: number): number {
       return Math.max(1, Math.ceil(inlineVisibleWidth(node.inline) / Math.max(1, contentWidth)))
     case 'code': {
       const lines = node.value.split('\n').length
-      // Mermaid renders bare (no frame); others add border (2) + paddingY (2).
-      return node.lang === 'mermaid' ? lines : lines + 4
+      // Rendered mermaid ASCII renders bare (no frame); others (incl. unrendered
+      // mermaid source) add border (2) + paddingY (2).
+      return node.lang === MERMAID_ASCII_LANG ? lines : lines + 4
     }
     case 'table':
       return node.rows.length + 3 // header + separator + borders, minimum

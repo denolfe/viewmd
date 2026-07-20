@@ -7,6 +7,7 @@ import {
   initialMountCount,
   sliceCountForRows,
 } from './progressive'
+import { MERMAID_ASCII_LANG } from './preprocess'
 import type { Node } from './ast'
 
 const WIDTH = 80
@@ -39,9 +40,14 @@ describe('estimateNodeRows', () => {
     expect(estimateNodeRows(node('```ts\na\nb\nc\n```'), WIDTH)).toBe(7)
   })
 
-  test('mermaid code block is raw line count (rendered bare)', () => {
-    const n: Node = { kind: 'code', lang: 'mermaid', value: 'a\nb\nc' }
+  test('rendered mermaid ascii is raw line count (rendered bare)', () => {
+    const n: Node = { kind: 'code', lang: MERMAID_ASCII_LANG, value: 'a\nb\nc' }
     expect(estimateNodeRows(n, WIDTH)).toBe(3)
+  })
+
+  test('unrendered mermaid source is line count + 4 (framed fallback)', () => {
+    const n: Node = { kind: 'code', lang: 'mermaid', value: 'a\nb\nc' }
+    expect(estimateNodeRows(n, WIDTH)).toBe(7)
   })
 
   test('table is row count + 3', () => {
