@@ -6,12 +6,13 @@ import { ReadStream as TtyReadStream } from 'node:tty'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
-import { parseArgs, parsePositiveInt } from './app/lib/args'
+import { parseArgs } from './app/lib/args'
 import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
 import { replaceMermaidBlocks } from './app/lib/preprocess'
 import { parseFrontmatter, splitFrontmatter } from './app/lib/frontmatter'
 import type { FrontmatterRow } from './app/lib/frontmatter'
+import { loadConfig, resolveSettings } from './app/lib/config'
 import { renderAnsi } from './app/lib/renderAnsi'
 import { version } from '../package.json'
 
@@ -56,19 +57,23 @@ async function main(): Promise<void> {
   const { nodes, toc, headingIds } = buildTree(processed)
   const frontmatterRows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
 
+  const { config, warnings } = await loadConfig(process.env)
+  const settings = resolveSettings({ config, env: process.env, flags: { maxLines } })
+
   const renderMode = forceRender || !process.stdout.isTTY
   if (renderMode) {
+    for (const w of warnings) console.error(w)
     const width = clampWidth(
       Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80,
     )
-    // Cap precedence: explicit flag > fzf preview env > none (full document).
-    const capRows = maxLines ?? fzfPreviewLines()
+    const capRows = settings.maxLines
     const out = await renderAnsi({
       nodes,
       frontmatter: frontmatterRows,
       width,
       maxHeight: capRows ?? RENDER_MAX_HEIGHT,
       capRows,
+      contentMaxWidth: settings.contentMaxWidth,
     })
     try {
       await Bun.write(Bun.stdout, out + '\n')
@@ -94,6 +99,8 @@ async function main(): Promise<void> {
       headingIds={headingIds}
       frontmatter={frontmatterRows}
       fileLabel={fileLabel(filePath)}
+      contentMaxWidth={settings.contentMaxWidth}
+      warnings={warnings}
     />,
   )
 }
@@ -104,11 +111,6 @@ function isEpipe(e: unknown): boolean {
 
 function clampWidth(w: number): number {
   return Number.isFinite(w) && w >= MIN_WIDTH ? Math.floor(w) : MIN_WIDTH
-}
-
-/** FZF_PREVIEW_LINES is set only inside fzf preview subprocesses. */
-function fzfPreviewLines(): number | undefined {
-  return parsePositiveInt(process.env.FZF_PREVIEW_LINES)
 }
 
 function fileLabel(p?: string): string | undefined {
