@@ -50,6 +50,8 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
     setVisibleHeadingIds: mock(),
+    flashMessage: null,
+    setFlashMessage: mock(),
     ...overrides,
   } as AppState
 }
@@ -344,6 +346,13 @@ describe('dispatch', () => {
     const state = makeState()
     dispatch({ kind: 'toggleMouse' }, state, toc, headingIds, 24, () => {})
     expect(state.toggleMouse).toHaveBeenCalled()
+  })
+
+  test('openEditor invokes onOpenEditor callback once', () => {
+    const state = makeState()
+    const onOpenEditor = mock()
+    dispatch({ kind: 'openEditor' }, state, toc, headingIds, 20, () => {}, undefined, onOpenEditor)
+    expect(onOpenEditor).toHaveBeenCalledTimes(1)
   })
 })
 

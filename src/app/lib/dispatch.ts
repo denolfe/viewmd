@@ -11,6 +11,7 @@ export function dispatch(
   viewportHeight: number,
   onQuit: () => void,
   fileLabel?: string,
+  onOpenEditor?: () => void,
 ): void {
   const scroll = (fn: (v: ScrollboxHandle) => void): void => {
     const v = state.viewerRef.current
@@ -96,6 +97,9 @@ export function dispatch(
       return
     case 'toggleMouse':
       state.toggleMouse()
+      return
+    case 'openEditor':
+      onOpenEditor?.()
       return
     case 'toggleTocVisible':
       if (state.tocVisible && state.focus === 'sidebar') state.setFocus('viewer')
