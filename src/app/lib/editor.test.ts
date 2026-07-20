@@ -161,4 +161,19 @@ describe('openInEditor', () => {
     if (!result.ok) expect(result.error).toContain('ENOENT')
     expect(calls).toEqual(['suspend', 'resume'])
   })
+
+  test('unresolvable binary errors without suspending (no flicker) or spawning', () => {
+    const { renderer, calls } = makeRenderer()
+    const spawnSync = mock((_cmd: string[]) => ({ exitCode: 0 }))
+    const result = openInEditor({
+      renderer,
+      argv: ['nope', '/a/b.md'],
+      spawnSync,
+      isExecutable: () => false,
+    })
+    expect(result.ok).toBe(false)
+    if (!result.ok) expect(result.error).toContain('command not found')
+    expect(calls).toEqual([])
+    expect(spawnSync).not.toHaveBeenCalled()
+  })
 })

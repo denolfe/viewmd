@@ -1,4 +1,4 @@
-import { openSync, closeSync } from 'node:fs'
+import { openSync, closeSync, accessSync, constants } from 'node:fs'
 import { basename } from 'node:path'
 import type { CliRenderer } from '@opentui/core'
 
@@ -66,14 +66,26 @@ type SpawnSyncFn = (
 
 export type EditorResult = { ok: true; code: number } | { ok: false; error: string }
 
-// `spawnSync` is injected so the suspend/resume contract is unit-testable without
-// launching a real process. Production callers omit it and get Bun.spawnSync.
+type IsExecutableFn = (command: string) => boolean
+
+// `spawnSync`/`isExecutable` are injected so the suspend/resume contract is
+// unit-testable without launching a real process. Production callers omit them.
 export function openInEditor(params: {
   renderer: CliRenderer
   argv: string[]
   spawnSync?: SpawnSyncFn
+  isExecutable?: IsExecutableFn
 }): EditorResult {
   const spawnSync = params.spawnSync ?? defaultSpawnSync
+  const isExecutable = params.isExecutable ?? defaultIsExecutable
+  // Resolve the binary *before* suspending the renderer. A bogus command
+  // otherwise triggers a suspend → spawn-throw → resume cycle that tears down
+  // and repaints the alt-screen for a frame — a visible flicker. Bailing here
+  // flashes the error without ever leaving the viewer.
+  const bin = params.argv[0]
+  if (!bin || !isExecutable(bin)) {
+    return { ok: false, error: `${bin ?? 'editor'}: command not found` }
+  }
   // Bind the child to /dev/tty so the editor owns the terminal even when viewmd's
   // own stdin is a pipe (the /dev/tty keyboard-fallback launch mode).
   let ttyFd: number | null = null
@@ -96,6 +108,20 @@ export function openInEditor(params: {
 }
 
 const defaultSpawnSync: SpawnSyncFn = (cmd, options) => Bun.spawnSync(cmd, options)
+
+// A path (contains `/`) is checked directly for the executable bit; a bare name
+// is resolved against PATH. No shell expansion — matches how we spawn.
+const defaultIsExecutable: IsExecutableFn = command => {
+  if (command.includes('/')) {
+    try {
+      accessSync(command, constants.X_OK)
+      return true
+    } catch {
+      return false
+    }
+  }
+  return Bun.which(command) !== null
+}
 
 // Whitespace-split honoring single/double quotes. No shell expansion (no glob,
 // no $VAR) — keeps spawning predictable and safe.
