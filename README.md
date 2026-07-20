@@ -31,6 +31,28 @@ cat README.md | viewmd  # pipe input to the interactive viewer (needs a TTY)
 cat README.md | viewmd -r  # pipe input to a one-shot render
 ```
 
+## Configuration
+
+`viewmd` reads an optional TOML config file, searched in this order:
+
+1. `$VIEWMD_CONFIG` (explicit path)
+2. `$XDG_CONFIG_HOME/viewmd/config.toml`
+3. `~/.config/viewmd/config.toml`
+
+```toml
+# ~/.config/viewmd/config.toml
+
+# Max content width (columns). Applies in interactive and render mode.
+# Overrides the built-in cap of 100; minimum 20.
+width = 100
+
+# Default row cap for one-shot/render output (e.g. piping to a pager or fzf preview).
+max-lines = 40
+```
+
+Precedence, highest first: **CLI flag > environment variable > config file > built-in default.**
+Invalid keys or values are ignored with a warning on stderr; a malformed file never stops the viewer.
+
 ## Keyboard shortcuts
 
 ### Viewer

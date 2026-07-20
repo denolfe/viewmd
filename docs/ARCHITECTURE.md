@@ -31,12 +31,13 @@ Entry: `src/index.tsx`. Everything else lives under `src/app/`.
 ## 1. Entry pipeline (`src/index.tsx`)
 
 1. **Parse argv** — `parseArgs` (`src/app/lib/args.ts`) returns `{ filePath?, forceRender? }`. First non-flag positional becomes `filePath`; `--render`/`-r` sets `forceRender`.
-2. **Read input** — `Bun.file(filePath).text()` when a file path is given; otherwise `Bun.stdin.text()` when stdin is non-TTY; otherwise a usage error.
-3. **Preprocess** — `replaceMermaidBlocks` (see [Preprocessing](#preprocessing)).
-4. **Build AST** — `buildTree(markdown)` returns `{ nodes, toc, headingIds }`.
-5. **Branch on mode**:
+2. **Load config** — `loadConfig(process.env)` (`src/app/lib/config.ts`) resolves the config path (`$VIEWMD_CONFIG` → `$XDG_CONFIG_HOME/viewmd/config.toml` → `~/.config/viewmd/config.toml`), parses the TOML if present, and validates each key; malformed files or bad values become stderr warnings rather than throws. `resolveSettings({ config, env, flags })` then merges config with the CLI flags and environment (`FZF_PREVIEW_LINES`, `FZF_PREVIEW_COLUMNS`) to produce `{ contentMaxWidth, maxLines }`, flag > env > config > built-in default.
+3. **Read input** — `Bun.file(filePath).text()` when a file path is given; otherwise `Bun.stdin.text()` when stdin is non-TTY; otherwise a usage error.
+4. **Preprocess** — `replaceMermaidBlocks` (see [Preprocessing](#preprocessing)).
+5. **Build AST** — `buildTree(markdown)` returns `{ nodes, toc, headingIds }`.
+6. **Branch on mode**:
    - **Render mode** (`forceRender || !process.stdout.isTTY`): `renderAnsi({ nodes, width, maxHeight, capRows })` mounts a body-only `<RenderView>` into OpenTUI's headless `createTestRenderer`, waits for visual idle (so async tree-sitter highlight commits), captures one frame via `captureSpans()`, converts spans → 24-bit SGR ANSI, trims trailing blank rows, and writes to stdout via `Bun.write`. Width is `FZF_PREVIEW_COLUMNS` → `process.stdout.columns` → 80, clamped to a minimum of 20. `maxHeight` defaults to 2000. `capRows` = `--max-lines` > `FZF_PREVIEW_LINES` > none; when set, only nodes estimated within the cap mount, highlight waits cover only those, and output is truncated to `capRows` lines.
-   - **Interactive mode**: `createCliRenderer({ exitOnCtrlC: false })`, then `createRoot(renderer).render(<App ... />)`. `App` receives the AST plus a `fileLabel` derived from `<parentDir>/<basename>`.
+   - **Interactive mode**: `createCliRenderer({ exitOnCtrlC: false })`, then `createRoot(renderer).render(<App ... />)`. `App` receives the AST plus a `fileLabel` derived from `<parentDir>/<basename>`, `settings.contentMaxWidth`, and any config `warnings` — the latter are flushed to stderr on quit, after the screen is restored, so a bad config never corrupts the TUI frame.
 
 Exit on `Ctrl-C` is wired explicitly through the key dispatcher so the same path covers `q`, `Ctrl-C`, and forced teardown.
 
