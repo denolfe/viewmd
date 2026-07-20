@@ -88,7 +88,14 @@ test('every projected run aligns into its block’s rendered text', async () => 
     await renderOnce()
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/ks.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/ks.md"
+    />,
   )
   // Extra settles let the progressive-mount growth loop finish for the tail blocks.
   for (let i = 0; i < 10; i++) await settle()

@@ -25,7 +25,14 @@ setup.renderer.setMaxListeners(0)
 
 flushSync(() => {
   createRoot(setup.renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="bench/doc" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      fileLabel="bench/doc"
+      headingLines={{}}
+    />,
   )
 })
 let hasFrame = false

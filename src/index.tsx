@@ -54,6 +54,7 @@ async function main(): Promise<void> {
     headingIds,
     frontmatter: frontmatterRows,
     fileLabel: label,
+    headingLines,
   } = buildDocument(md, filePath)
 
   const { config, warnings } = await loadConfig(process.env)
@@ -107,6 +108,7 @@ async function main(): Promise<void> {
       fileLabel={label}
       filePath={filePath}
       contentMaxWidth={settings.contentMaxWidth}
+      headingLines={headingLines}
     />,
   )
 }

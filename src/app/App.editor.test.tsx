@@ -20,7 +20,7 @@ test('pressing e without a filePath flashes the stdin-disable message', async ()
   }
 
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} />,
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} headingLines={{}} />,
   )
   await settle()
 

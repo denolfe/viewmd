@@ -49,7 +49,14 @@ const mount = async (md: string) => {
   const bodyLineShows = (text: string) => (frame: string) =>
     frame.split('\n').some((line, i) => i > 0 && line.includes(text))
   createRoot(setup.renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/f.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/f.md"
+    />,
   )
   return { nodes, setup, settle, settleUntil, searchPromptShows, bodyLineShows }
 }

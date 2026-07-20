@@ -33,6 +33,7 @@ type Props = {
   fileLabel?: string
   contentMaxWidth?: number
   filePath?: string
+  headingLines: Record<string, number>
 }
 
 export function App({
@@ -43,6 +44,7 @@ export function App({
   fileLabel: initialFileLabel,
   filePath,
   contentMaxWidth = CONTENT_MAX_WIDTH,
+  headingLines: initialHeadingLines,
 }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
@@ -54,8 +56,9 @@ export function App({
     headingIds: initialHeadingIds,
     frontmatter: initialFrontmatter,
     fileLabel: initialFileLabel,
+    headingLines: initialHeadingLines,
   }))
-  const { nodes, toc, headingIds, frontmatter, fileLabel } = doc
+  const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = doc
   const [flashMessage, setFlashMessage] = useState<string | null>(null)
 
   const [focus, setFocus] = useState<Focus>('viewer')
@@ -216,9 +219,11 @@ export function App({
       return
     }
     pendingReanchorRef.current = currentHeadingId
+    const line = currentHeadingId ? headingLines[currentHeadingId] : undefined
     const argv = buildEditorArgv({
       command: resolveEditorCommand(process.env),
       filePath,
+      line,
     })
     const result = openInEditor({ renderer, argv })
     if (!result.ok) {
@@ -232,7 +237,7 @@ export function App({
         setFlashMessage('Reload failed: file unreadable')
         pendingReanchorRef.current = null
       })
-  }, [filePath, currentHeadingId, renderer])
+  }, [filePath, currentHeadingId, renderer, headingLines])
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing

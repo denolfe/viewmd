@@ -43,7 +43,14 @@ test('search ticks render on the scrollbar column without a row offset', async (
   }
 
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/fix.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/fix.md"
+    />,
   )
   await settle()
 
