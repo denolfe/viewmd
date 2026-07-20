@@ -28,7 +28,6 @@ type Props = {
   frontmatter: FrontmatterRow[]
   fileLabel?: string
   contentMaxWidth?: number
-  warnings?: string[]
 }
 
 export function App({
@@ -38,7 +37,6 @@ export function App({
   frontmatter,
   fileLabel,
   contentMaxWidth = CONTENT_MAX_WIDTH,
-  warnings = [],
 }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
@@ -161,16 +159,6 @@ export function App({
     }, 0)
     return () => clearTimeout(tid)
   }, [headingIds])
-
-  useEffect(() => {
-    const flush = () => {
-      for (const w of warnings) console.error(w)
-    }
-    renderer.on('destroy', flush)
-    return () => {
-      renderer.off('destroy', flush)
-    }
-  }, [renderer, warnings])
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing

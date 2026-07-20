@@ -62,7 +62,7 @@ async function main(): Promise<void> {
 
   const renderMode = forceRender || !process.stdout.isTTY
   if (renderMode) {
-    for (const w of warnings) console.error(w)
+    for (const w of warnings) process.stderr.write(`${w}\n`)
     const width = clampWidth(
       Number(process.env.FZF_PREVIEW_COLUMNS) || process.stdout.columns || 80,
     )
@@ -85,6 +85,13 @@ async function main(): Promise<void> {
     process.exit(0)
   }
 
+  // Print config warnings to the main screen before OpenTUI takes over. The
+  // renderer hijacks console.* and runs on the alternate screen, and its
+  // teardown bypasses process 'exit' handlers, so neither a console call nor an
+  // exit hook reaches the user. Writing here lands the warning on the main
+  // buffer, which the alternate screen preserves and restores on quit.
+  for (const w of warnings) process.stderr.write(`${w}\n`)
+
   addDefaultParsers(extraParsers)
   const keyboard = keyboardStream()
   const renderer = await createCliRenderer({ exitOnCtrlC: false, stdin: keyboard })
@@ -100,7 +107,6 @@ async function main(): Promise<void> {
       frontmatter={frontmatterRows}
       fileLabel={fileLabel(filePath)}
       contentMaxWidth={settings.contentMaxWidth}
-      warnings={warnings}
     />,
   )
 }
