@@ -1,4 +1,5 @@
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
+import { parsePositiveInt } from './args'
 
 /** Floor for a configured content width; mirrors index.tsx's pane MIN_WIDTH. */
 export const MIN_CONTENT_WIDTH = 20
@@ -20,7 +21,7 @@ export function resolvePath(env: Env): string {
   return `${base}/viewmd/config.toml`
 }
 
-export function validate(raw: Record<string, unknown>): { config: Config; warnings: string[] } {
+export function validate(raw: object): { config: Config; warnings: string[] } {
   const config: Config = {}
   const warnings: string[] = []
   for (const [key, value] of Object.entries(raw)) {
@@ -46,7 +47,7 @@ export function resolveSettings(params: {
   return {
     contentMaxWidth:
       config.width === undefined ? CONTENT_MAX_WIDTH : Math.max(MIN_CONTENT_WIDTH, config.width),
-    maxLines: flags.maxLines ?? parseFzfLines(env.FZF_PREVIEW_LINES) ?? config.maxLines,
+    maxLines: flags.maxLines ?? parsePositiveInt(env.FZF_PREVIEW_LINES) ?? config.maxLines,
   }
 }
 
@@ -72,7 +73,7 @@ export async function loadConfig(env: Env): Promise<{ config: Config; warnings: 
   }
 
   if (parsed === null || typeof parsed !== 'object') return { config: {}, warnings: [] }
-  return validate(parsed as Record<string, unknown>)
+  return validate(parsed)
 }
 
 function isTomlKey(key: string): key is TomlKey {
@@ -81,10 +82,4 @@ function isTomlKey(key: string): key is TomlKey {
 
 function isPositiveInt(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value > 0
-}
-
-function parseFzfLines(raw: string | undefined): number | undefined {
-  if (raw === undefined || raw === '') return undefined
-  const n = Number(raw)
-  return Number.isInteger(n) && n > 0 ? n : undefined
 }

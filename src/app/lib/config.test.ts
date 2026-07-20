@@ -39,6 +39,11 @@ describe('validate', () => {
     expect(r.config).toEqual({})
     expect(r.warnings).toEqual([`viewmd: config 'width' must be a positive integer (ignored)`])
   })
+  test.each([0, -5, 3.5])('drops non-positive/non-integer value %p', value => {
+    const r = validate({ 'max-lines': value })
+    expect(r.config).toEqual({})
+    expect(r.warnings).toEqual([`viewmd: config 'max-lines' must be a positive integer (ignored)`])
+  })
 })
 
 describe('resolveSettings', () => {
