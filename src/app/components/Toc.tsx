@@ -1,13 +1,21 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useRenderer } from '@opentui/react'
-import type { ScrollBoxRenderable } from '@opentui/core'
+import type { MouseEvent, ScrollBoxRenderable } from '@opentui/core'
 import { useAppState } from '../state'
 import { flattenVisible, isTocExpanded } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
 import { MutedInline } from './blocks/MutedInline'
 
-export function Toc({ toc }: { toc: TocEntry[] }) {
+export function Toc({
+  toc,
+  onEntryJump,
+  onEntryToggle,
+}: {
+  toc: TocEntry[]
+  onEntryJump: (id: string) => void
+  onEntryToggle: (id: string) => void
+}) {
   const { expanded, currentHeadingId, tocCursorId, focus } = useAppState()
   const visible = flattenVisible(toc, expanded)
   const renderer = useRenderer()
@@ -46,11 +54,16 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
             flexDirection="row"
             backgroundColor={isCursor ? theme.tocFocusBg : undefined}
           >
-            <text fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}>
+            <text
+              fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}
+              onMouseDown={onPrimaryClick(() =>
+                hasChildren ? onEntryToggle(e.id) : onEntryJump(e.id),
+              )}
+            >
               {indent}
               {marker}{' '}
             </text>
-            <box flexGrow={1}>
+            <box flexGrow={1} onMouseDown={onPrimaryClick(() => onEntryJump(e.id))}>
               <text fg={isCurrent ? theme.tocCurrent : theme.foregroundMuted}>
                 {/* Current entry: bold emphasis on top of the tocCurrent color (bold is idempotent over nested <strong>). */}
                 {isCurrent ? (
@@ -67,4 +80,10 @@ export function Toc({ toc }: { toc: TocEntry[] }) {
       })}
     </scrollbox>
   )
+}
+
+const onPrimaryClick = (handler: () => void) => (event: MouseEvent) => {
+  if (event.button !== 0) return
+  event.stopPropagation()
+  handler()
 }
