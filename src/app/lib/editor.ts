@@ -1,16 +1,58 @@
 import { openSync, closeSync } from 'node:fs'
+import { basename } from 'node:path'
 import type { CliRenderer } from '@opentui/core'
 
 export function resolveEditorCommand(env: NodeJS.ProcessEnv): string {
   return env.VIEWMD_EDITOR_COMMAND?.trim() || env.EDITOR?.trim() || 'vi'
 }
 
-export function buildEditorArgv(params: { command: string; filePath: string }): string[] {
+export function buildEditorArgv(params: {
+  command: string
+  filePath: string
+  line?: number
+}): string[] {
   const tokens = tokenize(params.command)
   if (tokens.length === 0) return ['vi', params.filePath]
-  const hasPlaceholder = tokens.some(t => t.includes('{file}'))
-  if (hasPlaceholder) return tokens.map(t => t.replaceAll('{file}', params.filePath))
-  return [...tokens, params.filePath]
+  const hasPlaceholder = tokens.some(t => t.includes('{file}') || t.includes('{line}'))
+  if (hasPlaceholder) {
+    const lineStr = params.line === undefined ? '' : String(params.line)
+    return tokens.map(t => t.replaceAll('{file}', params.filePath).replaceAll('{line}', lineStr))
+  }
+  if (params.line === undefined) return [...tokens, params.filePath]
+  return appendFileWithLine({ tokens, filePath: params.filePath, line: params.line })
+}
+
+// Editor basename → native line-positioning syntax. Unknown editors fall back to
+// the POSIX `+N file` convention (matches our default `vi`).
+function appendFileWithLine(params: {
+  tokens: string[]
+  filePath: string
+  line: number
+}): string[] {
+  const { tokens, filePath, line } = params
+  const raw = basename(tokens[0] ?? '').toLowerCase()
+  const name = raw.endsWith('.exe') ? raw.slice(0, -'.exe'.length) : raw
+
+  const vscode = new Set(['code', 'code-insiders', 'codium', 'vscodium', 'code-oss'])
+  const fileColonLine = new Set(['subl', 'sublime_text', 'smerge', 'hx', 'helix'])
+  const jetbrains = new Set([
+    'idea',
+    'pycharm',
+    'webstorm',
+    'goland',
+    'clion',
+    'rider',
+    'phpstorm',
+    'rubymine',
+    'datagrip',
+  ])
+
+  if (vscode.has(name)) return [...tokens, '-g', `${filePath}:${line}`]
+  if (fileColonLine.has(name)) return [...tokens, `${filePath}:${line}`]
+  if (jetbrains.has(name)) return [...tokens, '--line', String(line), filePath]
+  if (name === 'mate') return [...tokens, '-l', String(line), filePath]
+  // `+N file` for the +N family (vi/vim/nvim/nano/emacs/…) and every unknown editor.
+  return [...tokens, `+${line}`, filePath]
 }
 
 type SpawnSyncFn = (

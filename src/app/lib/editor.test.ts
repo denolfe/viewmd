@@ -51,6 +51,87 @@ describe('buildEditorArgv', () => {
   })
 })
 
+describe('buildEditorArgv with line', () => {
+  test('substitutes {line} and {file} placeholders', () => {
+    expect(
+      buildEditorArgv({ command: 'code -g {file}:{line}', filePath: '/a/b.md', line: 42 }),
+    ).toEqual(['code', '-g', '/a/b.md:42'])
+  })
+  test('vi-style +N for bare vi', () => {
+    expect(buildEditorArgv({ command: 'vi', filePath: '/a/b.md', line: 10 })).toEqual([
+      'vi',
+      '+10',
+      '/a/b.md',
+    ])
+  })
+  test('nvim +N with existing args', () => {
+    expect(buildEditorArgv({ command: 'nvim -R', filePath: '/a/b.md', line: 5 })).toEqual([
+      'nvim',
+      '-R',
+      '+5',
+      '/a/b.md',
+    ])
+  })
+  test('VS Code -g file:line (no placeholder)', () => {
+    expect(buildEditorArgv({ command: 'code --wait', filePath: '/a/b.md', line: 7 })).toEqual([
+      'code',
+      '--wait',
+      '-g',
+      '/a/b.md:7',
+    ])
+  })
+  test('sublime file:line', () => {
+    expect(buildEditorArgv({ command: 'subl', filePath: '/a/b.md', line: 3 })).toEqual([
+      'subl',
+      '/a/b.md:3',
+    ])
+  })
+  test('helix file:line', () => {
+    expect(buildEditorArgv({ command: 'hx', filePath: '/a/b.md', line: 9 })).toEqual([
+      'hx',
+      '/a/b.md:9',
+    ])
+  })
+  test('JetBrains --line N file', () => {
+    expect(buildEditorArgv({ command: 'idea', filePath: '/a/b.md', line: 12 })).toEqual([
+      'idea',
+      '--line',
+      '12',
+      '/a/b.md',
+    ])
+  })
+  test('TextMate -l N file', () => {
+    expect(buildEditorArgv({ command: 'mate', filePath: '/a/b.md', line: 4 })).toEqual([
+      'mate',
+      '-l',
+      '4',
+      '/a/b.md',
+    ])
+  })
+  test('unknown editor defaults to +N', () => {
+    expect(buildEditorArgv({ command: 'myeditor', filePath: '/a/b.md', line: 8 })).toEqual([
+      'myeditor',
+      '+8',
+      '/a/b.md',
+    ])
+  })
+  test('editor detected by basename of an absolute path', () => {
+    expect(buildEditorArgv({ command: '/usr/bin/code', filePath: '/a/b.md', line: 2 })).toEqual([
+      '/usr/bin/code',
+      '-g',
+      '/a/b.md:2',
+    ])
+  })
+  test('undefined line keeps existing append-file behavior', () => {
+    expect(buildEditorArgv({ command: 'vi', filePath: '/a/b.md' })).toEqual(['vi', '/a/b.md'])
+  })
+  test('{file}-only template gets no line even when line provided', () => {
+    expect(
+      buildEditorArgv({ command: 'code --wait {file}', filePath: '/a/b.md', line: 5 }),
+    ).toEqual(['code', '--wait', '/a/b.md'])
+  })
+})
+
 function makeRenderer(): { renderer: CliRenderer; calls: string[] } {
   const calls: string[] = []
   const renderer = {
