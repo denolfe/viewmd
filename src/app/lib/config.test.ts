@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'bun:test'
+import { afterAll, beforeAll, describe, expect, test } from 'bun:test'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { CONTENT_MAX_WIDTH } from '../styles/layout'
-import { MIN_CONTENT_WIDTH, resolvePath, resolveSettings, validate } from './config'
+import { loadConfig, MIN_CONTENT_WIDTH, resolvePath, resolveSettings, validate } from './config'
 
 describe('resolvePath', () => {
   test('prefers VIEWMD_CONFIG when set', () => {
@@ -68,5 +71,37 @@ describe('resolveSettings', () => {
     expect(resolveSettings({ config: {}, env: {}, flags: {} }).contentMaxWidth).toBe(
       CONTENT_MAX_WIDTH,
     )
+  })
+})
+
+describe('loadConfig', () => {
+  let dir: string
+  beforeAll(async () => {
+    dir = await mkdtemp(join(tmpdir(), 'viewmd-cfg-'))
+  })
+  afterAll(async () => {
+    await rm(dir, { recursive: true, force: true })
+  })
+
+  const load = (name: string) => loadConfig({ VIEWMD_CONFIG: join(dir, name) })
+
+  test('missing file: empty config, no warnings', async () => {
+    expect(await load('nope.toml')).toEqual({ config: {}, warnings: [] })
+  })
+  test('valid file: parsed config', async () => {
+    await writeFile(join(dir, 'ok.toml'), 'width = 80\nmax-lines = 40\n')
+    expect(await load('ok.toml')).toEqual({ config: { width: 80, maxLines: 40 }, warnings: [] })
+  })
+  test('malformed TOML: empty config with warning', async () => {
+    await writeFile(join(dir, 'bad.toml'), 'width = = =\n')
+    const r = await load('bad.toml')
+    expect(r.config).toEqual({})
+    expect(r.warnings[0]).toStartWith(`viewmd: invalid TOML in ${join(dir, 'bad.toml')}:`)
+  })
+  test('unknown key: dropped with warning', async () => {
+    await writeFile(join(dir, 'extra.toml'), 'width = 80\nfoo = 1\n')
+    const r = await load('extra.toml')
+    expect(r.config).toEqual({ width: 80 })
+    expect(r.warnings).toEqual([`viewmd: unknown config key 'foo' (ignored)`])
   })
 })

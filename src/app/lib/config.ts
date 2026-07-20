@@ -50,6 +50,31 @@ export function resolveSettings(params: {
   }
 }
 
+export async function loadConfig(env: Env): Promise<{ config: Config; warnings: string[] }> {
+  const path = resolvePath(env)
+  const file = Bun.file(path)
+  if (!(await file.exists())) return { config: {}, warnings: [] }
+
+  let text: string
+  try {
+    text = await file.text()
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e)
+    return { config: {}, warnings: [`viewmd: cannot read config ${path}: ${reason}`] }
+  }
+
+  let parsed: unknown
+  try {
+    parsed = Bun.TOML.parse(text)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    return { config: {}, warnings: [`viewmd: invalid TOML in ${path}: ${msg}`] }
+  }
+
+  if (parsed === null || typeof parsed !== 'object') return { config: {}, warnings: [] }
+  return validate(parsed as Record<string, unknown>)
+}
+
 function isTomlKey(key: string): key is TomlKey {
   return key === 'width' || key === 'max-lines'
 }
