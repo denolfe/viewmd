@@ -30,4 +30,36 @@ describe('computeHeadingLines', () => {
     const body = 'intro para\n\nmore text\n\n# Heading\n'
     expect(computeHeadingLines({ body, offset: 0 })).toEqual({ heading: 5 })
   })
+
+  it('captures blockquote-nested headings with shared dedup', () => {
+    const body = '> # Intro\n\n# Intro\n'
+    expect(buildTree(body).headingIds).toEqual(['intro', 'intro-2'])
+    expect(computeHeadingLines({ body, offset: 0 })).toEqual({ intro: 1, 'intro-2': 3 })
+  })
+
+  it('captures a heading nested in a blockquote after a top-level heading', () => {
+    const body = '# Normal\n\n> # Quote\n'
+    expect(buildTree(body).headingIds).toEqual(['normal', 'quote'])
+    expect(computeHeadingLines({ body, offset: 0 })).toEqual({ normal: 1, quote: 3 })
+  })
+
+  it('captures list-item-nested headings', () => {
+    const body = '- # ListH\n\n# Top\n'
+    expect(buildTree(body).headingIds).toEqual(['listh', 'top'])
+    expect(computeHeadingLines({ body, offset: 0 })).toEqual({ listh: 1, top: 3 })
+  })
+
+  it('keeps id set + order aligned with buildTree across nested fixtures', () => {
+    const fixtures = [
+      '# A\n\n## B\n\ntext\n\n## B\n',
+      '> # Intro\n\n# Intro\n',
+      '# Normal\n\n> # Quote\n',
+      '- # ListH\n\n# Top\n',
+    ]
+    for (const body of fixtures) {
+      expect(Object.keys(computeHeadingLines({ body, offset: 0 }))).toEqual(
+        buildTree(body).headingIds,
+      )
+    }
+  })
 })
