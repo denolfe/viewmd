@@ -12,7 +12,7 @@ export function FlashMessage() {
       height={1}
       zIndex={30}
       paddingX={1}
-      backgroundColor={theme.stickyBg}
+      backgroundColor={theme.searchBarNoMatchBg}
       overflow="hidden"
     >
       <text fg={theme.searchBarFg}>{flashMessage}</text>
