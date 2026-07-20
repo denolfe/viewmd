@@ -188,6 +188,8 @@ export function App({
 
   // After an editor reload swaps `nodes`, land the viewport back on the heading
   // the user was reading. If that heading no longer exists post-edit, go to top.
+  // Keyed on `nodes` only: safe because `doc` updates atomically, so toc/headingIds/
+  // fileLabel captured here are always fresh whenever `nodes` changes.
   useEffect(() => {
     const target = pendingReanchorRef.current
     if (target === null) return
@@ -222,6 +224,7 @@ export function App({
     if (!result.ok) {
       setFlashMessage(`Editor failed: ${result.error}`)
       pendingReanchorRef.current = null
+      return
     }
     loadDocument(filePath)
       .then(next => setDoc(next))

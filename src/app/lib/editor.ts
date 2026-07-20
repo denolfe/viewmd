@@ -41,8 +41,8 @@ export function openInEditor(params: {
     ttyFd = null
   }
   const fd: number | 'inherit' = ttyFd ?? 'inherit'
-  params.renderer.suspend()
   try {
+    params.renderer.suspend()
     const { exitCode } = spawnSync(params.argv, { stdin: fd, stdout: fd, stderr: fd })
     return { ok: true, code: exitCode ?? 0 }
   } catch (e) {
