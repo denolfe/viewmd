@@ -18,7 +18,6 @@ export function dispatch(
     fn(v)
     resolveHeadings(state, toc, headingIds, fileLabel)
   }
-  const v = state.viewerRef.current
   switch (action.kind) {
     case 'quit':
       onQuit()
@@ -69,13 +68,15 @@ export function dispatch(
     case 'tocSelect': {
       const id = state.tocCursorId
       if (!id) return
-      const height = breadcrumbHeightAfterJump(toc, id, fileLabel)
-      v?.scrollChildToTop(id, height)
-      state.setCurrentHeadingId(id)
-      refreshVisible(state, headingIds, height)
-      state.setFocus('viewer')
+      jumpToHeadingId(state, toc, headingIds, id, fileLabel)
       return
     }
+    case 'tocJump':
+      jumpToHeadingId(state, toc, headingIds, action.id, fileLabel)
+      return
+    case 'tocToggleId':
+      state.toggleExpanded(action.id)
+      return
     case 'startSearch':
       state.setSearch({ pattern: '', matches: [], index: -1, dir: action.dir, committed: false })
       state.setFocus('search')
@@ -128,6 +129,20 @@ function jumpHeading(
   state.viewerRef.current?.scrollChildToTop(next, height)
   state.setCurrentHeadingId(next)
   refreshVisible(state, headingIds, height)
+}
+
+function jumpToHeadingId(
+  state: AppState,
+  toc: TocEntry[],
+  headingIds: string[],
+  id: string,
+  fileLabel?: string,
+): void {
+  const height = breadcrumbHeightAfterJump(toc, id, fileLabel)
+  state.viewerRef.current?.scrollChildToTop(id, height)
+  state.setCurrentHeadingId(id)
+  refreshVisible(state, headingIds, height)
+  state.setFocus('viewer')
 }
 
 export function syncHeadings(
