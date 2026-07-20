@@ -19,7 +19,11 @@ import {
 import { theme } from './styles/theme'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
+import { FlashMessage } from './components/FlashMessage'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
+import type { LoadedDocument } from './lib/loadDocument'
+import { loadDocument } from './lib/loadDocument'
+import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 
 type Props = {
   nodes: Node[]
@@ -32,15 +36,27 @@ type Props = {
 }
 
 export function App({
-  nodes,
-  toc,
-  headingIds,
-  frontmatter,
-  fileLabel,
+  nodes: initialNodes,
+  toc: initialToc,
+  headingIds: initialHeadingIds,
+  frontmatter: initialFrontmatter,
+  fileLabel: initialFileLabel,
+  filePath,
   contentMaxWidth = CONTENT_MAX_WIDTH,
 }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
+  const pendingReanchorRef = useRef<string | null>(null)
+
+  const [doc, setDoc] = useState<LoadedDocument>(() => ({
+    nodes: initialNodes,
+    toc: initialToc,
+    headingIds: initialHeadingIds,
+    frontmatter: initialFrontmatter,
+    fileLabel: initialFileLabel,
+  }))
+  const { nodes, toc, headingIds, frontmatter, fileLabel } = doc
+  const [flashMessage, setFlashMessage] = useState<string | null>(null)
 
   const [focus, setFocus] = useState<Focus>('viewer')
   const [currentHeadingId, setCurrentHeadingId] = useState<string | null>(null)
@@ -112,6 +128,8 @@ export function App({
       setVisibleHeadingIds,
       contentWidth,
       contentMaxWidth,
+      flashMessage,
+      setFlashMessage,
     }),
     [
       focus,
@@ -127,6 +145,7 @@ export function App({
       visibleHeadingIds,
       contentWidth,
       contentMaxWidth,
+      flashMessage,
     ],
   )
 
@@ -161,6 +180,57 @@ export function App({
     return () => clearTimeout(tid)
   }, [headingIds])
 
+  useEffect(() => {
+    if (!flashMessage) return
+    const tid = setTimeout(() => setFlashMessage(null), 2500)
+    return () => clearTimeout(tid)
+  }, [flashMessage])
+
+  // After an editor reload swaps `nodes`, land the viewport back on the heading
+  // the user was reading. If that heading no longer exists post-edit, go to top.
+  useEffect(() => {
+    const target = pendingReanchorRef.current
+    if (target === null) return
+    pendingReanchorRef.current = null
+    const tid = setTimeout(() => {
+      const v = viewerRef.current
+      if (!v) return
+      if (target && headingIds.includes(target)) {
+        const height = breadcrumbHeightForHeading({ toc, id: target, fileLabel })
+        v.scrollChildToTop(target, height)
+        setCurrentHeadingId(target)
+      } else {
+        v.scrollTo(0)
+        setCurrentHeadingId(null)
+      }
+      syncHeadings(state, toc, headingIds, fileLabel)
+    }, 0)
+    return () => clearTimeout(tid)
+  }, [nodes])
+
+  const onOpenEditor = useCallback(() => {
+    if (!filePath) {
+      setFlashMessage('Cannot edit: reading from stdin')
+      return
+    }
+    pendingReanchorRef.current = currentHeadingId
+    const argv = buildEditorArgv({
+      command: resolveEditorCommand(process.env),
+      filePath,
+    })
+    const result = openInEditor({ renderer, argv })
+    if (!result.ok) {
+      setFlashMessage(`Editor failed: ${result.error}`)
+      pendingReanchorRef.current = null
+    }
+    loadDocument(filePath)
+      .then(next => setDoc(next))
+      .catch(() => {
+        setFlashMessage('Reload failed: file unreadable')
+        pendingReanchorRef.current = null
+      })
+  }, [filePath, currentHeadingId, renderer])
+
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
     const action = mapKey(ev, focus, { searchActive: !!search })
@@ -177,6 +247,7 @@ export function App({
         renderer.destroy()
       },
       fileLabel,
+      onOpenEditor,
     )
   })
 
@@ -191,6 +262,7 @@ export function App({
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} />
           <SearchBar nodes={nodes} toc={toc} fileLabel={fileLabel} />
+          <FlashMessage />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
