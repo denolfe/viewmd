@@ -27,8 +27,17 @@ export async function renderAnsi(opts: {
   frontmatter?: FrontmatterRow[]
   /** Row cap for fzf preview / other preview tools. Limits mounted nodes and output lines. */
   capRows?: number
+  /** Max content column width; defaults to CONTENT_MAX_WIDTH. */
+  contentMaxWidth?: number
 }): Promise<string> {
-  const { nodes, width, maxHeight, frontmatter = [], capRows } = opts
+  const {
+    nodes,
+    width,
+    maxHeight,
+    frontmatter = [],
+    capRows,
+    contentMaxWidth = CONTENT_MAX_WIDTH,
+  } = opts
 
   if (!parsersRegistered) {
     addDefaultParsers(extraParsers)
@@ -44,7 +53,7 @@ export async function renderAnsi(opts: {
         0,
         sliceCountForRows({
           nodes,
-          contentWidth: Math.min(CONTENT_MAX_WIDTH, width),
+          contentWidth: Math.min(contentMaxWidth, width),
           rows: capRows + CAP_BUFFER_ROWS,
         }),
       )
@@ -76,7 +85,14 @@ export async function renderAnsi(opts: {
   // empty, U+0A00-filled buffer. flushSync forces the first commit so
   // requestRender() is scheduled before we wait.
   flushSync(() => {
-    root.render(<RenderView nodes={renderNodes} width={width} frontmatter={frontmatter} />)
+    root.render(
+      <RenderView
+        nodes={renderNodes}
+        width={width}
+        frontmatter={frontmatter}
+        contentMaxWidth={contentMaxWidth}
+      />,
+    )
   })
   await setup.waitForVisualIdle({ quietFrames: 2, maxFrames: 240 })
   await waitForHighlights(setup.renderer.root)
