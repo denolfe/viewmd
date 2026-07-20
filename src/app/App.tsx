@@ -200,15 +200,21 @@ export function App({
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
+      // Mirror a heading jump (dispatch's tocSelect/jumpHeading): pin the target,
+      // set it current, refresh only visibility. Do NOT call syncHeadings here —
+      // it re-resolves "heading near top" from scroll position, which lands on the
+      // parent (scrollChildToTop pins the target one row below where the resolver
+      // looks) and would overwrite `target`.
       if (target && headingIds.includes(target)) {
         const height = breadcrumbHeightForHeading({ toc, id: target, fileLabel })
         v.scrollChildToTop(target, height)
         setCurrentHeadingId(target)
+        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds, height))
       } else {
         v.scrollTo(0)
         setCurrentHeadingId(null)
+        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
       }
-      syncHeadings(state, toc, headingIds, fileLabel)
     }, 0)
     return () => clearTimeout(tid)
   }, [nodes])
