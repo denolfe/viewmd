@@ -1,17 +1,13 @@
 #!/usr/bin/env bun
 import './compiled-runtime'
 import { openSync } from 'node:fs'
-import { basename, dirname, resolve } from 'node:path'
 import { ReadStream as TtyReadStream } from 'node:tty'
 import { addDefaultParsers, createCliRenderer } from '@opentui/core'
 import { createRoot } from '@opentui/react'
 import { App } from './app/App'
 import { parseArgs } from './app/lib/args'
-import { buildTree } from './app/lib/ast'
 import { extraParsers } from './app/parsers'
-import { replaceMermaidBlocks } from './app/lib/preprocess'
-import { parseFrontmatter, splitFrontmatter } from './app/lib/frontmatter'
-import type { FrontmatterRow } from './app/lib/frontmatter'
+import { buildDocument } from './app/lib/loadDocument'
 import { loadConfig, resolveSettings } from './app/lib/config'
 import { renderAnsi } from './app/lib/renderAnsi'
 import { version } from '../package.json'
@@ -52,10 +48,13 @@ async function main(): Promise<void> {
     process.exit(0)
   }
   const md = await readInput(filePath)
-  const { frontmatter, body } = splitFrontmatter(md)
-  const processed = replaceMermaidBlocks(body)
-  const { nodes, toc, headingIds } = buildTree(processed)
-  const frontmatterRows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
+  const {
+    nodes,
+    toc,
+    headingIds,
+    frontmatter: frontmatterRows,
+    fileLabel: label,
+  } = buildDocument(md, filePath)
 
   const { config, warnings } = await loadConfig(process.env)
   const settings = resolveSettings({ config, env: process.env, flags: { maxLines } })
@@ -105,7 +104,8 @@ async function main(): Promise<void> {
       toc={toc}
       headingIds={headingIds}
       frontmatter={frontmatterRows}
-      fileLabel={fileLabel(filePath)}
+      fileLabel={label}
+      filePath={filePath}
       contentMaxWidth={settings.contentMaxWidth}
     />,
   )
@@ -117,13 +117,6 @@ function isEpipe(e: unknown): boolean {
 
 function clampWidth(w: number): number {
   return Number.isFinite(w) && w >= MIN_WIDTH ? Math.floor(w) : MIN_WIDTH
-}
-
-function fileLabel(p?: string): string | undefined {
-  if (!p) return undefined
-  const abs = resolve(p)
-  const parent = basename(dirname(abs))
-  return parent ? `${parent}/${basename(abs)}` : basename(abs)
 }
 
 /**

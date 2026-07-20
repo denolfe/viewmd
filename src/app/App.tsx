@@ -28,6 +28,7 @@ type Props = {
   frontmatter: FrontmatterRow[]
   fileLabel?: string
   contentMaxWidth?: number
+  filePath?: string
 }
 
 export function App({

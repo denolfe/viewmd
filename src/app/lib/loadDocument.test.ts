@@ -1,0 +1,26 @@
+import { describe, expect, test } from 'bun:test'
+import { buildDocument } from './loadDocument'
+
+describe('buildDocument', () => {
+  test('parses headings into nodes/toc/headingIds', () => {
+    const doc = buildDocument('# Title\n\nbody\n\n## Sub\n', '/tmp/docs/readme.md')
+    expect(doc.headingIds.length).toBe(2)
+    expect(doc.toc[0]?.text).toBe('Title')
+    expect(doc.nodes.length).toBeGreaterThan(0)
+  })
+
+  test('derives fileLabel as parent/basename when filePath given', () => {
+    const doc = buildDocument('# X\n', '/tmp/docs/readme.md')
+    expect(doc.fileLabel).toBe('docs/readme.md')
+  })
+
+  test('fileLabel is undefined without a filePath', () => {
+    const doc = buildDocument('# X\n')
+    expect(doc.fileLabel).toBeUndefined()
+  })
+
+  test('extracts frontmatter rows', () => {
+    const doc = buildDocument('---\ntitle: Hi\n---\n\n# Body\n', '/tmp/a.md')
+    expect(doc.frontmatter.length).toBeGreaterThan(0)
+  })
+})
