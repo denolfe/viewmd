@@ -3,6 +3,10 @@ import { headingPrefixText, inlineText } from '../../lib/visible-text'
 import { theme } from '../../styles/theme'
 import type { Node } from '../../lib/ast'
 
+// No onMouseDown link handler here: a heading's rendered text carries a prefix
+// (`# ` .. `###### `) absent from inlineText(node.text), so resolveLinkAtPoint's
+// alignOffset can't reconcile the click to a link range. Links in headings are a
+// known gap; paragraph/list/table clicks cover the common cases.
 export function Heading({ node }: { node: Extract<Node, { kind: 'heading' }> }) {
   if (node.level === 1) {
     return (
