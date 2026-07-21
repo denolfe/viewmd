@@ -163,6 +163,23 @@ describe('dispatch', () => {
     expect(state.setCurrentHeadingId).not.toHaveBeenCalled()
   })
 
+  test('tocJump scrolls to the given id and focuses viewer', () => {
+    const vref = makeViewerRef()
+    const state = makeState({ viewerRef: vref.ref })
+    dispatch({ kind: 'tocJump', id: 'a1' }, state, toc, headingIds, 24, () => {})
+    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+    expect(state.setFocus).toHaveBeenCalledWith('viewer')
+  })
+
+  test('tocToggleId toggles the given id without touching focus', () => {
+    const state = makeState()
+    dispatch({ kind: 'tocToggleId', id: 'a' }, state, toc, headingIds, 24, () => {})
+    expect(state.toggleExpanded).toHaveBeenCalledWith('a')
+    expect(state.setFocus).not.toHaveBeenCalled()
+    expect(state.setCurrentHeadingId).not.toHaveBeenCalled()
+  })
+
   test('tocDown advances cursor through visible entries', () => {
     const state = makeState({ tocCursorId: 'a' })
     dispatch({ kind: 'tocDown' }, state, toc, headingIds, 24, () => {})

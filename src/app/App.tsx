@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle, SearchState } from './state'
-import type { Focus } from './lib/keys'
+import type { Action, Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
 import { dispatch, syncHeadings } from './lib/dispatch'
@@ -179,6 +179,11 @@ export function App({
     )
   })
 
+  const dispatchTocAction = (action: Action) =>
+    dispatch(action, state, toc, headingIds, renderer.height, () => {}, fileLabel)
+  const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
+  const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
+
   return (
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
@@ -197,7 +202,7 @@ export function App({
               the width. */}
           {toc.length > 0 && (
             <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
-              <Toc toc={toc} />
+              <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
               {fileLabel && (
                 <box paddingLeft={3} paddingRight={1}>
                   <text fg={theme.foregroundMuted}>

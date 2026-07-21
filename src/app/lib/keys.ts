@@ -14,6 +14,8 @@ export type Action =
   | { kind: 'focusSidebar' }
   | { kind: 'focusViewer' }
   | { kind: 'tocSelect' }
+  | { kind: 'tocJump'; id: string }
+  | { kind: 'tocToggleId'; id: string }
   | { kind: 'tocToggle' }
   | { kind: 'tocUp' }
   | { kind: 'tocDown' }
