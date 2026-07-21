@@ -49,7 +49,7 @@ async function renderHeader(stub: AppState) {
   }
   createRoot(renderer).render(
     <AppStateContext.Provider value={stub}>
-      <StickyHeader toc={[]} />
+      <StickyHeader toc={[]} onCrumbClick={mock()} />
     </AppStateContext.Provider>,
   )
   await settle()

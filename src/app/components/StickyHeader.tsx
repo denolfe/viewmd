@@ -5,7 +5,15 @@ import { MutedInline } from './blocks/MutedInline'
 import { onPrimaryClick } from '../lib/mouse'
 import type { TocEntry } from '../lib/ast'
 
-export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
+export function StickyHeader({
+  toc,
+  fileLabel,
+  onCrumbClick,
+}: {
+  toc: TocEntry[]
+  fileLabel?: string
+  onCrumbClick: (id: string) => void
+}) {
   const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, goBack } =
     useAppState()
 
@@ -40,7 +48,12 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
       {backBadge}
       {rows.map(row =>
         row.variant === 'pill' ? (
-          <box key={row.id} height={1} overflow="hidden">
+          <box
+            key={row.id}
+            height={1}
+            overflow="hidden"
+            onMouseDown={onPrimaryClick(() => onCrumbClick(row.id))}
+          >
             <text bg={theme.h1Bg} fg={theme.h1Fg}>
               <strong>
                 {` `}
@@ -50,7 +63,12 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
             </text>
           </box>
         ) : (
-          <box key={row.id} height={1} overflow="hidden">
+          <box
+            key={row.id}
+            height={1}
+            overflow="hidden"
+            onMouseDown={onPrimaryClick(() => onCrumbClick(row.id))}
+          >
             <text fg={theme.heading} bg={theme.stickyBg}>
               <strong>
                 {'#'.repeat(row.level) + ' '}

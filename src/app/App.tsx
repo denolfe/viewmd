@@ -15,6 +15,7 @@ import {
   breadcrumbHeightForHeading,
   tocVisibleContentWidth,
   toggleTocExpanded,
+  FILE_ROW_ID,
 } from './lib/toc-util'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
@@ -355,12 +356,16 @@ export function App({
     dispatch(action, state, toc, headingIds, renderer.height, () => {}, fileLabel)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
+  // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
+  // same `top` action g/gg use, so heading resolution stays on the canonical path.
+  const onCrumbClick = (id: string) =>
+    id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
   return (
     <AppStateContext.Provider value={state}>
       <box flexDirection="column" height="100%">
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
-          <StickyHeader toc={toc} fileLabel={fileLabel} />
+          <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />
           <SearchBar nodes={nodes} toc={toc} fileLabel={fileLabel} />
           <Viewer
             nodes={nodes}
