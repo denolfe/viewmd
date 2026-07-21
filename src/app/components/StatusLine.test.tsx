@@ -6,7 +6,7 @@ import { buildTree } from '../lib/ast'
 
 const FIXTURE = ['# Title', '', 'body text'].join('\n')
 
-test('idle status renders VIEWMD badge and filename on the bottom row', async () => {
+test('idle status renders viewmd badge and filename on the bottom row', async () => {
   const { nodes, toc, headingIds } = buildTree(FIXTURE)
   const { renderer, flush, renderOnce, captureCharFrame } = await createTestRenderer({
     width: 80,
@@ -32,7 +32,7 @@ test('idle status renders VIEWMD badge and filename on the bottom row', async ()
   await settle()
 
   const frame = captureCharFrame()
-  expect(frame).toContain('VIEWMD')
+  expect(frame).toContain('viewmd')
   expect(frame).toContain('README.md')
 
   renderer.destroy()
@@ -78,7 +78,7 @@ test('error status takes over the status line then reverts to idle after the tim
 
   const reverted = captureCharFrame()
   expect(reverted).not.toContain('Cannot edit')
-  expect(reverted).toContain('VIEWMD')
+  expect(reverted).toContain('viewmd')
 
   renderer.destroy()
 }, 10000)

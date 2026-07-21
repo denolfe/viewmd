@@ -107,7 +107,7 @@ export type AppState = {
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */
   contentMaxWidth: number
 
-  /** Bottom statusline state; idle shows the VIEWMD badge + filename. */
+  /** Bottom statusline state; idle shows the viewmd badge + filename. */
   status: Status
   setStatus: (s: Status) => void
 }

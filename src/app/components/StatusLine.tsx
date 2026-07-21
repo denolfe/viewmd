@@ -3,7 +3,7 @@ import { useAppState } from '../state'
 import { truncateLabelLeft } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 
-const BADGE = ' VIEWMD '
+const BADGE = ' viewmd '
 
 type Props = { fileLabel?: string }
 
@@ -27,7 +27,7 @@ export function StatusLine({ fileLabel }: Props) {
     )
   }
 
-  // idle: VIEWMD badge (mirrors h1 heading style) + plain filename.
+  // idle: viewmd badge (mirrors h1 heading style) + plain filename.
   // Reserve BADGE width, one lead space, and paddingX (2) when truncating the path.
   const maxFile = Math.max(0, width - BADGE.length - 3)
   return (
