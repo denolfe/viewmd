@@ -26,6 +26,7 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     jumpToMatch: () => {},
     seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
+    getScrollTop: () => 0,
   }
   return { ref: { current: handle }, calls }
 }
@@ -50,6 +51,10 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
     setVisibleHeadingIds: mock(),
+    dir: undefined,
+    followLink: mock(() => {}),
+    goBack: mock(() => {}),
+    historyDepth: 0,
     status: { kind: 'idle' },
     setStatus: mock(),
     ...overrides,
@@ -122,6 +127,7 @@ function makePositionalViewerRef(
     jumpToMatch: () => {},
     seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
+    getScrollTop: () => 0,
   }
   return { ref: { current: handle } }
 }
@@ -353,6 +359,12 @@ describe('dispatch', () => {
     const onOpenEditor = mock()
     dispatch({ kind: 'openEditor' }, state, toc, headingIds, 20, () => {}, undefined, onOpenEditor)
     expect(onOpenEditor).toHaveBeenCalledTimes(1)
+  })
+
+  test('goBack calls state.goBack', () => {
+    const state = makeState()
+    dispatch({ kind: 'goBack' }, state, toc, headingIds, 24, () => {})
+    expect(state.goBack).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -4,6 +4,7 @@ import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
 import type { SearchState } from '../../state'
 import { useAppState } from '../../state'
+import { classifyHref } from '../../lib/links'
 import { theme } from '../../styles/theme'
 
 // Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
@@ -58,13 +59,7 @@ function InlineOne({ node }: { node: InlineNode }) {
         </Pill>
       )
     case 'link':
-      return (
-        <a href={node.href}>
-          <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
-            <InlineRenderer nodes={node.children} />
-          </span>
-        </a>
-      )
+      return <InlineLink node={node} />
     case 'image':
       return (
         <em>
@@ -98,6 +93,29 @@ function InlineOne({ node }: { node: InlineNode }) {
         </Pill>
       )
   }
+}
+
+function InlineLink({ node }: { node: Extract<InlineNode, { kind: 'link' }> }) {
+  const { dir } = useAppState()
+  const target = classifyHref({ baseDir: dir, href: node.href })
+  const children = <InlineRenderer nodes={node.children} />
+  // Navigable links (relative .md / in-doc anchor) render WITHOUT an <a>: emitting an
+  // OSC-8 hyperlink would make the terminal try to "open" a local path. External links
+  // keep the OSC-8 link so cmd-click still opens them in a browser.
+  if (target.kind === 'ignore') {
+    return (
+      <a href={node.href}>
+        <span fg={theme.link} attributes={TextAttributes.UNDERLINE}>
+          {children}
+        </span>
+      </a>
+    )
+  }
+  return (
+    <span fg={theme.navLink} attributes={TextAttributes.UNDERLINE}>
+      {children}
+    </span>
+  )
 }
 
 /**

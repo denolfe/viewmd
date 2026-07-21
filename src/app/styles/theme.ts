@@ -19,6 +19,7 @@ export const theme = {
   codespanFg: '#f48771',
   kbdBg: '#3a3a3a',
   link: '#2472c8',
+  navLink: '#23d18b',
   blockquote: '#9d9d9d',
   blockquotePipe: '#d4d4d4',
   border: '#666666',

@@ -26,6 +26,7 @@ export type Action =
   | { kind: 'clearSearch' }
   | { kind: 'toggleMouse' }
   | { kind: 'openEditor' }
+  | { kind: 'goBack' }
   | { kind: 'noop' }
 
 export type Ctx = { searchActive?: boolean }
@@ -75,6 +76,8 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
       return ctx.searchActive ? { kind: 'nextMatch' } : { kind: 'nextHeading' }
     case 'escape':
       return { kind: 'clearSearch' }
+    case 'backspace':
+      return { kind: 'goBack' }
     default:
       return { kind: 'noop' }
   }

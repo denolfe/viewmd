@@ -1,5 +1,6 @@
 import { Fragment } from 'react'
 import { InlineRenderer, RunScope } from './InlineRenderer'
+import { useLinkClick } from './useLinkClick'
 import { inlineVisibleWidth, wrapInline } from '../../lib/inline-width'
 import { inlineText } from '../../lib/visible-text'
 import { useAppState } from '../../state'
@@ -82,26 +83,57 @@ function Row({
       <Pipe height={lineCount} />
       {cellLines.map((lines, i) => (
         <Fragment key={i}>
-          <box width={cellWidths[i]} paddingX={CELL_PADDING_X}>
-            {/* Scope text is the UNWRAPPED cell text, matching the projection;
-                HighlightedText realigns the wrapped pieces into it. */}
-            <RunScope blockId={blockId} runKey={runKeyFor(i)} text={inlineText(cells[i] ?? [])}>
-              {isHeader ? (
-                <text fg={theme.foregroundBright}>
-                  <strong>
-                    <CellLines lines={lines} totalLines={lineCount} />
-                  </strong>
-                </text>
-              ) : (
-                <text>
-                  <CellLines lines={lines} totalLines={lineCount} />
-                </text>
-              )}
-            </RunScope>
-          </box>
+          <Cell
+            inline={cells[i] ?? []}
+            lines={lines}
+            lineCount={lineCount}
+            width={cellWidths[i]}
+            isHeader={isHeader}
+            blockId={blockId}
+            runKey={runKeyFor(i)}
+          />
           <Pipe height={lineCount} />
         </Fragment>
       ))}
+    </box>
+  )
+}
+
+function Cell({
+  inline,
+  lines,
+  lineCount,
+  width,
+  isHeader,
+  blockId,
+  runKey,
+}: {
+  inline: InlineNode[]
+  lines: InlineNode[][]
+  lineCount: number
+  width: number | undefined
+  isHeader?: boolean
+  blockId: string
+  runKey: string
+}) {
+  const onMouseDown = useLinkClick(inline)
+  return (
+    <box width={width} paddingX={CELL_PADDING_X} onMouseDown={onMouseDown}>
+      {/* Scope text is the UNWRAPPED cell text, matching the projection;
+          HighlightedText realigns the wrapped pieces into it. */}
+      <RunScope blockId={blockId} runKey={runKey} text={inlineText(inline)}>
+        {isHeader ? (
+          <text fg={theme.foregroundBright}>
+            <strong>
+              <CellLines lines={lines} totalLines={lineCount} />
+            </strong>
+          </text>
+        ) : (
+          <text>
+            <CellLines lines={lines} totalLines={lineCount} />
+          </text>
+        )}
+      </RunScope>
     </box>
   )
 }

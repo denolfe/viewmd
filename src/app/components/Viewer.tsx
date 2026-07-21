@@ -125,6 +125,7 @@ export function Viewer({
         scrollListeners.add(cb)
         return () => scrollListeners.delete(cb)
       },
+      getScrollTop: () => box.scrollTop,
     }
     viewerRef.current = handle
     const restore = installRealisticThumb(box, tailRef)

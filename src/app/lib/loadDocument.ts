@@ -13,6 +13,10 @@ export type LoadedDocument = {
   headingLines: Record<string, number>
   frontmatter: FrontmatterRow[]
   fileLabel?: string
+  /** Absolute path of the source file; undefined for stdin. */
+  absPath?: string
+  /** dirname(absPath); base dir for resolving relative links. Undefined for stdin. */
+  dir?: string
 }
 
 /** Parses raw markdown into the shape `App` renders from. */
@@ -23,7 +27,17 @@ export function buildDocument(md: string, filePath?: string): LoadedDocument {
   const processed = replaceMermaidBlocks(body)
   const { nodes, toc, headingIds } = buildTree(processed)
   const rows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
-  return { nodes, toc, headingIds, headingLines, frontmatter: rows, fileLabel: fileLabel(filePath) }
+  const absPath = filePath ? resolve(filePath) : undefined
+  return {
+    nodes,
+    toc,
+    headingIds,
+    headingLines,
+    frontmatter: rows,
+    fileLabel: fileLabel(filePath),
+    absPath,
+    dir: absPath ? dirname(absPath) : undefined,
+  }
 }
 
 /** Reads `filePath` and parses it via `buildDocument`. */

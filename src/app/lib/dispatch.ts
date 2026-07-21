@@ -101,6 +101,9 @@ export function dispatch(
     case 'openEditor':
       onOpenEditor?.()
       return
+    case 'goBack':
+      state.goBack()
+      return
     case 'toggleTocVisible':
       if (state.tocVisible && state.focus === 'sidebar') state.setFocus('viewer')
       state.toggleTocVisible()

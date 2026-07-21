@@ -1,5 +1,6 @@
 import { HighlightedText, InlineRenderer, RunScope } from './InlineRenderer'
 import { NodeList, NodeRenderer } from './NodeRenderer'
+import { useLinkClick } from './useLinkClick'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
 import { listItemRowId, listItemRunText, listMarkerText } from '../../lib/visible-text'
@@ -46,10 +47,11 @@ function Marker({ item, text }: { item: ListItem; text: string }) {
 
 function ItemBody({ nodes, pathPrefix }: { nodes: Node[]; pathPrefix: number[] }) {
   const [first, ...rest] = nodes
+  const onMouseDown = useLinkClick(first?.kind === 'paragraph' ? first.inline : [])
   if (first?.kind === 'paragraph') {
     return (
       <>
-        <text id={blockId([...pathPrefix, 0])}>
+        <text id={blockId([...pathPrefix, 0])} onMouseDown={onMouseDown}>
           <InlineRenderer nodes={first.inline} />
         </text>
         {/* rest[i] is nodes[i+1] since the first child was destructured off index 0 */}

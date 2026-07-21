@@ -62,6 +62,9 @@ describe('mapKey (viewer focus)', () => {
   test('e -> openEditor', () => {
     expect(mapKey(k({ name: 'e' }), 'viewer')).toEqual({ kind: 'openEditor' })
   })
+  test('backspace -> goBack', () => {
+    expect(mapKey(k({ name: 'backspace' }), 'viewer')).toEqual({ kind: 'goBack' })
+  })
 })
 
 describe('mapKey (sidebar focus)', () => {
