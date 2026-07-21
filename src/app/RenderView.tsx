@@ -49,6 +49,7 @@ export function RenderView({
       followLink: () => {},
       goBack: () => {},
       historyDepth: 0,
+      backLabel: undefined,
     }),
     [width, contentMaxWidth],
   )

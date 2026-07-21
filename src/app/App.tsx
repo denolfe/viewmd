@@ -174,6 +174,7 @@ export function App({
     ? breadcrumbHeightForHeading({ toc, id: lastHeadingId, fileLabel })
     : 0
 
+  const backLabel = history[history.length - 1]?.document.fileLabel
   const state = useMemo<AppState>(
     () => ({
       focus,
@@ -201,6 +202,7 @@ export function App({
       followLink,
       goBack,
       historyDepth: history.length,
+      backLabel,
     }),
     [
       focus,
@@ -221,6 +223,7 @@ export function App({
       followLink,
       goBack,
       history.length,
+      backLabel,
     ],
   )
 
