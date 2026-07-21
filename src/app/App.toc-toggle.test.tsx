@@ -7,10 +7,29 @@ import { App } from './App'
 import { buildTree } from './lib/ast'
 import { extraParsers } from './parsers'
 
-// Reconciler updates driven from keyInput.emit happen outside React's event
-// system, so opt into the act environment to flush them deterministically.
-;(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 addDefaultParsers(extraParsers)
+
+// testRender opts this file into React's act environment, so any state update it
+// sees outside an act() scope warns. keyInput.emit runs outside React's event
+// system and its follow-on reconciler work lands during flush/renderOnce, so
+// wrap those pumps in act() too — not just the synchronous key presses. The
+// trailing setTimeout(0) yield drains App's post-layout effects (visible-heading
+// sync, progressive mount) inside act so their late state updates don't warn.
+type Setup = Awaited<ReturnType<typeof testRender>>
+const drainTimers = () => new Promise(resolve => setTimeout(resolve, 0))
+const flush = (setup: Setup) =>
+  act(async () => {
+    await setup.flush()
+    await drainTimers()
+  })
+const renderOnce = (setup: Setup) =>
+  act(async () => {
+    await setup.renderOnce()
+    await drainTimers()
+  })
+// renderer.destroy() unmounts the React root via opentui's destroy-event
+// handler, which runs outside testRender's own act-wrapped teardown — wrap it.
+const destroy = (setup: Setup) => act(async () => void setup.renderer.destroy())
 
 const SCROLLBAR_GLYPHS = '█▓░▌▐│┃▊▉'
 
@@ -71,22 +90,22 @@ describe('TOC expand', () => {
       />,
       { width: 160, height: 40 },
     )
-    await setup.flush()
+    await flush(setup)
 
     // First keypress is consumed by the terminal capability handshake.
     await act(async () => pressKey(setup, 'x'))
-    await setup.flush()
+    await flush(setup)
     expect(setup.captureCharFrame()).toContain('Deeper')
 
     await act(async () => pressKey(setup, 'tab', '\t')) // focus sidebar (cursor on Title)
     await act(async () => pressKey(setup, 'j')) // Section
     await act(async () => pressKey(setup, 'j')) // Deep (h3)
     await act(async () => pressKey(setup, 'space', ' ')) // collapse Deep
-    await setup.flush()
-    await setup.renderOnce()
+    await flush(setup)
+    await renderOnce(setup)
     expect(setup.captureCharFrame()).not.toContain('Deeper')
 
-    setup.renderer.destroy()
+    await destroy(setup)
   })
 })
 
@@ -125,22 +144,22 @@ describe('TOC collapse sizing', () => {
       />,
       { width: 70, height: 25 },
     )
-    await setup.flush()
+    await flush(setup)
 
     await act(async () => pressKey(setup, 'x')) // consume handshake keypress
-    await setup.flush()
+    await flush(setup)
     const before = viewerScrollbarCol(setup.captureCharFrame())
 
     await act(async () => pressKey(setup, 'tab', '\t')) // focus sidebar (cursor on Doc)
     await act(async () => pressKey(setup, 'j')) // Alpha
     await act(async () => pressKey(setup, 'space', ' ')) // collapse Alpha, hiding the long h3
-    await setup.flush()
-    await setup.renderOnce()
+    await flush(setup)
+    await renderOnce(setup)
     const after = viewerScrollbarCol(setup.captureCharFrame())
 
     expect(after).toBeGreaterThan(before)
 
-    setup.renderer.destroy()
+    await destroy(setup)
   })
 })
 
@@ -162,7 +181,7 @@ describe('TOC toggle', () => {
       />,
       { width: 160, height: 40 },
     )
-    await setup.flush()
+    await flush(setup)
 
     const pressToggle = () =>
       setup.renderer.keyInput.emit('keypress', {
@@ -179,18 +198,18 @@ describe('TOC toggle', () => {
     const settledCols = scrollbarCols(setup.captureCharFrame())
 
     await act(async () => pressToggle()) // hide
-    await setup.flush()
+    await flush(setup)
 
     await act(async () => pressToggle()) // show
     // Inspect each render pass of the show transition, not just the settled frame.
     for (let pass = 0; pass < 4; pass++) {
-      await setup.renderOnce()
+      await renderOnce(setup)
       const cols = scrollbarCols(setup.captureCharFrame())
       for (const c of cols) {
         expect(settledCols.has(c)).toBe(true)
       }
     }
 
-    setup.renderer.destroy()
+    await destroy(setup)
   })
 })
