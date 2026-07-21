@@ -278,6 +278,25 @@ describe('dispatch', () => {
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
   })
 
+  test('prevHeading from first heading stops on the frontmatter id', () => {
+    const vref = makeViewerRef()
+    const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
+    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
+    dispatch({ kind: 'prevHeading' }, state, toc, fmIds, 24, () => {})
+    // Frontmatter is not in the toc, so its breadcrumb offset is 0.
+    expect(vref.calls).toContain('scrollChildToTop(\x00frontmatter,0)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('\x00frontmatter')
+  })
+
+  test('nextHeading leaves the frontmatter for the first real heading', () => {
+    const vref = makeViewerRef()
+    const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
+    const state = makeState({ viewerRef: vref.ref, currentHeadingId: '\x00frontmatter' })
+    dispatch({ kind: 'nextHeading' }, state, toc, fmIds, 24, () => {})
+    expect(vref.calls).toContain('scrollChildToTop(a,0)')
+    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
+  })
+
   test('clearSearch clears search and returns to viewer when in search focus', () => {
     const state = makeState({
       focus: 'search',

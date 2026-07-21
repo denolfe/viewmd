@@ -1,4 +1,5 @@
 import { Fragment } from 'react'
+import { FRONTMATTER_ID } from '../../lib/frontmatter'
 import type { FrontmatterRow } from '../../lib/frontmatter'
 import { useAppState } from '../../state'
 import { theme } from '../../styles/theme'
@@ -22,7 +23,13 @@ export function Frontmatter({ rows }: { rows: FrontmatterRow[] }) {
   const botRule = '└' + '─'.repeat(keyOuter) + '┴' + '─'.repeat(valOuter) + '┘'
 
   return (
-    <box flexDirection="column" alignSelf="flex-start" marginBottom={1} marginX={MARGIN_X}>
+    <box
+      id={FRONTMATTER_ID}
+      flexDirection="column"
+      alignSelf="flex-start"
+      marginBottom={1}
+      marginX={MARGIN_X}
+    >
       <text fg={theme.border} height={1}>
         {topRule}
       </text>
