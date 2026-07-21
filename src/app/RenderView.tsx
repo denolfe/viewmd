@@ -43,8 +43,8 @@ export function RenderView({
       toggleTocVisible: () => {},
       contentWidth: Math.min(contentMaxWidth, width),
       contentMaxWidth,
-      flashMessage: null,
-      setFlashMessage: () => {},
+      status: { kind: 'idle' },
+      setStatus: () => {},
     }),
     [width, contentMaxWidth],
   )

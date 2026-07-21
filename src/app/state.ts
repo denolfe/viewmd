@@ -68,6 +68,11 @@ export type SearchState = {
   committed: boolean
 }
 
+export type Status =
+  | { kind: 'idle' }
+  | { kind: 'error'; text: string }
+  | { kind: 'info'; text: string }
+
 export type AppState = {
   focus: Focus
   setFocus: (f: Focus) => void
@@ -102,9 +107,9 @@ export type AppState = {
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */
   contentMaxWidth: number
 
-  /** Transient one-line status shown in the flash overlay; null hides it. */
-  flashMessage: string | null
-  setFlashMessage: (m: string | null) => void
+  /** Bottom statusline state; idle shows the viewmd badge + filename. */
+  status: Status
+  setStatus: (s: Status) => void
 }
 
 export const AppStateContext = createContext<AppState | null>(null)
