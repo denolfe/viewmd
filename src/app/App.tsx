@@ -356,18 +356,10 @@ export function App({
     dispatch(action, state, toc, headingIds, renderer.height, () => {}, fileLabel)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
-  const onCrumbClick = (id: string) => {
-    // The synth-root pill (no-H1 docs) is not a heading — treat it as "go to top".
-    if (id !== FILE_ROW_ID) {
-      onEntryJump(id)
-      return
-    }
-    const v = viewerRef.current
-    if (!v) return
-    v.scrollTo(0)
-    setCurrentHeadingId(null)
-    setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
-  }
+  // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
+  // same `top` action g/gg use, so heading resolution stays on the canonical path.
+  const onCrumbClick = (id: string) =>
+    id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
   return (
     <AppStateContext.Provider value={state}>
