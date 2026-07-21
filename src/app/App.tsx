@@ -302,7 +302,10 @@ export function App({
   }, [nodes])
 
   const onOpenEditor = useCallback(() => {
-    if (!filePath) {
+    // Edit the document currently on screen, not the CLI-arg file — followLink/
+    // goBack may have swapped `doc` to another file since launch.
+    const activePath = doc.absPath
+    if (!activePath) {
       setFlashMessage('Cannot edit: reading from stdin')
       return
     }
@@ -310,7 +313,7 @@ export function App({
     const line = currentHeadingId ? headingLines[currentHeadingId] : undefined
     const argv = buildEditorArgv({
       command: resolveEditorCommand(process.env),
-      filePath,
+      filePath: activePath,
       line,
     })
     const result = openInEditor({ renderer, argv })
@@ -319,13 +322,13 @@ export function App({
       pendingReanchorRef.current = null
       return
     }
-    loadDocument(filePath)
+    loadDocument(activePath)
       .then(next => setDoc(next))
       .catch(() => {
         setFlashMessage('Reload failed: file unreadable')
         pendingReanchorRef.current = null
       })
-  }, [filePath, currentHeadingId, renderer, headingLines])
+  }, [doc.absPath, currentHeadingId, renderer, headingLines])
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
