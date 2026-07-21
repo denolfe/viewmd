@@ -51,12 +51,12 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
     setVisibleHeadingIds: mock(),
-    flashMessage: null,
-    setFlashMessage: mock(),
     dir: undefined,
     followLink: mock(() => {}),
     goBack: mock(() => {}),
     historyDepth: 0,
+    status: { kind: 'idle' },
+    setStatus: mock(),
     ...overrides,
   } as AppState
 }

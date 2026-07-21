@@ -31,8 +31,8 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     goBack: mock(),
     historyDepth: 0,
     contentMaxWidth: 80,
-    flashMessage: null,
-    setFlashMessage: mock(),
+    status: { kind: 'idle' },
+    setStatus: mock(),
     ...overrides,
   } as AppState
 }
