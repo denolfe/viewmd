@@ -1,8 +1,9 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useRenderer } from '@opentui/react'
-import type { MouseEvent, ScrollBoxRenderable } from '@opentui/core'
+import type { ScrollBoxRenderable } from '@opentui/core'
 import { useAppState } from '../state'
 import { flattenVisible, isTocExpanded } from '../lib/toc-util'
+import { onPrimaryClick } from '../lib/mouse'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
 import { MutedInline } from './blocks/MutedInline'
@@ -80,10 +81,4 @@ export function Toc({
       })}
     </scrollbox>
   )
-}
-
-const onPrimaryClick = (handler: () => void) => (event: MouseEvent) => {
-  if (event.button !== 0) return
-  event.stopPropagation()
-  handler()
 }

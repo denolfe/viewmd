@@ -2,8 +2,8 @@ import { useAppState } from '../state'
 import { ancestorChain, breadcrumbRows } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import { MutedInline } from './blocks/MutedInline'
+import { onPrimaryClick } from '../lib/mouse'
 import type { TocEntry } from '../lib/ast'
-import type { MouseEvent } from '@opentui/core'
 
 export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
   const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, goBack } = useAppState()
@@ -72,10 +72,4 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
           })}
     </box>
   )
-}
-
-const onPrimaryClick = (handler: () => void) => (event: MouseEvent) => {
-  if (event.button !== 0) return
-  event.stopPropagation()
-  handler()
 }
