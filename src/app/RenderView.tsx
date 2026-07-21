@@ -45,6 +45,10 @@ export function RenderView({
       contentMaxWidth,
       flashMessage: null,
       setFlashMessage: () => {},
+      dir: undefined,
+      followLink: () => {},
+      goBack: () => {},
+      historyDepth: 0,
     }),
     [width, contentMaxWidth],
   )

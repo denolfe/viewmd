@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { dirname, resolve } from 'node:path'
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle, SearchState } from './state'
@@ -22,7 +23,8 @@ import { StickyHeader } from './components/StickyHeader'
 import { FlashMessage } from './components/FlashMessage'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
-import { loadDocument } from './lib/loadDocument'
+import { loadDocument, fileLabel as fileLabelFor } from './lib/loadDocument'
+import { classifyHref } from './lib/links'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 
 type Props = {
@@ -49,15 +51,26 @@ export function App({
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
   const pendingReanchorRef = useRef<string | null>(null)
+  const restoreScrollRef = useRef<{ scrollTop: number; currentHeadingId: string | null } | null>(
+    null,
+  )
+  const [history, setHistory] = useState<
+    { document: LoadedDocument; scrollTop: number; currentHeadingId: string | null }[]
+  >([])
 
-  const [doc, setDoc] = useState<LoadedDocument>(() => ({
-    nodes: initialNodes,
-    toc: initialToc,
-    headingIds: initialHeadingIds,
-    frontmatter: initialFrontmatter,
-    fileLabel: initialFileLabel,
-    headingLines: initialHeadingLines,
-  }))
+  const [doc, setDoc] = useState<LoadedDocument>(() => {
+    const absPath = filePath ? resolve(filePath) : undefined
+    return {
+      nodes: initialNodes,
+      toc: initialToc,
+      headingIds: initialHeadingIds,
+      frontmatter: initialFrontmatter,
+      fileLabel: initialFileLabel,
+      headingLines: initialHeadingLines,
+      absPath,
+      dir: absPath ? dirname(absPath) : undefined,
+    }
+  })
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = doc
   const [flashMessage, setFlashMessage] = useState<string | null>(null)
 
@@ -82,6 +95,57 @@ export function App({
   )
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
   const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
+
+  const resetForNewDoc = useCallback(() => {
+    setFocus('viewer')
+    setCurrentHeadingId(null)
+    setSearch(null)
+    setExpanded(new Map())
+    setTocCursorId(null)
+    setVisibleHeadingIds(new Set())
+  }, [])
+
+  const followLink = useCallback(
+    (href: string) => {
+      const target = classifyHref({ baseDir: doc.dir, href })
+      if (target.kind === 'ignore') return
+      if (target.kind === 'anchor') {
+        viewerRef.current?.scrollChildToTop(target.id)
+        return
+      }
+      // A link back into the current file is an in-doc jump, not a reload.
+      if (target.absPath === doc.absPath) {
+        if (target.anchor) viewerRef.current?.scrollChildToTop(target.anchor)
+        else viewerRef.current?.scrollTo(0)
+        return
+      }
+      const scrollTop = viewerRef.current?.getScrollTop() ?? 0
+      loadDocument(target.absPath)
+        .then(next => {
+          setHistory(h => [...h, { document: doc, scrollTop, currentHeadingId }])
+          resetForNewDoc()
+          pendingReanchorRef.current = target.anchor ?? null
+          setDoc(next)
+        })
+        .catch(() => {
+          setFlashMessage(`Cannot open ${fileLabelFor(target.absPath)}`)
+        })
+    },
+    [doc, currentHeadingId, resetForNewDoc],
+  )
+
+  const goBack = useCallback(() => {
+    const entry = history[history.length - 1]
+    if (!entry) return
+    resetForNewDoc()
+    pendingReanchorRef.current = null
+    restoreScrollRef.current = {
+      scrollTop: entry.scrollTop,
+      currentHeadingId: entry.currentHeadingId,
+    }
+    setDoc(entry.document)
+    setHistory(h => h.slice(0, -1))
+  }, [history, resetForNewDoc])
 
   const isTocShown = toc.length > 0 && tocVisible
   const { width: termWidth } = useTerminalDimensions()
@@ -133,6 +197,10 @@ export function App({
       contentMaxWidth,
       flashMessage,
       setFlashMessage,
+      dir: doc.dir,
+      followLink,
+      goBack,
+      historyDepth: history.length,
     }),
     [
       focus,
@@ -149,6 +217,10 @@ export function App({
       contentWidth,
       contentMaxWidth,
       flashMessage,
+      doc.dir,
+      followLink,
+      goBack,
+      history.length,
     ],
   )
 
@@ -189,17 +261,27 @@ export function App({
     return () => clearTimeout(tid)
   }, [flashMessage])
 
-  // After an editor reload swaps `nodes`, land the viewport back on the heading
-  // the user was reading. If that heading no longer exists post-edit, go to top.
+  // After any doc swap (editor reload, followLink, goBack) position scroll once
+  // the new content mounts. restoreScrollRef (goBack) wins; else pin the pending
+  // heading id (editor reload / followLink anchor); else go to top. On first mount
+  // both refs are null and this harmlessly re-pins the top.
+  //
   // Keyed on `nodes` only: safe because `doc` updates atomically, so toc/headingIds/
   // fileLabel captured here are always fresh whenever `nodes` changes.
   useEffect(() => {
+    const restore = restoreScrollRef.current
     const target = pendingReanchorRef.current
-    if (target === null) return
+    restoreScrollRef.current = null
     pendingReanchorRef.current = null
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
+      if (restore) {
+        v.scrollTo(restore.scrollTop)
+        if (restore.currentHeadingId) setCurrentHeadingId(restore.currentHeadingId)
+        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
+        return
+      }
       // Mirror a heading jump (dispatch's tocSelect/jumpHeading): pin the target,
       // set it current, refresh only visibility. Do NOT call syncHeadings here —
       // it re-resolves "heading near top" from scroll position, which lands on the

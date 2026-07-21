@@ -57,6 +57,8 @@ export type ScrollboxHandle = {
   seedMatchIndex: (params: { matches: Match[]; dir: 'forward' | 'backward' }) => number
   /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
   subscribeScroll: (cb: () => void) => () => void
+  /** Current vertical scroll offset (content-space top), for history snapshots. */
+  getScrollTop: () => number
 }
 
 export type SearchState = {
@@ -98,6 +100,15 @@ export type AppState = {
 
   /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
   contentWidth: number
+
+  /** Directory of the active document; base dir for resolving relative links. Undefined for stdin. */
+  dir?: string
+  /** Follow a link href from the current document (anchor scroll, doc load, or ignore). */
+  followLink: (href: string) => void
+  /** Pop the history stack and restore the previous document + scroll. No-op if empty. */
+  goBack: () => void
+  /** Number of entries on the back stack (drives the back affordance). */
+  historyDepth: number
 
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */
   contentMaxWidth: number

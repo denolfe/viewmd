@@ -26,6 +26,7 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     jumpToMatch: () => {},
     seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
+    getScrollTop: () => 0,
   }
   return { ref: { current: handle }, calls }
 }
@@ -52,6 +53,10 @@ function makeState(overrides: Partial<AppState> = {}): AppState {
     setVisibleHeadingIds: mock(),
     flashMessage: null,
     setFlashMessage: mock(),
+    dir: undefined,
+    followLink: mock(() => {}),
+    goBack: mock(() => {}),
+    historyDepth: 0,
     ...overrides,
   } as AppState
 }
@@ -122,6 +127,7 @@ function makePositionalViewerRef(
     jumpToMatch: () => {},
     seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},
+    getScrollTop: () => 0,
   }
   return { ref: { current: handle } }
 }
