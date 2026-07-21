@@ -101,6 +101,10 @@ export type AppState = {
 
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */
   contentMaxWidth: number
+
+  /** Transient one-line status shown in the flash overlay; null hides it. */
+  flashMessage: string | null
+  setFlashMessage: (m: string | null) => void
 }
 
 export const AppStateContext = createContext<AppState | null>(null)

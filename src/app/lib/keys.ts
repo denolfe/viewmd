@@ -25,6 +25,7 @@ export type Action =
   | { kind: 'prevMatch' }
   | { kind: 'clearSearch' }
   | { kind: 'toggleMouse' }
+  | { kind: 'openEditor' }
   | { kind: 'noop' }
 
 export type Ctx = { searchActive?: boolean }
@@ -61,6 +62,8 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
       return { kind: 'focusSidebar' }
     case 'm':
       return { kind: 'toggleMouse' }
+    case 'e':
+      return { kind: 'openEditor' }
     case 't':
       return { kind: 'toggleTocVisible' }
     case '/':

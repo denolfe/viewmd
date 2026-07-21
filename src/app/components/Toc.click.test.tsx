@@ -41,7 +41,14 @@ async function renderApp() {
     await renderOnce()
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/fix.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      fileLabel="t/fix.md"
+      headingLines={{}}
+    />,
   )
   await settle()
   return { renderer, settle, captureCharFrame }

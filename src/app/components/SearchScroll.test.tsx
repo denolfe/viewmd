@@ -33,7 +33,14 @@ async function setup() {
     await renderOnce()
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/fix.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/fix.md"
+    />,
   )
   await settle()
   // The very first key is consumed by the terminal capability handshake.
@@ -166,7 +173,14 @@ test('active highlight tracks n across code blocks, tables, and image alts', asy
     await renderOnce()
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/mix.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/mix.md"
+    />,
   )
   await settle()
   await mockInput.typeText('x')
@@ -248,7 +262,14 @@ test('search matches highlight inside syntax-highlighted code blocks and track n
     } while (!pred() && performance.now() - start < timeoutMs)
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/ts.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/ts.md"
+    />,
   )
   await settle()
   await mockInput.typeText('x')

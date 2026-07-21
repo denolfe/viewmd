@@ -59,6 +59,9 @@ describe('mapKey (viewer focus)', () => {
   test('unmapped key -> noop', () => {
     expect(mapKey(k({ name: 'x' }), 'viewer')).toEqual({ kind: 'noop' })
   })
+  test('e -> openEditor', () => {
+    expect(mapKey(k({ name: 'e' }), 'viewer')).toEqual({ kind: 'openEditor' })
+  })
 })
 
 describe('mapKey (sidebar focus)', () => {
@@ -73,5 +76,8 @@ describe('mapKey (sidebar focus)', () => {
   })
   test('t -> toggleTocVisible', () => {
     expect(mapKey(k({ name: 't' }), 'sidebar')).toEqual({ kind: 'toggleTocVisible' })
+  })
+  test('e -> noop (not bound in sidebar)', () => {
+    expect(mapKey(k({ name: 'e' }), 'sidebar')).toEqual({ kind: 'noop' })
   })
 })

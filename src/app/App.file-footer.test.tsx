@@ -26,7 +26,14 @@ describe('TOC file footer', () => {
   test('shows the file label at the bottom of the TOC and hides with it', async () => {
     const { nodes, toc, headingIds } = buildTree('# Title\n\n## Section\n\nBody.\n')
     const setup = await testRender(
-      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="GUIDE.md" />,
+      <App
+        nodes={nodes}
+        toc={toc}
+        headingIds={headingIds}
+        frontmatter={[]}
+        headingLines={{}}
+        fileLabel="GUIDE.md"
+      />,
       { width: 120, height: 30 },
     )
     await setup.flush()

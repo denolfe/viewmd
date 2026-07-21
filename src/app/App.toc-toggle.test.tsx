@@ -61,7 +61,14 @@ describe('TOC expand', () => {
     const md = `# Title\n\n## Section\n\n### Deep\n\n${filler}\n\n#### Deeper\n\nBody.\n`
     const { nodes, toc, headingIds } = buildTree(md)
     const setup = await testRender(
-      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="doc.md" />,
+      <App
+        nodes={nodes}
+        toc={toc}
+        headingIds={headingIds}
+        frontmatter={[]}
+        headingLines={{}}
+        fileLabel="doc.md"
+      />,
       { width: 160, height: 40 },
     )
     await setup.flush()
@@ -108,7 +115,14 @@ describe('TOC collapse sizing', () => {
       '## Beta\n\nBody.\n'
     const { nodes, toc, headingIds } = buildTree(md)
     const setup = await testRender(
-      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="doc.md" />,
+      <App
+        nodes={nodes}
+        toc={toc}
+        headingIds={headingIds}
+        frontmatter={[]}
+        headingLines={{}}
+        fileLabel="doc.md"
+      />,
       { width: 70, height: 25 },
     )
     await setup.flush()
@@ -138,7 +152,14 @@ describe('TOC toggle', () => {
   test('showing the TOC does not flash a scrollbar', async () => {
     const { nodes, toc, headingIds } = buildTree(fixtureDoc())
     const setup = await testRender(
-      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="doc.md" />,
+      <App
+        nodes={nodes}
+        toc={toc}
+        headingIds={headingIds}
+        frontmatter={[]}
+        headingLines={{}}
+        fileLabel="doc.md"
+      />,
       { width: 160, height: 40 },
     )
     await setup.flush()

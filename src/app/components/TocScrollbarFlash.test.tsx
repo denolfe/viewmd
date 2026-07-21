@@ -74,7 +74,14 @@ const captureFramesThroughSettle = async (md: string) => {
   renderer.on('frame', () => frames.push(captureCharFrame()))
 
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/fix.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/fix.md"
+    />,
   )
 
   await flush({ maxPasses: 60 })

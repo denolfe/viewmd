@@ -38,7 +38,14 @@ async function setupWith(fixture: string, width: number) {
     await renderOnce()
   }
   createRoot(renderer).render(
-    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} fileLabel="t/h.md" />,
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/h.md"
+    />,
   )
   await settle()
   // The very first key is consumed by the terminal capability handshake.
