@@ -360,6 +360,12 @@ describe('dispatch', () => {
     dispatch({ kind: 'openEditor' }, state, toc, headingIds, 20, () => {}, undefined, onOpenEditor)
     expect(onOpenEditor).toHaveBeenCalledTimes(1)
   })
+
+  test('goBack calls state.goBack', () => {
+    const state = makeState()
+    dispatch({ kind: 'goBack' }, state, toc, headingIds, 24, () => {})
+    expect(state.goBack).toHaveBeenCalledTimes(1)
+  })
 })
 
 describe('dispatch toggleTocVisible', () => {
