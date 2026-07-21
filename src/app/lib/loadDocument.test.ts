@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test'
+import { FRONTMATTER_ID } from './frontmatter'
 import { buildDocument } from './loadDocument'
 
 describe('buildDocument', () => {
@@ -22,6 +23,17 @@ describe('buildDocument', () => {
   test('extracts frontmatter rows', () => {
     const doc = buildDocument('---\ntitle: Hi\n---\n\n# Body\n', '/tmp/a.md')
     expect(doc.frontmatter.length).toBeGreaterThan(0)
+  })
+
+  test('prepends frontmatter id to headingIds so n/N stops on it', () => {
+    const doc = buildDocument('---\ntitle: Hi\n---\n\n# Body\n\n## Sub\n', '/tmp/a.md')
+    expect(doc.headingIds[0]).toBe(FRONTMATTER_ID)
+    expect(doc.headingIds).toEqual([FRONTMATTER_ID, 'body', 'sub'])
+  })
+
+  test('omits frontmatter id from headingIds when there is no frontmatter', () => {
+    const doc = buildDocument('# Body\n\n## Sub\n', '/tmp/a.md')
+    expect(doc.headingIds).toEqual(['body', 'sub'])
   })
 
   test('maps heading ids to source lines', () => {

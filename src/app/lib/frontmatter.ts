@@ -1,5 +1,10 @@
 const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)(?:\r?\n)?---(?:\r?\n|$)/
 
+// Synthetic heading id for the frontmatter block. Prefixed with NUL (like
+// FILE_ROW_ID) so it can never collide with a real heading slug, letting n/N
+// treat frontmatter as the topmost navigation stop.
+export const FRONTMATTER_ID = '\x00frontmatter'
+
 export function splitFrontmatter(markdown: string): {
   frontmatter: string | null
   body: string

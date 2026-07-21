@@ -1,7 +1,7 @@
 import { basename, dirname, resolve } from 'node:path'
 import { buildTree } from './ast'
 import type { Node, TocEntry } from './ast'
-import { parseFrontmatter, splitFrontmatter } from './frontmatter'
+import { FRONTMATTER_ID, parseFrontmatter, splitFrontmatter } from './frontmatter'
 import type { FrontmatterRow } from './frontmatter'
 import { computeHeadingLines, countNewlines } from './headingLines'
 import { replaceMermaidBlocks } from './preprocess'
@@ -31,7 +31,9 @@ export function buildDocument(md: string, filePath?: string): LoadedDocument {
   return {
     nodes,
     toc,
-    headingIds,
+    // Frontmatter renders above the first heading; expose it as the topmost
+    // n/N stop by prepending its synthetic id (only when it actually renders).
+    headingIds: rows.length > 0 ? [FRONTMATTER_ID, ...headingIds] : headingIds,
     headingLines,
     frontmatter: rows,
     fileLabel: fileLabel(filePath),
