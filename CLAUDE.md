@@ -13,6 +13,8 @@ bun run typecheck                     # tsc --noEmit
 ./src/index.tsx README.md                            # Run CLI (interactive — requires a TTY)
 ./src/index.tsx --render README.md                   # One-shot ANSI render to stdout
 ./src/index.tsx --render --max-lines 40 README.md    # cap one-shot output (auto via FZF_PREVIEW_LINES in fzf previews)
+
+VIEWMD_CONFIG=/path/config.toml ./src/index.tsx --render README.md   # test with an explicit config
 ```
 
 `viewmd` auto-renders a one-shot ANSI dump when stdout is not a TTY (pipe / fzf preview). Use `--render`/`-r` to force render mode in a TTY. The interactive viewer still requires a TTY.

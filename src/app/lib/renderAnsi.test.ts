@@ -165,3 +165,10 @@ describe('renderAnsi capRows', () => {
     expect(explicit).toBe(capped)
   })
 })
+
+test('contentMaxWidth narrows wrapping below the default cap', async () => {
+  const nodes = buildTree('word '.repeat(60)).nodes
+  const wide = await renderAnsi({ nodes, width: 200, maxHeight: 200 })
+  const narrow = await renderAnsi({ nodes, width: 200, maxHeight: 200, contentMaxWidth: 30 })
+  expect(narrow.split('\n').length).toBeGreaterThan(wide.split('\n').length)
+})

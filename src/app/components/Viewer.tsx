@@ -4,7 +4,6 @@ import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
 import { ScrollIndicators } from './ScrollIndicators'
-import { CONTENT_MAX_WIDTH } from '../styles/layout'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
@@ -34,7 +33,7 @@ export function Viewer({
   tailReserve?: number
   onScroll?: () => void
 }) {
-  const { viewerRef, contentWidth } = useAppState()
+  const { viewerRef, contentWidth, contentMaxWidth } = useAppState()
   const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
@@ -193,7 +192,7 @@ export function Viewer({
           },
         }}
       >
-        <box maxWidth={CONTENT_MAX_WIDTH} paddingRight={1} flexDirection="column">
+        <box maxWidth={contentMaxWidth} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
           <NodeList nodes={mountedNodes} />
           {!fullyMounted && <box height={estimatedRemaining} />}

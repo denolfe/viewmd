@@ -27,9 +27,17 @@ type Props = {
   headingIds: string[]
   frontmatter: FrontmatterRow[]
   fileLabel?: string
+  contentMaxWidth?: number
 }
 
-export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
+export function App({
+  nodes,
+  toc,
+  headingIds,
+  frontmatter,
+  fileLabel,
+  contentMaxWidth = CONTENT_MAX_WIDTH,
+}: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
@@ -72,7 +80,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
   )
-  const contentWidth = Math.min(CONTENT_MAX_WIDTH, viewerColumnWidth)
+  const contentWidth = Math.min(contentMaxWidth, viewerColumnWidth)
 
   // At the bottom the last heading is current, so its ancestor crumbs occlude the
   // top rows. Reserve that height in the scrollbox tail so the final content lands
@@ -102,6 +110,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       visibleHeadingIds,
       setVisibleHeadingIds,
       contentWidth,
+      contentMaxWidth,
     }),
     [
       focus,
@@ -116,6 +125,7 @@ export function App({ nodes, toc, headingIds, frontmatter, fileLabel }: Props) {
       toggleTocVisible,
       visibleHeadingIds,
       contentWidth,
+      contentMaxWidth,
     ],
   )
 

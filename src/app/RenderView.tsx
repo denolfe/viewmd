@@ -7,9 +7,19 @@ import { CONTENT_MAX_WIDTH } from './styles/layout'
 import type { Node } from './lib/ast'
 import type { FrontmatterRow } from './lib/frontmatter'
 
-type Props = { nodes: Node[]; width: number; frontmatter?: FrontmatterRow[] }
+type Props = {
+  nodes: Node[]
+  width: number
+  frontmatter?: FrontmatterRow[]
+  contentMaxWidth?: number
+}
 
-export function RenderView({ nodes, width, frontmatter = [] }: Props) {
+export function RenderView({
+  nodes,
+  width,
+  frontmatter = [],
+  contentMaxWidth = CONTENT_MAX_WIDTH,
+}: Props) {
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
   const state = useMemo<AppState>(
@@ -31,14 +41,15 @@ export function RenderView({ nodes, width, frontmatter = [] }: Props) {
       toggleMouse: () => {},
       tocVisible: true,
       toggleTocVisible: () => {},
-      contentWidth: Math.min(CONTENT_MAX_WIDTH, width),
+      contentWidth: Math.min(contentMaxWidth, width),
+      contentMaxWidth,
     }),
-    [width],
+    [width, contentMaxWidth],
   )
 
   return (
     <AppStateContext.Provider value={state}>
-      <box flexDirection="column" width={width}>
+      <box flexDirection="column" width={state.contentWidth}>
         <Frontmatter rows={frontmatter} />
         <NodeList nodes={nodes} />
       </box>
