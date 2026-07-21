@@ -40,6 +40,13 @@ async function renderApp() {
     await new Promise(r => setTimeout(r, 30))
     await renderOnce()
   }
+  // A jump can land a frame late when the target heading was not yet
+  // progressively mounted at click time. Poll rather than assume one settle.
+  const settleUntil = async (text: string) => {
+    for (let i = 0; i < 20 && !captureCharFrame().includes(text); i++) {
+      await settle()
+    }
+  }
   createRoot(renderer).render(
     <App
       nodes={nodes}
@@ -51,7 +58,7 @@ async function renderApp() {
     />,
   )
   await settle()
-  return { renderer, settle, captureCharFrame }
+  return { renderer, settle, settleUntil, captureCharFrame }
 }
 
 function tocPaneContains(lines: string[], label: string): boolean {
@@ -75,7 +82,7 @@ function findMarkerCol(line: string): number {
 }
 
 test('clicking a leaf label jumps the viewer to that heading', async () => {
-  const { renderer, settle, captureCharFrame } = await renderApp()
+  const { renderer, settleUntil, captureCharFrame } = await renderApp()
   const mouse = createMockMouse(renderer)
 
   expect(captureCharFrame()).not.toContain('sibling body text')
@@ -83,7 +90,7 @@ test('clicking a leaf label jumps the viewer to that heading', async () => {
   const lines = captureCharFrame().split('\n')
   const { row, col } = findTocRow(lines, 'Sibling')
   await mouse.click(col + 1, row, MouseButtons.LEFT)
-  await settle()
+  await settleUntil('sibling body text')
 
   const after = captureCharFrame()
   expect(after).toContain('Sibling')
@@ -136,7 +143,7 @@ test('clicking a parent chevron toggles child visibility without jumping', async
 })
 
 test('clicking a parent label jumps to that heading', async () => {
-  const { renderer, settle, captureCharFrame } = await renderApp()
+  const { renderer, settleUntil, captureCharFrame } = await renderApp()
   const mouse = createMockMouse(renderer)
 
   // 30 filler lines push "## Parent" out of the initial viewport.
@@ -145,7 +152,7 @@ test('clicking a parent label jumps to that heading', async () => {
   const lines = captureCharFrame().split('\n')
   const { row, col } = findTocRow(lines, 'Parent')
   await mouse.click(col + 1, row, MouseButtons.LEFT)
-  await settle()
+  await settleUntil('## Parent')
 
   const afterLines = captureCharFrame().split('\n')
   // A jump scrolls the target heading to the top of the viewport (below any
