@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
-import type { AppState, ScrollboxHandle, SearchState } from './state'
+import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
@@ -14,12 +14,10 @@ import {
   breadcrumbHeightForHeading,
   tocVisibleContentWidth,
   toggleTocExpanded,
-  truncateLabelLeft,
 } from './lib/toc-util'
-import { theme } from './styles/theme'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
-import { FlashMessage } from './components/FlashMessage'
+import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
 import { loadDocument } from './lib/loadDocument'
@@ -59,7 +57,7 @@ export function App({
     headingLines: initialHeadingLines,
   }))
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = doc
-  const [flashMessage, setFlashMessage] = useState<string | null>(null)
+  const [status, setStatus] = useState<Status>({ kind: 'idle' })
 
   const [focus, setFocus] = useState<Focus>('viewer')
   const [currentHeadingId, setCurrentHeadingId] = useState<string | null>(null)
@@ -131,8 +129,8 @@ export function App({
       setVisibleHeadingIds,
       contentWidth,
       contentMaxWidth,
-      flashMessage,
-      setFlashMessage,
+      status,
+      setStatus,
     }),
     [
       focus,
@@ -148,7 +146,7 @@ export function App({
       visibleHeadingIds,
       contentWidth,
       contentMaxWidth,
-      flashMessage,
+      status,
     ],
   )
 
@@ -184,10 +182,10 @@ export function App({
   }, [headingIds])
 
   useEffect(() => {
-    if (!flashMessage) return
-    const tid = setTimeout(() => setFlashMessage(null), 2500)
+    if (status.kind === 'idle') return
+    const tid = setTimeout(() => setStatus({ kind: 'idle' }), 2500)
     return () => clearTimeout(tid)
-  }, [flashMessage])
+  }, [status])
 
   // After an editor reload swaps `nodes`, land the viewport back on the heading
   // the user was reading. If that heading no longer exists post-edit, go to top.
@@ -221,7 +219,7 @@ export function App({
 
   const onOpenEditor = useCallback(() => {
     if (!filePath) {
-      setFlashMessage('Cannot edit: reading from stdin')
+      setStatus({ kind: 'error', text: 'Cannot edit: reading from stdin' })
       return
     }
     pendingReanchorRef.current = currentHeadingId
@@ -233,14 +231,14 @@ export function App({
     })
     const result = openInEditor({ renderer, argv })
     if (!result.ok) {
-      setFlashMessage(`Editor failed: ${result.error}`)
+      setStatus({ kind: 'error', text: `Editor failed: ${result.error}` })
       pendingReanchorRef.current = null
       return
     }
     loadDocument(filePath)
       .then(next => setDoc(next))
       .catch(() => {
-        setFlashMessage('Reload failed: file unreadable')
+        setStatus({ kind: 'error', text: 'Reload failed: file unreadable' })
         pendingReanchorRef.current = null
       })
   }, [filePath, currentHeadingId, renderer, headingLines])
@@ -276,7 +274,6 @@ export function App({
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} />
           <SearchBar nodes={nodes} toc={toc} fileLabel={fileLabel} />
-          <FlashMessage />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
@@ -290,16 +287,10 @@ export function App({
           {toc.length > 0 && (
             <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
               <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
-              {fileLabel && (
-                <box paddingLeft={3} paddingRight={1}>
-                  <text fg={theme.foregroundMuted}>
-                    {truncateLabelLeft(fileLabel, tocWidth - 4)}
-                  </text>
-                </box>
-              )}
             </box>
           )}
         </box>
+        <StatusLine fileLabel={fileLabel} />
       </box>
     </AppStateContext.Provider>
   )
