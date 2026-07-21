@@ -6,7 +6,8 @@ import { onPrimaryClick } from '../lib/mouse'
 import type { TocEntry } from '../lib/ast'
 
 export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
-  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, goBack } = useAppState()
+  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, goBack } =
+    useAppState()
 
   const hasH1 = toc[0]?.level === 1
   const chain = ancestorChain(toc, currentHeadingId)
@@ -16,8 +17,9 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
   const backBadge =
     historyDepth > 0 ? (
       <box key="__back" height={1} overflow="hidden" onMouseDown={onPrimaryClick(goBack)}>
-        <text bg={theme.h1Bg} fg={theme.h1Fg}>
-          <strong>{' ‹ Back '}</strong>
+        <text>
+          <strong>{'‹'.repeat(historyDepth)} Back</strong>
+          {backLabel ? <span fg={theme.foregroundMuted}>{` to ${backLabel}`}</span> : ''}
         </text>
       </box>
     ) : null
@@ -35,41 +37,29 @@ export function StickyHeader({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: 
       paddingX={2}
       zIndex={10}
     >
-      {rows.length === 0
-        ? backBadge
-        : rows.map((row, i) => {
-            const element =
-              row.variant === 'pill' ? (
-                <box key={row.id} height={1} overflow="hidden">
-                  <text bg={theme.h1Bg} fg={theme.h1Fg}>
-                    <strong>
-                      {` `}
-                      <MutedInline nodes={row.inline} />
-                      {` `}
-                    </strong>
-                  </text>
-                </box>
-              ) : (
-                <box key={row.id} height={1} overflow="hidden">
-                  <text fg={theme.heading} bg={theme.stickyBg}>
-                    <strong>
-                      {'#'.repeat(row.level) + ' '}
-                      <MutedInline nodes={row.inline} />
-                    </strong>
-                  </text>
-                </box>
-              )
-
-            if (i === 0 && backBadge) {
-              return (
-                <box key={row.id} flexDirection="row" height={1}>
-                  {backBadge}
-                  {element}
-                </box>
-              )
-            }
-            return element
-          })}
+      {backBadge}
+      {rows.map(row =>
+        row.variant === 'pill' ? (
+          <box key={row.id} height={1} overflow="hidden">
+            <text bg={theme.h1Bg} fg={theme.h1Fg}>
+              <strong>
+                {` `}
+                <MutedInline nodes={row.inline} />
+                {` `}
+              </strong>
+            </text>
+          </box>
+        ) : (
+          <box key={row.id} height={1} overflow="hidden">
+            <text fg={theme.heading} bg={theme.stickyBg}>
+              <strong>
+                {'#'.repeat(row.level) + ' '}
+                <MutedInline nodes={row.inline} />
+              </strong>
+            </text>
+          </box>
+        ),
+      )}
     </box>
   )
 }

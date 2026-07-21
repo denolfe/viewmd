@@ -77,6 +77,18 @@ test('back badge renders and clicking it calls goBack', async () => {
   renderer.destroy()
 })
 
+test('back affordance shows one arrow per depth level and the target filename', async () => {
+  const stub = makeStub({ historyDepth: 3, backLabel: 'nav/reference.md' })
+  const { renderer, captureCharFrame } = await renderHeader(stub)
+
+  const frame = captureCharFrame()
+  // One '‹' per navigation level, then the target document label.
+  expect(frame).toContain('‹‹‹ Back')
+  expect(frame).toContain('to nav/reference.md')
+
+  renderer.destroy()
+})
+
 test('right-click on the badge does not call goBack', async () => {
   const stub = makeStub({ historyDepth: 1 })
   const { renderer, settle, captureCharFrame } = await renderHeader(stub)
