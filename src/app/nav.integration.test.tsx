@@ -150,6 +150,21 @@ test('click ./b.md navigates to B; Backspace restores A', async () => {
   renderer.destroy()
 })
 
+test('clicking a navigable link leaves no stray text selection', async () => {
+  const { renderer, mockMouse, settle, root, nodes } = await mountA()
+
+  const point = pointForLink({ root, nodes, paraIndex: 1, blockId: PARA_B_LINK, needle: 'to B' })
+  await mockMouse.pressDown(point.x, point.y)
+  await settle()
+  await settle()
+
+  // OpenTUI anchors a selection on mousedown; a consumed link click must clear it,
+  // otherwise the navigated-to content renders under a stale highlight.
+  expect(renderer.getSelection()).toBeNull()
+
+  renderer.destroy()
+})
+
 test('click ./b.md navigates to B; clicking the ‹ Back badge restores A', async () => {
   const { renderer, mockMouse, settle, captureCharFrame, root, nodes } = await mountA()
 
