@@ -34,4 +34,22 @@ describe('buildDocument', () => {
     const doc = buildDocument('---\ntitle: x\n---\n\n# Head\n', '/tmp/a.md')
     expect(doc.headingLines.head).toBe(5)
   })
+
+  test('sets absPath and dir from an absolute path', () => {
+    const doc = buildDocument('# Hi', '/a/b/c.md')
+    expect(doc.absPath).toBe('/a/b/c.md')
+    expect(doc.dir).toBe('/a/b')
+  })
+
+  test('resolves a relative path before deriving dir', () => {
+    const doc = buildDocument('# Hi', 'c.md')
+    expect(doc.absPath?.endsWith('/c.md')).toBe(true)
+    expect(doc.dir).toBe(doc.absPath?.replace(/\/c\.md$/, ''))
+  })
+
+  test('leaves absPath/dir undefined for stdin', () => {
+    const doc = buildDocument('# Hi')
+    expect(doc.absPath).toBeUndefined()
+    expect(doc.dir).toBeUndefined()
+  })
 })
