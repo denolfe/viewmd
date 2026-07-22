@@ -2,7 +2,7 @@
 
 An interactive terminal markdown viewer
 
-<img src="preview.png" alt="Preview of viewmd rendering a markdown document with various features" width="600"/>
+<img src="showcase.gif" alt="Showcase of viewmd in action" width="600"/>
 
 ## Features
 
@@ -12,7 +12,9 @@ An interactive terminal markdown viewer
 - **Sticky headers** - as you scroll past a heading, its ancestors stay pinned at the top so you always know where you are.
 - **Ergonomic navigation** - header navigation, page up/down, half-page up/down, and mouse scrolling.
 - **Search** forward and backward, `less`-style.
-- **Images** appear as a labeled, clickable link
+- **Link following** - open links to other markdown files in place, with a back stack to return.
+- **Editor integration** - press `e` to open the current document in `$EDITOR` at the current position.
+- **Images** appear as a labeled, clickable link.
 
 ## Install
 
@@ -29,7 +31,11 @@ viewmd README.md     # open the interactive viewer (needs a TTY)
 viewmd -r README.md  # print a one-shot ANSI render and exit
 cat README.md | viewmd  # pipe input to the interactive viewer (needs a TTY)
 cat README.md | viewmd -r  # pipe input to a one-shot render
+viewmd -h            # show help
+viewmd -v            # show version
 ```
+
+`-r`/`--render` forces render mode; `--max-lines <n>` caps render output rows.
 
 ## Configuration
 
@@ -53,6 +59,20 @@ max-lines = 40
 Precedence, highest first: **CLI flag > environment variable > config file > built-in default.**
 Invalid keys or values are ignored with a warning on stderr; a malformed file never stops the viewer.
 
+### Environment variables
+
+| Variable                | Effect                                                                        |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `VIEWMD_CONFIG`         | Explicit path to a config file (highest-priority config location).            |
+| `VIEWMD_EDITOR_COMMAND` | Command used by `e`; overrides `$EDITOR`. Supports `{file}`/`{line}`.         |
+| `EDITOR`                | Fallback editor command when `VIEWMD_EDITOR_COMMAND` is unset (default `vi`). |
+| `FZF_PREVIEW_LINES`     | Render row cap when unset by `--max-lines` (auto-set in fzf previews).        |
+| `FZF_PREVIEW_COLUMNS`   | Render width in one-shot mode (auto-set in fzf previews).                     |
+
+The editor command gets `{file}` and `{line}` placeholders if present; otherwise the file
+(and line, using each editor's native syntax) is appended. VS Code, JetBrains IDEs, Sublime,
+Helix, and TextMate are recognized; unknown editors get the POSIX `+N file` convention.
+
 ## Keyboard shortcuts
 
 ### Viewer
@@ -68,7 +88,10 @@ Invalid keys or values are ignored with a warning on stderr; a malformed file ne
 | `n` / `N`        | Next / previous heading (or search match) |
 | `/` / `?`        | Search forward / backward                 |
 | `Esc`            | Clear search                              |
+| `e`              | Open current doc in `$EDITOR`             |
+| `Backspace`      | Go back (after following a link)          |
 | `Tab`            | Focus the table-of-contents sidebar       |
+| `t`              | Toggle the sidebar (show / hide)          |
 | `m`              | Toggle mouse scroll (off = select text)   |
 | `q` / `Ctrl-C`   | Quit                                      |
 
@@ -77,7 +100,7 @@ Invalid keys or values are ignored with a warning on stderr; a malformed file ne
 | Key           | Action                 |
 | ------------- | ---------------------- |
 | `j` / `k`     | Move down / up         |
-| `t`           | Toggle expand/collapse |
-| `Space`       | Expand / collapse      |
+| `Space`       | Expand / collapse node |
 | `Enter`       | Jump to heading        |
+| `t`           | Hide the sidebar       |
 | `Tab` / `Esc` | Back to the viewer     |
