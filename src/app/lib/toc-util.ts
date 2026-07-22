@@ -107,22 +107,33 @@ export function breadcrumbRows(params: {
   return rows
 }
 
-// Rows the breadcrumb shows once `id` is the current heading: `id` itself is
-// visible (filtered out); only its ancestor stack remains. This is the overlay
-// height a jump pins below, and the tail reserve that keeps the last heading's
+// Rows the sticky overlay occludes once `id` is the current heading: `id` itself
+// is visible (filtered out), so only its ancestor stack remains, plus the back
+// badge (`backBadgeRows`) which pins to the top of the overlay whenever a
+// navigation history exists. This is the overlay height a jump pins below, the
+// resolver's "near top" offset, and the tail reserve that keeps the last heading's
 // content from scrolling up behind the overlay.
 export function breadcrumbHeightForHeading(params: {
   toc: TocEntry[]
   id: string
   fileLabel?: string
+  backBadgeRows?: number
 }): number {
-  const { toc, id, fileLabel } = params
-  return breadcrumbRows({
-    chain: ancestorChain(toc, id),
-    visibleHeadingIds: new Set([id]),
-    hasH1: toc[0]?.level === 1,
-    fileLabel,
-  }).length
+  const { toc, id, fileLabel, backBadgeRows = 0 } = params
+  return (
+    backBadgeRows +
+    breadcrumbRows({
+      chain: ancestorChain(toc, id),
+      visibleHeadingIds: new Set([id]),
+      hasH1: toc[0]?.level === 1,
+      fileLabel,
+    }).length
+  )
+}
+
+/** The sticky overlay's back-badge occupies exactly one row whenever a back stack exists. */
+export function backBadgeRowsForDepth(historyDepth: number): number {
+  return historyDepth > 0 ? 1 : 0
 }
 
 // Rows the breadcrumb shows while `id` sits above the viewport (a search jump
