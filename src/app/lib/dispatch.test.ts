@@ -14,6 +14,8 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     scrollTo: y => calls.push(`scrollTo(${y})`),
     scrollToBottom: () => calls.push('scrollToBottom'),
     scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
+    pinHeadingPostLayout: (id, topOffset) =>
+      calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
     getHeadingNearTop: () => opts.nearTop ?? null,
     getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
     getScrollMarks: () => ({
@@ -85,6 +87,7 @@ function makePositionalViewerRef(
     scrollTo: () => {},
     scrollToBottom: () => {},
     scrollChildToTop: () => {},
+    pinHeadingPostLayout: () => {},
     getHeadingNearTop: (ids, topOffset = 0) => {
       let best: string | null = null
       let bestY = -Infinity

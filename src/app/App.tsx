@@ -12,6 +12,7 @@ import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import {
+  backBadgeRowsForDepth,
   breadcrumbHeightForHeading,
   tocVisibleContentWidth,
   toggleTocExpanded,
@@ -170,7 +171,12 @@ export function App({
   // just below the overlay instead of sliding up behind it.
   const lastHeadingId = headingIds.at(-1)
   const tailReserve = lastHeadingId
-    ? breadcrumbHeightForHeading({ toc, id: lastHeadingId, fileLabel })
+    ? breadcrumbHeightForHeading({
+        toc,
+        id: lastHeadingId,
+        fileLabel,
+        backBadgeRows: backBadgeRowsForDepth(history.length),
+      })
     : 0
 
   const backLabel = history[history.length - 1]?.document.fileLabel
@@ -284,16 +290,20 @@ export function App({
         setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
         return
       }
-      // Mirror a heading jump (dispatch's tocSelect/jumpHeading): pin the target,
-      // set it current, refresh only visibility. Do NOT call syncHeadings here —
-      // it re-resolves "heading near top" from scroll position, which lands on the
-      // parent (scrollChildToTop pins the target one row below where the resolver
-      // looks) and would overwrite `target`.
+      // Pin the anchor target post-layout: right after a doc swap its box is
+      // committed but unlaid-out (reads y=0), so an effect-time scroll would
+      // strand the reader at the top. onFrame runs the pin once geometry is real;
+      // its scroll re-syncs the breadcrumb, so no visibility bookkeeping here.
+      // setCurrentHeadingId seeds a sensible value before that frame lands.
       if (target && headingIds.includes(target)) {
-        const height = breadcrumbHeightForHeading({ toc, id: target, fileLabel })
-        v.scrollChildToTop(target, height)
+        const height = breadcrumbHeightForHeading({
+          toc,
+          id: target,
+          fileLabel,
+          backBadgeRows: backBadgeRowsForDepth(history.length),
+        })
+        v.pinHeadingPostLayout(target, height)
         setCurrentHeadingId(target)
-        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds, height))
       } else {
         v.scrollTo(0)
         setCurrentHeadingId(null)
@@ -371,6 +381,7 @@ export function App({
             nodes={nodes}
             frontmatter={frontmatter}
             tailReserve={tailReserve}
+            docKey={doc.absPath ?? '<stdin>'}
             onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox

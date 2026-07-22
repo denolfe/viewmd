@@ -19,6 +19,12 @@ export type ScrollboxHandle = {
   /** Scrolls so the named child sits at the top of the viewport, offset `topOffset` rows down (default 0). */
   scrollChildToTop: (childId: string, topOffset?: number) => void
   /**
+   * Queues a heading pin executed on the next post-layout frame instead of now.
+   * Use right after a doc swap, when the target box is committed but still reads
+   * y=0 — an immediate scroll would strand the reader at the top.
+   */
+  pinHeadingPostLayout: (childId: string, topOffset?: number) => void
+  /**
    * Returns the id from `headingIds` whose box sits at or just above the visible
    * content top, or null. `topOffset` shifts that top down past the breadcrumb overlay.
    */

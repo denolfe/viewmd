@@ -27,11 +27,20 @@ export function Viewer({
   frontmatter = [],
   tailReserve = 0,
   onScroll,
+  docKey,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
   tailReserve?: number
   onScroll?: () => void
+  /**
+   * Stable identity of the current document (its path). Keying the content
+   * subtree on it forces a full remount on navigation instead of reconciling:
+   * two docs that share a heading slug (e.g. both start `# viewmd`) would
+   * otherwise reuse the same heading renderable across the swap, leaving its
+   * layout stale (NaN height, frozen y=0) so it hijacks the sticky breadcrumb.
+   */
+  docKey?: string
 }) {
   const { viewerRef, contentWidth, contentMaxWidth } = useAppState()
   const renderer = useRenderer()
@@ -106,6 +115,14 @@ export function Viewer({
       scrollChildToTop: (id, topOffset) => {
         const found = scrollChildToTop(box, id, topOffset ?? 0)
         pendingRef.current = found ? null : { kind: 'heading', id, topOffset: topOffset ?? 0 }
+      },
+      pinHeadingPostLayout: (id, topOffset) => {
+        // Defer the pin to the post-layout `frame` retry. Right after a doc swap
+        // the target box is committed but not yet laid out (reads y=0), so an
+        // effect-time scroll would land at the top and — because the box *is*
+        // found — falsely report success, leaving the reader stranded above the
+        // anchor. onFrame runs it once geometry is real.
+        pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
@@ -193,7 +210,7 @@ export function Viewer({
           },
         }}
       >
-        <box maxWidth={contentMaxWidth} paddingRight={1} flexDirection="column">
+        <box key={docKey} maxWidth={contentMaxWidth} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
           <NodeList nodes={mountedNodes} />
           {!fullyMounted && <box height={estimatedRemaining} />}
@@ -268,7 +285,12 @@ function findHeadingNearTop(
   ids: string[],
   topOffset: number,
 ): string | null {
-  const viewportTop = box.viewport.y + topOffset
+  // `scrollChildToTop` pins a jumped/anchored heading PIN_TOP_OFFSET rows below
+  // the overlay fold (a small gap so it isn't flush behind the crumbs). Allow the
+  // same slack here so a freshly pinned heading resolves as current instead of its
+  // predecessor — otherwise a post-nav re-resolve (e.g. the fully-mounted notify)
+  // would snap the breadcrumb back to the previous sibling.
+  const viewportTop = box.viewport.y + topOffset + PIN_TOP_OFFSET
   let bestId: string | null = null
   let bestY = -Infinity
   for (const id of ids) {

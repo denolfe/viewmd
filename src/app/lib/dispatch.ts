@@ -1,7 +1,7 @@
 import type { Action } from './keys'
 import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
-import { breadcrumbHeightForHeading, flattenVisible } from './toc-util'
+import { backBadgeRowsForDepth, breadcrumbHeightForHeading, flattenVisible } from './toc-util'
 
 export function dispatch(
   action: Action,
@@ -132,7 +132,7 @@ function jumpHeading(
   else nextIdx = Math.max(0, idx - 1)
   const next = headingIds[nextIdx]
   if (!next) return
-  const height = breadcrumbHeightAfterJump(toc, next, fileLabel)
+  const height = breadcrumbHeightAfterJump(state, toc, next, fileLabel)
   state.viewerRef.current?.scrollChildToTop(next, height)
   state.setCurrentHeadingId(next)
   refreshVisible(state, headingIds, height)
@@ -145,7 +145,7 @@ function jumpToHeadingId(
   id: string,
   fileLabel?: string,
 ): void {
-  const height = breadcrumbHeightAfterJump(toc, id, fileLabel)
+  const height = breadcrumbHeightAfterJump(state, toc, id, fileLabel)
   state.viewerRef.current?.scrollChildToTop(id, height)
   state.setCurrentHeadingId(id)
   refreshVisible(state, headingIds, height)
@@ -184,7 +184,7 @@ function resolveHeadings(
   const seen = new Set<number>()
   for (let pass = 0; pass < 8; pass++) {
     id = v.getHeadingNearTop(headingIds, offset) ?? null
-    const next = id ? breadcrumbHeightAfterJump(toc, id, fileLabel) : 0
+    const next = id ? breadcrumbHeightAfterJump(state, toc, id, fileLabel) : 0
     if (next === offset || seen.has(next)) break
     seen.add(offset)
     offset = next
@@ -196,10 +196,21 @@ function resolveHeadings(
 
 // Rows the breadcrumb will show once `id` is pinned as the current heading: `id`
 // itself lands below the overlay (visible, so filtered out); its ancestors stack
-// above. Used as the pin/visibility offset so a jump lands the target just below
-// its crumbs rather than hidden behind them.
-function breadcrumbHeightAfterJump(toc: TocEntry[], id: string, fileLabel?: string): number {
-  return breadcrumbHeightForHeading({ toc, id, fileLabel })
+// above, plus the back badge when a history exists. Used as the pin/visibility
+// offset so a jump lands the target just below its crumbs rather than hidden
+// behind them.
+function breadcrumbHeightAfterJump(
+  state: AppState,
+  toc: TocEntry[],
+  id: string,
+  fileLabel?: string,
+): number {
+  return breadcrumbHeightForHeading({
+    toc,
+    id,
+    fileLabel,
+    backBadgeRows: backBadgeRowsForDepth(state.historyDepth),
+  })
 }
 
 function refreshVisible(state: AppState, headingIds: string[], topOffset: number): void {
