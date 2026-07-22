@@ -1,21 +1,23 @@
 import type { InlineNode } from './ast'
+import { stringWidth } from './char-width'
+import { imageLabelText } from './visible-text'
 
 export const PILL_GLYPH_WIDTH = 2 // ▐ and ▌ edge characters
 
 export function nodeVisibleWidth(n: InlineNode): number {
   switch (n.kind) {
     case 'text':
-      return n.value.length
+      return stringWidth(n.value)
     case 'codespan':
     case 'kbd':
-      return n.value.length + PILL_GLYPH_WIDTH
+      return stringWidth(n.value) + PILL_GLYPH_WIDTH
     case 'strong':
     case 'em':
     case 'link':
     case 'del':
       return inlineVisibleWidth(n.children)
     case 'image':
-      return (n.alt || n.src).length
+      return stringWidth(imageLabelText(n.alt, n.src))
     case 'br':
       return 0
   }
