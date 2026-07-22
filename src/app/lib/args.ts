@@ -47,9 +47,9 @@ export function parseArgs(args: string[]): ParsedArgs {
 }
 
 export function parsePositiveInt(raw: string | undefined): number | undefined {
-  if (raw === undefined || raw === '') return undefined
+  if (raw === undefined || !/^\d+$/.test(raw)) return undefined
   const n = Number(raw)
-  return Number.isInteger(n) && n > 0 ? n : undefined
+  return Number.isFinite(n) && n > 0 ? n : undefined
 }
 
 function parseErrorMessage(e: unknown): string {

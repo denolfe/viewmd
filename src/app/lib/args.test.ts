@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { parseArgs } from './args'
+import { parseArgs, parsePositiveInt } from './args'
 
 describe('parseArgs', () => {
   test('empty argv', () => {
@@ -86,5 +86,23 @@ describe('parseArgs', () => {
     expect(parseArgs(['--max-lines', '-5'])).toEqual({
       error: '--max-lines requires a positive integer',
     })
+  })
+  test('--max-lines rejects exponent notation', () => {
+    expect(parseArgs(['--max-lines', '1e21'])).toEqual({
+      error: '--max-lines requires a positive integer',
+    })
+  })
+})
+
+describe('parsePositiveInt', () => {
+  test('accepts only bare decimal digits', () => {
+    expect(parsePositiveInt('40')).toBe(40)
+    expect(parsePositiveInt('1')).toBe(1)
+    for (const bad of ['1e21', '0x10', ' 5 ', '-3', '1.5', '', undefined]) {
+      expect(parsePositiveInt(bad)).toBeUndefined()
+    }
+  })
+  test('rejects digit strings that overflow to Infinity', () => {
+    expect(parsePositiveInt('9'.repeat(400))).toBeUndefined()
   })
 })
