@@ -179,13 +179,17 @@ function getAttr(attrs: string, name: string): string {
 function decodeEntities(s: string): string {
   return s.replace(/&(#x[0-9a-fA-F]+|#[0-9]+|[a-zA-Z]+);/g, (match, body: string) => {
     if (body.startsWith('#x') || body.startsWith('#X')) {
-      const cp = parseInt(body.slice(2), 16)
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : match
+      return codePointToString(parseInt(body.slice(2), 16))
     }
     if (body.startsWith('#')) {
-      const cp = parseInt(body.slice(1), 10)
-      return Number.isFinite(cp) ? String.fromCodePoint(cp) : match
+      return codePointToString(parseInt(body.slice(1), 10))
     }
     return NAMED_ENTITIES[body] ?? match
   })
+}
+
+// Invalid numeric character references render as U+FFFD (HTML-spec behavior),
+// never crash. Guards against String.fromCodePoint's RangeError for cp > 0x10FFFF.
+function codePointToString(cp: number): string {
+  return cp >= 0 && cp <= 0x10ffff ? String.fromCodePoint(cp) : '�'
 }
