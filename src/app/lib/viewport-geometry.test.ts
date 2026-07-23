@@ -4,10 +4,12 @@ import {
   childToTopDelta,
   findHeadingNearTop,
   findVisibleHeadingIds,
+  matchScrollDelta,
   resolveMatchY,
   resolveScrollMarks,
 } from './viewport-geometry'
 import { makeGeometry } from './viewport-geometry.testutil'
+import { matchJumpDelta } from './match-nav'
 import type { BlockProjection } from './visible-text'
 import type { Match } from './search'
 
@@ -117,6 +119,131 @@ describe('resolveMatchY', () => {
       length: 1,
     }
     expect(resolveMatchY(makeGeometry(), match, projections)).toBeNull()
+  })
+
+  test('advances elementBase past prior runs (cross-run match)', () => {
+    // r0 spans two elements (runElementCount 2) → elementBase for r1 is 2.
+    // Target is r1's element 0, so the answer is content bearer index 2.
+    const proj = new Map<string, BlockProjection>([
+      [
+        'blk',
+        {
+          blockElementId: 'blk',
+          blockPath: [0],
+          runs: [
+            {
+              key: 'r0',
+              segments: [
+                { element: 0, text: 'aa', searchable: true },
+                { element: 1, text: 'bb', searchable: true },
+              ],
+            },
+            { key: 'r1', segments: [{ element: 0, text: 'cc', searchable: true }] },
+          ],
+        },
+      ],
+    ])
+    const geom = makeGeometry({
+      positions: { blk: { y: 0 } },
+      bearers: {
+        blk: [
+          { y: 10, plainText: 'aa', lineInfo: { lineStartCols: [0] } },
+          { y: 20, plainText: 'bb', lineInfo: { lineStartCols: [0] } },
+          { y: 30, plainText: 'cc', lineInfo: { lineStartCols: [0] } },
+        ],
+      },
+    })
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r1',
+      start: 0,
+      length: 1,
+    }
+    expect(resolveMatchY(geom, match, proj)).toBe(30)
+  })
+
+  test('skips rule bearers so content ordinals stay aligned', () => {
+    // A rule bearer is interleaved; the filter must drop it before indexing,
+    // else element 1 would resolve to the rule bearer's y instead of "world".
+    const proj = new Map<string, BlockProjection>([
+      [
+        'blk',
+        {
+          blockElementId: 'blk',
+          blockPath: [0],
+          runs: [
+            {
+              key: 'r0',
+              segments: [
+                { element: 0, text: 'hello', searchable: true },
+                { element: 1, text: 'world', searchable: true },
+              ],
+            },
+          ],
+        },
+      ],
+    ])
+    const geom = makeGeometry({
+      positions: { blk: { y: 0 } },
+      bearers: {
+        blk: [
+          { y: 10, plainText: 'hello', lineInfo: { lineStartCols: [0] } },
+          { y: 15, plainText: '│──│', lineInfo: { lineStartCols: [0] } },
+          { y: 20, plainText: 'world', lineInfo: { lineStartCols: [0] } },
+        ],
+      },
+    })
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 5,
+      length: 1,
+    }
+    expect(resolveMatchY(geom, match, proj)).toBe(20)
+  })
+})
+
+describe('matchScrollDelta', () => {
+  const projections = new Map<string, BlockProjection>([
+    [
+      'blk',
+      {
+        blockElementId: 'blk',
+        blockPath: [0],
+        runs: [{ key: 'r0', segments: [{ element: 0, text: 'hi', searchable: true }] }],
+      },
+    ],
+  ])
+
+  test('composes resolveMatchY with matchJumpDelta for a mounted block', () => {
+    const geom = makeGeometry({
+      viewportTop: 4,
+      positions: { blk: { y: 50 } },
+      bearers: { blk: [{ y: 50, plainText: 'hi', lineInfo: { lineStartCols: [0] } }] },
+    })
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 0,
+      length: 1,
+    }
+    // matchY resolves to bearer.y (50); pin composition against matchJumpDelta.
+    const expected = matchJumpDelta({ matchY: 50, viewportTop: 4, topOffset: 2 })
+    expect(matchScrollDelta(geom, projections, { match, topOffset: 2 })).toBe(expected)
+  })
+
+  test('null when the match block is unmounted', () => {
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 0,
+      length: 1,
+    }
+    expect(matchScrollDelta(makeGeometry(), projections, { match, topOffset: 2 })).toBeNull()
   })
 })
 
