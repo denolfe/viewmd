@@ -14,13 +14,15 @@ const m = (): Match => ({ blockPath: [0], blockElementId: 'x', runKey: 'x', star
 function makePositionalViewerRef(
   positions: Record<string, number>,
   viewportBottom = 20,
-): { ref: RefObject<ScrollboxHandle | null> } {
+): { ref: RefObject<ScrollboxHandle | null>; calls: string[] } {
+  const calls: string[] = []
   const handle: ScrollboxHandle = {
-    scrollBy: () => {},
-    scrollTo: () => {},
-    scrollToBottom: () => {},
-    scrollChildToTop: () => {},
-    pinHeadingPostLayout: () => {},
+    scrollBy: d => calls.push(`scrollBy(${d})`),
+    scrollTo: y => calls.push(`scrollTo(${y})`),
+    scrollToBottom: () => calls.push('scrollToBottom'),
+    scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
+    pinHeadingPostLayout: (id, topOffset) =>
+      calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
     getHeadingNearTop: (ids, topOffset = 0) => {
       let best: string | null = null
       let bestY = -Infinity
@@ -65,7 +67,7 @@ function makePositionalViewerRef(
     subscribeScroll: () => () => {},
     getScrollTop: () => 0,
   }
-  return { ref: { current: handle } }
+  return { ref: { current: handle }, calls }
 }
 
 const toc: TocEntry[] = [
@@ -360,6 +362,175 @@ describe('createCommands.applySearchPattern', () => {
     const { deps, set } = makeDeps({ read: { search: null } })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: false })
     expect(set.search).not.toHaveBeenCalled()
+  })
+})
+
+const siblingToc: TocEntry[] = [
+  {
+    id: 'h1',
+    level: 1,
+    text: 'H1',
+    inline: [],
+    children: [
+      { id: 'sa', level: 2, text: 'SA', inline: [], children: [] },
+      { id: 'sb', level: 2, text: 'SB', inline: [], children: [] },
+    ],
+  },
+]
+const siblingIds = ['h1', 'sa', 'sb']
+
+describe('createCommands.syncFromScroll sibling handoff (blip fix)', () => {
+  test('previous section stays current while a blank line (not the new header) is at the fold', () => {
+    // sa scrolled above; a blank line sits at the fold (row 1) with sb one row
+    // below it (row 2). The handoff must NOT fire early — current resolves to sa.
+    const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 }).ref
+    const { deps, set } = makeDeps({
+      viewerRef: ref,
+      doc: { toc: siblingToc, headingIds: siblingIds },
+      read: { currentHeadingId: null },
+    })
+    createCommands(deps).syncFromScroll()
+    expect(set.currentHeadingId).toHaveBeenCalledWith('sa')
+    expect(set.currentHeadingId).not.toHaveBeenCalledWith('sb')
+  })
+
+  test('handoff fires exactly when the new header reaches the fold', () => {
+    // sb now at the fold (row 1, = ancestor-stack height of 1). Current flips to sb.
+    const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 1 }).ref
+    const { deps, set } = makeDeps({
+      viewerRef: ref,
+      doc: { toc: siblingToc, headingIds: siblingIds },
+      read: { currentHeadingId: 'sa' },
+    })
+    createCommands(deps).syncFromScroll()
+    expect(set.currentHeadingId).toHaveBeenCalledWith('sb')
+  })
+})
+
+describe('createCommands.syncFromScroll breadcrumb-overlay offset', () => {
+  test('a heading behind the overlay becomes current and is excluded from visible', () => {
+    // a (H1) is scrolled off above; a1 (H2 under a) sits at row 0, behind the
+    // breadcrumb overlay; b is far below the fold. Without offset resolution a1
+    // would count as "visible" (filtered from the breadcrumb) yet be hidden
+    // behind the overlay — it would vanish. The fixed point must instead make a1
+    // current and exclude it from the visible set so it shows as a crumb.
+    const ref = makePositionalViewerRef({ a: -3, a1: 0, b: 50 }).ref
+    const { deps, set } = makeDeps({
+      viewerRef: ref,
+      read: { currentHeadingId: null, visibleHeadingIds: new Set(['a1']) },
+    })
+    createCommands(deps).syncFromScroll()
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    const lastVisible = (set.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    expect(lastVisible?.has('a1')).toBe(false)
+  })
+})
+
+describe('createCommands.jumpHeadingBy frontmatter boundary', () => {
+  const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
+
+  test('prev from the first real heading stops on the frontmatter id', () => {
+    const { deps, set } = makeDeps({
+      doc: { headingIds: fmIds },
+      read: { currentHeadingId: 'a' },
+    })
+    createCommands(deps).jumpHeadingBy(-1)
+    expect(set.currentHeadingId).toHaveBeenCalledWith('\x00frontmatter')
+  })
+
+  test('next leaves the frontmatter for the first real heading', () => {
+    const { deps, set } = makeDeps({
+      doc: { headingIds: fmIds },
+      read: { currentHeadingId: '\x00frontmatter' },
+    })
+    createCommands(deps).jumpHeadingBy(1)
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+  })
+})
+
+describe('createCommands.scrollPage / scrollHalf', () => {
+  test('scrollPage scrolls by a full page (viewportHeight - 2)', () => {
+    const built = makePositionalViewerRef({})
+    const { deps } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).scrollPage(1)
+    expect(built.calls).toContain('scrollBy(22)')
+  })
+
+  test('scrollHalf scrolls by half a page (floor((viewportHeight - 2) / 2))', () => {
+    const built = makePositionalViewerRef({})
+    const { deps } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).scrollHalf(1)
+    expect(built.calls).toContain('scrollBy(11)')
+  })
+})
+
+describe('createCommands.resetForNewDoc', () => {
+  test('full reset clears every per-doc slice', () => {
+    const { deps, set } = makeDeps()
+    createCommands(deps).resetForNewDoc('full')
+    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(set.currentHeadingId).toHaveBeenCalledWith(null)
+    expect(set.search).toHaveBeenCalledWith(null)
+    expect(set.tocCursorId).toHaveBeenCalledWith(null)
+    const expandedArg = (set.expanded as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    expect(expandedArg).toBeInstanceOf(Map)
+    expect(expandedArg?.size).toBe(0)
+    const visibleArg = (set.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    expect(visibleArg).toBeInstanceOf(Set)
+    expect(visibleArg?.size).toBe(0)
+  })
+
+  test('searchOnly reset clears only the search slice', () => {
+    const { deps, set } = makeDeps()
+    createCommands(deps).resetForNewDoc('searchOnly')
+    expect(set.search).toHaveBeenCalledWith(null)
+    expect(set.focus).not.toHaveBeenCalled()
+    expect(set.currentHeadingId).not.toHaveBeenCalled()
+    expect(set.tocCursorId).not.toHaveBeenCalled()
+    expect(set.expanded).not.toHaveBeenCalled()
+    expect(set.visibleHeadingIds).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.pinHeadingPostSwap', () => {
+  test('pins the heading post-layout at its overlay offset and sets it current', () => {
+    const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
+    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).pinHeadingPostSwap('a1')
+    // a1's ancestor stack is the H1 pill (1 row), so it pins one row below the fold.
+    expect(built.calls).toContain('pinHeadingPostLayout(a1,1)')
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+  })
+})
+
+describe('createCommands.restoreScroll', () => {
+  test('restores scroll top, current heading, and visible set', () => {
+    const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
+    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: 'a1' })
+    expect(built.calls).toContain('scrollTo(42)')
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(set.visibleHeadingIds).toHaveBeenCalled()
+  })
+
+  test('skips setting current heading when the snapshot has none', () => {
+    const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
+    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: null })
+    expect(built.calls).toContain('scrollTo(42)')
+    expect(set.currentHeadingId).not.toHaveBeenCalled()
+    expect(set.visibleHeadingIds).toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.resetToTop', () => {
+  test('scrolls to the top and clears heading state', () => {
+    const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
+    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    createCommands(deps).resetToTop()
+    expect(built.calls).toContain('scrollTo(0)')
+    expect(set.currentHeadingId).toHaveBeenCalledWith(null)
+    expect(set.visibleHeadingIds).toHaveBeenCalled()
   })
 })
 
