@@ -26,6 +26,12 @@ export type ScrollboxHandle = {
    * y=0 — an immediate scroll would strand the reader at the top.
    */
   pinHeadingPostLayout: (childId: string, topOffset?: number) => void
+  /**
+   * Queues a scroll to absolute content-y `top`, retried each post-layout frame
+   * until reached (progressive mount may not have grown `scrollHeight` yet).
+   * Marks the retry a "swap" reposition, so its resolution fires `onRepositioned`.
+   */
+  pinScrollTop: (top: number) => void
   /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
   getGeometry: () => BoxGeometry
   /**

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
-import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
+import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
@@ -19,9 +19,25 @@ import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
+import { theme } from './styles/theme'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
+
+// Actions whose imperative scroll must commit its breadcrumb state in the same
+// frame (see `run`). Every action that both scrolls and re-resolves the current
+// heading belongs here.
+const SCROLL_ACTIONS = new Set<Action['kind']>([
+  'scrollLine',
+  'scrollPage',
+  'scrollHalf',
+  'top',
+  'bottom',
+  'nextHeading',
+  'prevHeading',
+  'tocSelect',
+  'tocJump',
+])
 
 type Props = {
   nodes: Node[]
@@ -55,6 +71,9 @@ export function App({
   const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
   const [tocVisible, setTocVisible] = useState(true)
+  // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
+  // so the reader never sees it painted at scrollTop 0 before the jump lands.
+  const [covering, setCovering] = useState(false)
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
     // At startup the H1 (if any) sits at the top of the viewport — seed it so
     // the breadcrumb's hide-when-visible rule fires on the first paint.
@@ -83,6 +102,16 @@ export function App({
   )
   const nav = useDocumentNavigation({ initialDoc, captureScroll, onError })
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = nav.doc
+
+  // Raise the cover in the same render that swaps in the new doc, keyed on the
+  // intent seq. A layout effect would commit the cover one render later, leaving a
+  // gap where the incoming doc paints at scrollTop 0 before the jump lands. The
+  // Viewer drops it via onRepositioned once the reposition settles.
+  const coverRaisedSeqRef = useRef(-1)
+  if (nav.intent && nav.intent.reset !== 'none' && nav.intent.seq !== coverRaisedSeqRef.current) {
+    coverRaisedSeqRef.current = nav.intent.seq
+    if (!covering) setCovering(true)
+  }
 
   const toggleExpanded = useCallback(
     (id: string) => {
@@ -304,13 +333,26 @@ export function App({
     ],
   )
 
+  // A scroll/jump action mutates the scrollbox synchronously, but the
+  // breadcrumb-driving state it also sets (currentHeadingId/visibleHeadingIds)
+  // is React state that would otherwise commit in a later microtask. The live
+  // render loop can paint the scrolled content before that commit lands,
+  // flashing the sticky-header overlay a frame behind the scroll. flushSync
+  // commits the state in the same tick as the scroll so they paint together.
+  // Scoped to scrolling actions: search/focus actions don't tear, and wrapping
+  // them re-enters React during OpenTUI's keyboard dispatch and corrupts the
+  // search-jump effect ordering.
+  const run = (action: Action) =>
+    SCROLL_ACTIONS.has(action.kind)
+      ? flushSync(() => dispatch(action, commands))
+      : dispatch(action, commands)
+
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
-    const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(action, commands)
+    run(mapKey(ev, focus, { searchActive: !!search }))
   })
 
-  const dispatchTocAction = (action: Action) => dispatch(action, commands)
+  const dispatchTocAction = (action: Action) => run(action)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
   // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
@@ -330,7 +372,25 @@ export function App({
             tailReserve={tailReserve}
             docKey={nav.doc.absPath ?? '<stdin>'}
             onScroll={() => commands.syncFromScroll()}
+            onRepositioned={() => {
+              setCovering(false)
+              commands.syncFromScroll()
+            }}
           />
+          {/* Opaque cover masking the swap-in reposition (see `covering`). Spans the
+              viewer column (content + scrollbar + padding) and sits above the sticky
+              header so the whole viewer reads as one clean transition. */}
+          {covering && (
+            <box
+              position="absolute"
+              top={0}
+              left={0}
+              width={contentWidth + VIEWER_OVERHEAD}
+              height="100%"
+              backgroundColor={theme.background}
+              zIndex={20}
+            />
+          )}
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
               makes it flash its own vertical scrollbar for one frame before layout
               settles. `visible={false}` still frees the column so the viewer reclaims

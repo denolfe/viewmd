@@ -23,6 +23,7 @@ function makePositionalViewerRef(
     scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
     pinHeadingPostLayout: (id, topOffset) =>
       calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
+    pinScrollTop: top => calls.push(`pinScrollTop(${top})`),
     getGeometry: () => ({
       viewportTop: 0,
       viewportHeight: viewportBottom,
@@ -484,31 +485,29 @@ describe('createCommands.pinHeadingPostSwap', () => {
 })
 
 describe('createCommands.restoreScroll', () => {
-  test('restores scroll top, current heading, and visible set', () => {
+  test('pins the saved scroll top and current heading', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
     const { deps, set } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: 'a1' })
-    expect(built.calls).toContain('scrollTo(42)')
+    expect(built.calls).toContain('pinScrollTop(42)')
     expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
-    expect(set.visibleHeadingIds).toHaveBeenCalled()
   })
 
   test('skips setting current heading when the snapshot has none', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
     const { deps, set } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: null })
-    expect(built.calls).toContain('scrollTo(42)')
+    expect(built.calls).toContain('pinScrollTop(42)')
     expect(set.currentHeadingId).not.toHaveBeenCalled()
-    expect(set.visibleHeadingIds).toHaveBeenCalled()
   })
 })
 
 describe('createCommands.resetToTop', () => {
-  test('scrolls to the top and clears heading state', () => {
+  test('pins the top and clears heading state', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
     const { deps, set } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).resetToTop()
-    expect(built.calls).toContain('scrollTo(0)')
+    expect(built.calls).toContain('pinScrollTop(0)')
     expect(set.currentHeadingId).toHaveBeenCalledWith(null)
     expect(set.visibleHeadingIds).toHaveBeenCalled()
   })
