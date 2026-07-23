@@ -6,21 +6,25 @@ import { Frontmatter } from './blocks/Frontmatter'
 import { ScrollIndicators } from './ScrollIndicators'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
-import { matchJumpDelta, seedMatchIndex } from '../lib/match-nav'
+import { seedMatchIndex } from '../lib/match-nav'
 import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
-import { alignOffset, projectionMap, runElementCount } from '../lib/visible-text'
+import { projectionMap } from '../lib/visible-text'
+import {
+  childToTopDelta,
+  findHeadingNearTop,
+  findVisibleHeadingIds,
+  matchScrollDelta,
+  resolveMatchY,
+  resolveScrollMarks,
+} from '../lib/viewport-geometry'
 import { theme } from '../styles/theme'
-import type { BlockProjection } from '../lib/visible-text'
+import type { BoxGeometry, TextBearer } from '../lib/viewport-geometry'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
-import type { Match } from '../lib/search'
-import type { ResolvedMark } from '../lib/scroll-marks'
 
 // Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
 const VIEWER_OVERHEAD = 2
-
-const PIN_TOP_OFFSET = 1
 
 export function Viewer({
   nodes,
@@ -107,6 +111,41 @@ export function Viewer({
     const box = localRef.current
     if (!box) return
     const scrollListeners = new Set<() => void>()
+    const geom: BoxGeometry = {
+      get viewportTop() {
+        return box.viewport.y
+      },
+      get viewportHeight() {
+        return box.viewport.height
+      },
+      get scrollTop() {
+        return box.scrollTop
+      },
+      get scrollHeight() {
+        return box.scrollHeight
+      },
+      findChild: id => {
+        const c = box.content.findDescendantById(id)
+        return c ? { y: c.y, height: c.height } : null
+      },
+      collectTextBearers: id => {
+        const el = box.content.findDescendantById(id)
+        return el ? collectTextBearers(el, []) : []
+      },
+    }
+    // Apply a queued jump; returns false if the target isn't mounted yet.
+    const applyHeading = (id: string, topOffset: number): boolean => {
+      const delta = childToTopDelta(geom, id, topOffset)
+      if (delta === null) return false
+      if (delta !== 0) box.scrollBy(delta)
+      return true
+    }
+    const applyMatch = (params: Parameters<ScrollboxHandle['jumpToMatch']>[0]): boolean => {
+      const delta = matchScrollDelta(geom, projectionsRef.current, params)
+      if (delta === null) return false
+      if (delta !== 0) box.scrollBy(delta)
+      return true
+    }
     // Any explicit navigation supersedes a jump still waiting on its chunk —
     // otherwise a stale pending target would yank the viewport later.
     const handle: ScrollboxHandle = {
@@ -123,8 +162,9 @@ export function Viewer({
         box.scrollTo(box.scrollHeight)
       },
       scrollChildToTop: (id, topOffset) => {
-        const found = scrollChildToTop(box, id, topOffset ?? 0)
-        pendingRef.current = found ? null : { kind: 'heading', id, topOffset: topOffset ?? 0 }
+        pendingRef.current = applyHeading(id, topOffset ?? 0)
+          ? null
+          : { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
       pinHeadingPostLayout: (id, topOffset) => {
         // Defer the pin to the post-layout `frame` retry. Right after a doc swap
@@ -134,19 +174,18 @@ export function Viewer({
         // anchor. onFrame runs it once geometry is real.
         pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
-      getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(box, ids, topOffset ?? 0),
-      getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(box, ids, topOffset ?? 0),
+      getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(geom, ids, topOffset ?? 0),
+      getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(geom, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, activeIndex }) =>
-        resolveScrollMarks(box, tailRef.current, projectionsRef.current, { matches, activeIndex }),
+        resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches, activeIndex }),
       seedMatchIndex: ({ matches, dir }) =>
         seedMatchIndex({
-          matchYs: matches.map(m => resolveMatchY(box, m, projectionsRef.current)),
-          viewportTop: box.viewport.y,
+          matchYs: matches.map(m => resolveMatchY(geom, m, projectionsRef.current)),
+          viewportTop: geom.viewportTop,
           dir,
         }),
       jumpToMatch: params => {
-        const found = jumpToMatchNow(box, projectionsRef.current, params)
-        pendingRef.current = found ? null : { kind: 'match', params }
+        pendingRef.current = applyMatch(params) ? null : { kind: 'match', params }
       },
       subscribeScroll: cb => {
         scrollListeners.add(cb)
@@ -178,8 +217,8 @@ export function Viewer({
         completingRef.current = true
         const done =
           pending.kind === 'heading'
-            ? scrollChildToTop(box, pending.id, pending.topOffset)
-            : jumpToMatchNow(box, projectionsRef.current, pending.params)
+            ? applyHeading(pending.id, pending.topOffset)
+            : applyMatch(pending.params)
         completingRef.current = false
         // Done, or unresolvable (the doc is fully mounted and the target still
         // isn't there) — either way no stale pending survives.
@@ -263,89 +302,6 @@ type PendingTarget =
   | { kind: 'heading'; id: string; topOffset: number }
   | { kind: 'match'; params: Parameters<ScrollboxHandle['jumpToMatch']>[0] }
 
-/** Scrolls `id` to the viewport top. Returns false if `id` isn't mounted yet. */
-function scrollChildToTop(box: ScrollBoxRenderable, id: string, topOffset: number): boolean {
-  const child = box.content.findDescendantById(id)
-  if (!child) return false
-  const delta = child.y - box.viewport.y - PIN_TOP_OFFSET - topOffset
-  if (delta !== 0) box.scrollBy(delta)
-  return true
-}
-
-/** Jumps to a search match. Returns false if its block isn't mounted yet. */
-function jumpToMatchNow(
-  box: ScrollBoxRenderable,
-  projections: Map<string, BlockProjection>,
-  params: Parameters<ScrollboxHandle['jumpToMatch']>[0],
-): boolean {
-  const { match, topOffset } = params
-  const y = resolveMatchY(box, match, projections)
-  if (y === null) return false
-  const delta = matchJumpDelta({
-    matchY: y,
-    viewportTop: box.viewport.y,
-    topOffset: topOffset ?? 0,
-  })
-  if (delta !== 0) box.scrollBy(delta)
-  return true
-}
-
-function findHeadingNearTop(
-  box: ScrollBoxRenderable,
-  ids: string[],
-  topOffset: number,
-): string | null {
-  // `scrollChildToTop` pins a jumped/anchored heading PIN_TOP_OFFSET rows below
-  // the overlay fold (a small gap so it isn't flush behind the crumbs). Allow the
-  // same slack here so a freshly pinned heading resolves as current instead of its
-  // predecessor — otherwise a post-nav re-resolve (e.g. the fully-mounted notify)
-  // would snap the breadcrumb back to the previous sibling.
-  const viewportTop = box.viewport.y + topOffset + PIN_TOP_OFFSET
-  let bestId: string | null = null
-  let bestY = -Infinity
-  for (const id of ids) {
-    const child = box.content.findDescendantById(id)
-    if (!child) continue
-    if (child.y <= viewportTop && child.y > bestY) {
-      bestY = child.y
-      bestId = id
-    }
-  }
-  if (bestId) return bestId
-  let firstBelowId: string | null = null
-  let firstBelowY = Infinity
-  for (const id of ids) {
-    const child = box.content.findDescendantById(id)
-    if (!child) continue
-    if (child.y < firstBelowY) {
-      firstBelowY = child.y
-      firstBelowId = id
-    }
-  }
-  return firstBelowId
-}
-
-function findVisibleHeadingIds(
-  box: ScrollBoxRenderable,
-  ids: string[],
-  topOffset: number,
-): Set<string> {
-  const top = box.viewport.y + topOffset
-  const bottom = box.viewport.y + box.viewport.height
-  const out = new Set<string>()
-  for (const id of ids) {
-    const child = box.content.findDescendantById(id)
-    if (!child) continue
-    const childTop = child.y
-    const childBottom = child.y + child.height
-    if (childBottom > top && childTop < bottom) out.add(id)
-  }
-  return out
-}
-
-/** Minimal structural view of the text-bearing renderable inside a block box. */
-type TextBearer = { y: number; plainText: string; lineInfo: { lineStartCols: number[] } }
-
 function asTextBearer(node: unknown): TextBearer | null {
   if (!node || typeof node !== 'object') return null
   if (!('plainText' in node) || !('lineInfo' in node) || !('y' in node)) return null
@@ -377,110 +333,4 @@ export function collectTextBearers(
     collectTextBearers(child as { getChildren(): unknown[] }, out)
   }
   return out
-}
-
-/** Visual-line index for a character offset, via lineInfo.lineStartCols (cols ≈ chars). */
-function visualLineForOffset(lineStartCols: number[], offset: number): number {
-  let line = 0
-  for (let i = 0; i < lineStartCols.length; i++) {
-    if ((lineStartCols[i] ?? 0) <= offset) line = i
-    else break
-  }
-  return line
-}
-
-/**
- * Border/pipe-only text renderables (table rules, │ pipes) — not content
- * elements. Requires at least one rule glyph: purely-whitespace bearers are
- * content (an empty table cell in a wrapped row renders '\n') and must keep
- * their element slot.
- */
-export function isRuleBearer(plainText: string): boolean {
-  return /^[\s│┌┐└┘├┤┬┴┼─]+$/.test(plainText) && /[│┌┐└┘├┤┬┴┼─]/.test(plainText)
-}
-
-/**
- * Screen row of a match's first character: locate the run's target element
- * among the block's text bearers by element ordinal, then align the match's
- * projection offset into the bearer's rendered text.
- */
-function resolveMatchY(
-  box: ScrollBoxRenderable,
-  match: Match,
-  projections: Map<string, BlockProjection>,
-): number | null {
-  const blockBox = box.content.findDescendantById(match.blockElementId)
-  if (!blockBox) return null
-  const proj = projections.get(match.blockElementId)
-  const run = proj?.runs.find(r => r.key === match.runKey)
-  if (!proj || !run) return blockBox.y
-  const bearers = collectTextBearers(blockBox, []).filter(b => !isRuleBearer(b.plainText))
-
-  // Element ordinal of this run's first element among the block's content bearers.
-  // Empty runs still mount an empty <text> bearer, so clamp each run to ≥1.
-  let elementBase = 0
-  for (const r of proj.runs) {
-    if (r === run) break
-    elementBase += Math.max(1, runElementCount(r))
-  }
-  // Find the segment containing match.start, then its offset within that
-  // segment's element (segments of one element are contiguous in run order).
-  let target: { element: number; offsetInElement: number } | null = null
-  let pos = 0
-  for (const s of run.segments) {
-    if (match.start < pos + s.text.length) {
-      let before = 0
-      for (const t of run.segments) {
-        if (t === s) break
-        if (t.element === s.element) before += t.text.length
-      }
-      target = { element: s.element, offsetInElement: before + (match.start - pos) }
-      break
-    }
-    pos += s.text.length
-  }
-  if (!target) return blockBox.y
-  const found = target
-  const targetText = run.segments
-    .filter(s => s.element === found.element)
-    .map(s => s.text)
-    .join('')
-  const bearer = bearers[elementBase + found.element]
-  if (!bearer) return blockBox.y
-  const aligned = alignOffset(targetText, bearer.plainText, found.offsetInElement)
-  return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, aligned)
-}
-
-function resolveScrollMarks(
-  box: ScrollBoxRenderable,
-  tail: number,
-  projections: Map<string, BlockProjection>,
-  params: { matches: Match[]; activeIndex: number },
-): {
-  marks: ResolvedMark[]
-  scrollTop: number
-  scrollHeight: number
-  viewportHeight: number
-  realContentHeight: number
-} {
-  const { matches, activeIndex } = params
-  const marks: ResolvedMark[] = []
-  // Renderable `.y` is screen-absolute and includes the scroll translation
-  // (content.translateY = -scrollTop). Convert to document space so marks stay
-  // fixed on the track while scrolling: docY = screenY - viewportScreenY + scrollTop.
-  const screenToDoc = box.scrollTop - box.viewport.y
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i]
-    if (!match) continue
-    const y = resolveMatchY(box, match, projections)
-    if (y === null) continue
-    marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
-  }
-  return {
-    marks,
-    scrollTop: box.scrollTop,
-    scrollHeight: box.scrollHeight,
-    viewportHeight: box.viewport.height,
-    realContentHeight: box.scrollHeight - tail,
-  }
 }
