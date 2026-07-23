@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
-import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
+import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
 import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
@@ -22,6 +22,21 @@ import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
+
+// Actions whose imperative scroll must commit its breadcrumb state in the same
+// frame (see `run`). Every action that both scrolls and re-resolves the current
+// heading belongs here.
+const SCROLL_ACTIONS = new Set<Action['kind']>([
+  'scrollLine',
+  'scrollPage',
+  'scrollHalf',
+  'top',
+  'bottom',
+  'nextHeading',
+  'prevHeading',
+  'tocSelect',
+  'tocJump',
+])
 
 type Props = {
   nodes: Node[]
@@ -304,13 +319,26 @@ export function App({
     ],
   )
 
+  // A scroll/jump action mutates the scrollbox synchronously, but the
+  // breadcrumb-driving state it also sets (currentHeadingId/visibleHeadingIds)
+  // is React state that would otherwise commit in a later microtask. The live
+  // render loop can paint the scrolled content before that commit lands,
+  // flashing the sticky-header overlay a frame behind the scroll. flushSync
+  // commits the state in the same tick as the scroll so they paint together.
+  // Scoped to scrolling actions: search/focus actions don't tear, and wrapping
+  // them re-enters React during OpenTUI's keyboard dispatch and corrupts the
+  // search-jump effect ordering.
+  const run = (action: Action) =>
+    SCROLL_ACTIONS.has(action.kind)
+      ? flushSync(() => dispatch(action, commands))
+      : dispatch(action, commands)
+
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
-    const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(action, commands)
+    run(mapKey(ev, focus, { searchActive: !!search }))
   })
 
-  const dispatchTocAction = (action: Action) => dispatch(action, commands)
+  const dispatchTocAction = (action: Action) => run(action)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
   // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
