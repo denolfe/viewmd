@@ -1,5 +1,5 @@
 import { useAppState } from '../state'
-import { ancestorChain, breadcrumbRows } from '../lib/toc-util'
+import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import { MutedInline } from './blocks/MutedInline'
 import { onPrimaryClick } from '../lib/mouse'
@@ -17,7 +17,7 @@ export function StickyHeader({
   const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, goBack } =
     useAppState()
 
-  const hasH1 = toc[0]?.level === 1
+  const hasH1 = documentHasH1(toc)
   const chain = ancestorChain(toc, currentHeadingId)
   const rows = breadcrumbRows({ chain, visibleHeadingIds, hasH1, fileLabel })
   if (rows.length === 0 && historyDepth === 0) return null

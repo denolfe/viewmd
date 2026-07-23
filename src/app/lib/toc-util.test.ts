@@ -3,6 +3,7 @@ import {
   ancestorChain,
   breadcrumbHeightForHeading,
   breadcrumbRows,
+  documentHasH1,
   FILE_ROW_ID,
   findCurrent,
   findToc,
@@ -275,6 +276,31 @@ describe('ancestorChain', () => {
   })
 })
 
+describe('documentHasH1', () => {
+  test('detects an H1 that is not the first heading', () => {
+    const later: TocEntry[] = [
+      { id: 'intro', level: 2, text: 'Intro', inline: [], children: [] },
+      {
+        id: 'title',
+        level: 1,
+        text: 'Title',
+        inline: [],
+        children: [{ id: 'sub', level: 2, text: 'Sub', inline: [], children: [] }],
+      },
+    ]
+    expect(documentHasH1(later)).toBe(true)
+  })
+
+  test('false with no H1, true when first entry is H1', () => {
+    expect(documentHasH1([{ id: 'a', level: 2, text: 'A', inline: [], children: [] }])).toBe(false)
+    expect(documentHasH1([{ id: 'a', level: 1, text: 'A', inline: [], children: [] }])).toBe(true)
+  })
+
+  test('empty toc -> false', () => {
+    expect(documentHasH1([])).toBe(false)
+  })
+})
+
 describe('breadcrumbRows', () => {
   const chainA = ancestorChain(toc, 'c') // [a(L1), b(L2), c(L3)]
 
@@ -322,6 +348,23 @@ describe('breadcrumbRows', () => {
       fileLabel: 'README.md',
     })
     expect(rows).toEqual([])
+  })
+
+  test('H1 that follows an earlier heading still renders as a pill with no file label', () => {
+    const laterH1Toc: TocEntry[] = [
+      { id: 'intro', level: 2, text: 'Intro', inline: [], children: [] },
+      { id: 'title', level: 1, text: 'Title', inline: [], children: [] },
+    ]
+    const title = laterH1Toc[1]
+    if (!title) throw new Error('expected title entry')
+    const rows = breadcrumbRows({
+      chain: [title],
+      visibleHeadingIds: new Set(),
+      hasH1: documentHasH1(laterH1Toc),
+      fileLabel: 'file.md',
+    })
+    expect(rows.some(r => r.id === 'title' && r.variant === 'pill')).toBe(true)
+    expect(rows.some(r => r.variant === 'pill' && r.id !== 'title')).toBe(false)
   })
 })
 

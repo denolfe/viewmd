@@ -2,7 +2,7 @@ import { TextAttributes } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useAppState } from '../state'
 import { findMatches } from '../lib/search'
-import { ancestorChain, breadcrumbRows } from '../lib/toc-util'
+import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import type { Node, TocEntry } from '../lib/ast'
 
@@ -69,7 +69,7 @@ export function SearchBar({
     breadcrumbRows({
       chain: ancestorChain(toc, currentHeadingId),
       visibleHeadingIds,
-      hasH1: toc[0]?.level === 1,
+      hasH1: documentHasH1(toc),
       fileLabel,
     }).length > 0
   const surfaceBg = breadcrumbShowing ? theme.stickyBg : theme.background

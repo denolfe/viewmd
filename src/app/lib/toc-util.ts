@@ -86,6 +86,11 @@ export function findCurrent(toc: TocEntry[], id: string | null): TocEntry | null
   return findToc(toc, e => e.id === id)
 }
 
+/** True when the document contains an H1 anywhere (not only as its first heading). */
+export function documentHasH1(toc: TocEntry[]): boolean {
+  return toc.some(e => e.level === 1)
+}
+
 export function breadcrumbRows(params: {
   chain: TocEntry[]
   visibleHeadingIds: Set<string>
@@ -125,7 +130,7 @@ export function breadcrumbHeightForHeading(params: {
     breadcrumbRows({
       chain: ancestorChain(toc, id),
       visibleHeadingIds: new Set([id]),
-      hasH1: toc[0]?.level === 1,
+      hasH1: documentHasH1(toc),
       fileLabel,
     }).length
   )
@@ -148,7 +153,7 @@ export function breadcrumbHeightAboveHeading(params: {
   return breadcrumbRows({
     chain: ancestorChain(toc, id),
     visibleHeadingIds: new Set(),
-    hasH1: toc[0]?.level === 1,
+    hasH1: documentHasH1(toc),
     fileLabel,
   }).length
 }
