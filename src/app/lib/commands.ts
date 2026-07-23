@@ -263,6 +263,41 @@ export function createCommands(deps: CommandDeps): Commands {
   }
 }
 
+/** A no-op `Commands` for non-interactive contexts (one-shot render) where no key/mouse input is dispatched. */
+export function createNoopCommands(): Commands {
+  const noop = () => {}
+  return {
+    scrollBy: noop,
+    scrollPage: noop,
+    scrollHalf: noop,
+    scrollToTop: noop,
+    scrollToBottom: noop,
+    syncFromScroll: noop,
+    jumpHeadingBy: noop,
+    jumpToHeading: noop,
+    jumpToCursor: noop,
+    focusSidebar: noop,
+    focusViewer: noop,
+    tocMove: noop,
+    toggleCursorExpanded: noop,
+    toggleExpanded: noop,
+    toggleTocVisible: noop,
+    startSearch: noop,
+    applySearchPattern: noop,
+    stepMatch: noop,
+    clearSearch: noop,
+    followLink: noop,
+    goBack: noop,
+    openEditor: noop,
+    toggleMouse: noop,
+    quit: noop,
+    resetForNewDoc: noop,
+    pinHeadingPostSwap: noop,
+    restoreScroll: noop,
+    resetToTop: noop,
+  }
+}
+
 function setsEqual(a: Set<string>, b: Set<string>): boolean {
   if (a.size !== b.size) return false
   for (const v of a) if (!b.has(v)) return false

@@ -84,41 +84,29 @@ export type Status =
 
 export type AppState = {
   focus: Focus
-  setFocus: (f: Focus) => void
 
   currentHeadingId: string | null
-  setCurrentHeadingId: (id: string | null) => void
 
   visibleHeadingIds: Set<string>
-  setVisibleHeadingIds: (s: Set<string>) => void
 
   // Imperative scroll: handler calls viewerRef.current?.scrollBy(...) etc.
   viewerRef: RefObject<ScrollboxHandle | null>
 
   expanded: Map<string, boolean>
-  toggleExpanded: (id: string) => void
 
   tocCursorId: string | null
-  setTocCursorId: (id: string | null) => void
 
   search: SearchState | null
-  setSearch: (s: SearchState | null) => void
 
   mouseEnabled: boolean
-  toggleMouse: () => void
 
   tocVisible: boolean
-  toggleTocVisible: () => void
 
   /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
   contentWidth: number
 
   /** Directory of the active document; base dir for resolving relative links. Undefined for stdin. */
   dir?: string
-  /** Follow a link href from the current document (anchor scroll, doc load, or ignore). */
-  followLink: (href: string) => void
-  /** Pop the history stack and restore the previous document + scroll. No-op if empty. */
-  goBack: () => void
   /** Number of entries on the back stack (drives the back affordance). */
   historyDepth: number
   /** Label of the document `goBack` would return to (top of the back stack); undefined when empty. */
@@ -129,7 +117,6 @@ export type AppState = {
 
   /** Bottom statusline state; idle shows the viewmd badge + filename. */
   status: Status
-  setStatus: (s: Status) => void
 
   commands: Commands
 }
