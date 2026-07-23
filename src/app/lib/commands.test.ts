@@ -177,6 +177,143 @@ describe('createCommands.syncFromScroll', () => {
   })
 })
 
+describe('createCommands.jumpHeadingBy boundaries', () => {
+  test('clamps at the last heading', () => {
+    const { deps, set } = makeDeps({ read: { currentHeadingId: 'b' } })
+    createCommands(deps).jumpHeadingBy(1)
+    expect(set.currentHeadingId).toHaveBeenCalledWith('b')
+  })
+  test('clamps at the first heading', () => {
+    const { deps, set } = makeDeps({ read: { currentHeadingId: 'a' } })
+    createCommands(deps).jumpHeadingBy(-1)
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+  })
+  test('backward from null with no viewport heading goes to last', () => {
+    const ref = makePositionalViewerRef({}).ref
+    const { deps, set } = makeDeps({ viewerRef: ref, read: { currentHeadingId: null } })
+    createCommands(deps).jumpHeadingBy(-1)
+    expect(set.currentHeadingId).toHaveBeenCalledWith('b')
+  })
+})
+
+describe('createCommands.jumpToCursor', () => {
+  test('jumps to the cursor and focuses viewer', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: 'a1' } })
+    createCommands(deps).jumpToCursor()
+    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(set.focus).toHaveBeenCalledWith('viewer')
+  })
+  test('no-op when there is no cursor', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: null } })
+    createCommands(deps).jumpToCursor()
+    expect(set.currentHeadingId).not.toHaveBeenCalled()
+    expect(set.focus).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.focusSidebar', () => {
+  test('no-op when toc hidden', () => {
+    const { deps, set } = makeDeps({ read: { tocVisible: false } })
+    createCommands(deps).focusSidebar()
+    expect(set.focus).not.toHaveBeenCalled()
+  })
+  test('no-op when toc empty', () => {
+    const { deps, set } = makeDeps({ doc: { toc: [], headingIds: [] } })
+    createCommands(deps).focusSidebar()
+    expect(set.focus).not.toHaveBeenCalled()
+  })
+  test('seeds cursor to first entry and focuses sidebar', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: null, tocVisible: true } })
+    createCommands(deps).focusSidebar()
+    expect(set.tocCursorId).toHaveBeenCalledWith('a')
+    expect(set.focus).toHaveBeenCalledWith('sidebar')
+  })
+  test('keeps an existing cursor', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: 'b' } })
+    createCommands(deps).focusSidebar()
+    expect(set.tocCursorId).not.toHaveBeenCalled()
+    expect(set.focus).toHaveBeenCalledWith('sidebar')
+  })
+})
+
+describe('createCommands.tocMove', () => {
+  const expanded = new Map([['a', true]])
+  test('advances cursor to the next visible entry', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: 'a', expanded } })
+    createCommands(deps).tocMove(1)
+    expect(set.tocCursorId).toHaveBeenCalledWith('a1')
+  })
+  test('moves cursor to the previous visible entry', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: 'a1', expanded } })
+    createCommands(deps).tocMove(-1)
+    expect(set.tocCursorId).toHaveBeenCalledWith('a')
+  })
+})
+
+describe('createCommands.toggleTocVisible', () => {
+  test('hiding from sidebar returns focus to viewer', () => {
+    const { deps, set } = makeDeps({ read: { focus: 'sidebar', tocVisible: true } })
+    createCommands(deps).toggleTocVisible()
+    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(set.toggleTocVisible).toHaveBeenCalled()
+  })
+  test('toggling from viewer does not change focus', () => {
+    const { deps, set } = makeDeps({ read: { focus: 'viewer' } })
+    createCommands(deps).toggleTocVisible()
+    expect(set.toggleTocVisible).toHaveBeenCalled()
+    expect(set.focus).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.toggleCursorExpanded', () => {
+  test('toggles the cursor id', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: 'a' } })
+    createCommands(deps).toggleCursorExpanded()
+    expect(set.toggleExpanded).toHaveBeenCalledWith('a')
+  })
+  test('no-op when there is no cursor', () => {
+    const { deps, set } = makeDeps({ read: { tocCursorId: null } })
+    createCommands(deps).toggleCursorExpanded()
+    expect(set.toggleExpanded).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.clearSearch', () => {
+  test('clears and returns to viewer when in search focus', () => {
+    const { deps, set } = makeDeps({
+      read: {
+        focus: 'search',
+        search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: true },
+      },
+    })
+    createCommands(deps).clearSearch()
+    expect(set.search).toHaveBeenCalledWith(null)
+    expect(set.focus).toHaveBeenCalledWith('viewer')
+  })
+  test('does not refocus when already in viewer', () => {
+    const { deps, set } = makeDeps({
+      read: {
+        focus: 'viewer',
+        search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: true },
+      },
+    })
+    createCommands(deps).clearSearch()
+    expect(set.search).toHaveBeenCalledWith(null)
+    expect(set.focus).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.startSearch', () => {
+  test('opens an empty uncommitted search and focuses the input', () => {
+    const { deps, set } = makeDeps()
+    createCommands(deps).startSearch('backward')
+    expect(set.search).toHaveBeenCalledWith(
+      expect.objectContaining({ dir: 'backward', committed: false, pattern: '' }),
+    )
+    expect(set.focus).toHaveBeenCalledWith('search')
+  })
+})
+
 describe('createCommands.stepMatch', () => {
   test('wraps forward from the last match to the first', () => {
     const { deps, set } = makeDeps({
