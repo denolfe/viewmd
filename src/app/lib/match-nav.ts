@@ -1,6 +1,6 @@
 import type { Node, TocEntry } from './ast'
 import type { Match } from './search'
-import { breadcrumbHeightAboveHeading } from './toc-util'
+import { aboveOffset } from './heading-resolution'
 
 /**
  * Where to scroll a search match: the nearest preceding heading, plus the
@@ -17,7 +17,7 @@ export function matchScrollTarget(params: {
   const { nodes, toc, match, fileLabel } = params
   const headingId = nearestPrecedingHeadingId(nodes, match)
   if (!headingId) return null
-  return { headingId, topOffset: breadcrumbHeightAboveHeading({ toc, id: headingId, fileLabel }) }
+  return { headingId, topOffset: aboveOffset({ toc, id: headingId, fileLabel }) }
 }
 
 /** Context rows shown above a jumped-to match (like less's -j jump target). */

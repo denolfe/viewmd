@@ -11,8 +11,6 @@ import { seedMatchIndex } from '../lib/match-nav'
 import { projectionMap } from '../lib/visible-text'
 import {
   childToTopDelta,
-  findHeadingNearTop,
-  findVisibleHeadingIds,
   matchScrollDelta,
   resolveMatchY,
   resolveScrollMarks,
@@ -148,8 +146,7 @@ export function Viewer({
         // anchor. onFrame runs it once geometry is real.
         pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
-      getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(geom, ids, topOffset ?? 0),
-      getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(geom, ids, topOffset ?? 0),
+      getGeometry: () => geom,
       getScrollMarks: ({ matches, activeIndex }) =>
         resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches, activeIndex }),
       seedMatchIndex: ({ matches, dir }) =>
