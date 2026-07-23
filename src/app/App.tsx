@@ -6,7 +6,8 @@ import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
-import { dispatch, syncHeadings } from './lib/dispatch'
+import { dispatch } from './lib/dispatch'
+import { createCommands } from './lib/commands'
 import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
@@ -17,11 +18,10 @@ import { findVisibleHeadingIds } from './lib/viewport-geometry'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
-import { CONTENT_MAX_WIDTH } from './styles/layout'
+import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
-import type { DocReset, ScrollIntent } from './lib/documentNavigation'
 
 type Props = {
   nodes: Node[]
@@ -84,19 +84,6 @@ export function App({
   const nav = useDocumentNavigation({ initialDoc, captureScroll, onError })
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = nav.doc
 
-  const applyReset = useCallback((reset: DocReset) => {
-    if (reset === 'full') {
-      setFocus('viewer')
-      setCurrentHeadingId(null)
-      setSearch(null)
-      setExpanded(new Map())
-      setTocCursorId(null)
-      setVisibleHeadingIds(new Set())
-    } else if (reset === 'searchOnly') {
-      setSearch(null)
-    }
-  }, [])
-
   const toggleExpanded = useCallback(
     (id: string) => {
       setExpanded(prev => toggleTocExpanded({ toc, expanded: prev, id }))
@@ -117,8 +104,6 @@ export function App({
     Math.floor(termWidth * 0.4),
     Math.max(16, tocVisibleContentWidth(toc, expanded) + TOC_PADDING),
   )
-  // Viewer reserves 1 col for the vertical scrollbar and the inner box adds paddingRight={1}.
-  const VIEWER_OVERHEAD = 2
   const viewerColumnWidth = Math.max(
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
@@ -134,57 +119,6 @@ export function App({
     : 0
 
   const backLabel = nav.backLabel
-  const state = useMemo<AppState>(
-    () => ({
-      focus,
-      setFocus,
-      currentHeadingId,
-      setCurrentHeadingId,
-      viewerRef,
-      expanded,
-      toggleExpanded,
-      tocCursorId,
-      setTocCursorId,
-      search,
-      setSearch,
-      mouseEnabled,
-      toggleMouse,
-      tocVisible,
-      toggleTocVisible,
-      visibleHeadingIds,
-      setVisibleHeadingIds,
-      contentWidth,
-      contentMaxWidth,
-      dir: nav.doc.dir,
-      followLink: nav.follow,
-      goBack: nav.back,
-      historyDepth: nav.historyDepth,
-      backLabel,
-      status,
-      setStatus,
-    }),
-    [
-      focus,
-      currentHeadingId,
-      tocCursorId,
-      search,
-      expanded,
-      mouseEnabled,
-      toggleExpanded,
-      toggleMouse,
-      tocVisible,
-      toggleTocVisible,
-      visibleHeadingIds,
-      contentWidth,
-      contentMaxWidth,
-      nav.doc.dir,
-      nav.follow,
-      nav.back,
-      nav.historyDepth,
-      backLabel,
-      status,
-    ],
-  )
 
   useEffect(() => {
     if (!search?.committed || search.index < 0) return
@@ -231,22 +165,25 @@ export function App({
   useLayoutEffect(() => {
     const it = nav.intent
     if (!it) return
-    applyReset(it.reset)
+    commands.resetForNewDoc(it.reset)
     const tid = setTimeout(() => {
-      const v = viewerRef.current
-      if (!v) return
-      applyScrollIntent({
-        viewer: v,
-        scroll: it.scroll,
-        toc,
-        headingIds,
-        fileLabel,
-        historyDepth: nav.historyDepth,
-        setCurrentHeadingId,
-        setVisibleHeadingIds,
-      })
+      const s = it.scroll
+      if (s.kind === 'restore') {
+        commands.restoreScroll({ scrollTop: s.scrollTop, currentHeadingId: s.currentHeadingId })
+      } else if (s.kind === 'anchor' && !s.postSwap) {
+        // Same-doc anchor. A real heading gets the breadcrumb-aware jump (lands below the
+        // overlay, updates current heading). An unknown/non-heading slug (e.g. a broken
+        // #fragment) is a no-op: scrolling to it would find no box and setting it current
+        // would blank the breadcrumb and break n/N nav.
+        if (headingIds.includes(s.headingId)) commands.jumpToHeading(s.headingId)
+      } else if (s.kind === 'anchor' && headingIds.includes(s.headingId)) {
+        commands.pinHeadingPostSwap(s.headingId)
+      } else {
+        commands.resetToTop()
+      }
     }, 0)
     return () => clearTimeout(tid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.intent])
 
   const onOpenEditor = useCallback(() => {
@@ -270,28 +207,110 @@ export function App({
     nav.reload()
   }, [nav, currentHeadingId, renderer, headingLines])
 
+  const commands = useMemo(
+    () =>
+      createCommands({
+        viewerRef,
+        doc: { nodes, toc, headingIds, fileLabel },
+        viewportHeight: renderer.height,
+        read: {
+          currentHeadingId,
+          visibleHeadingIds,
+          expanded,
+          tocCursorId,
+          search,
+          focus,
+          tocVisible,
+          historyDepth: nav.historyDepth,
+        },
+        set: {
+          focus: setFocus,
+          currentHeadingId: setCurrentHeadingId,
+          visibleHeadingIds: setVisibleHeadingIds,
+          tocCursorId: setTocCursorId,
+          search: setSearch,
+          expanded: setExpanded,
+          toggleMouse,
+          toggleTocVisible,
+          toggleExpanded,
+        },
+        onQuit: () => {
+          // Silence the highlight-failed warning tree-sitter logs when
+          // destroyTreeSitterClient rejects in-flight requests during shutdown.
+          console.warn = () => {}
+          renderer.destroy()
+        },
+        onOpenEditor,
+        nav: { follow: nav.follow, back: nav.back },
+      }),
+    [
+      nodes,
+      toc,
+      headingIds,
+      fileLabel,
+      renderer,
+      // `useRenderer` is a stable singleton whose `.height` mutates in place on
+      // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the
+      // new page size instead of the pre-resize one.
+      renderer.height,
+      currentHeadingId,
+      visibleHeadingIds,
+      expanded,
+      tocCursorId,
+      search,
+      focus,
+      tocVisible,
+      nav.historyDepth,
+      nav.follow,
+      nav.back,
+      toggleMouse,
+      toggleTocVisible,
+      toggleExpanded,
+      onOpenEditor,
+    ],
+  )
+
+  const state = useMemo<AppState>(
+    () => ({
+      focus,
+      currentHeadingId,
+      viewerRef,
+      expanded,
+      tocCursorId,
+      search,
+      visibleHeadingIds,
+      contentWidth,
+      contentMaxWidth,
+      dir: nav.doc.dir,
+      historyDepth: nav.historyDepth,
+      backLabel,
+      status,
+      commands,
+    }),
+    [
+      focus,
+      currentHeadingId,
+      tocCursorId,
+      search,
+      expanded,
+      visibleHeadingIds,
+      contentWidth,
+      contentMaxWidth,
+      nav.doc.dir,
+      nav.historyDepth,
+      backLabel,
+      status,
+      commands,
+    ],
+  )
+
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
     const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(
-      action,
-      state,
-      toc,
-      headingIds,
-      renderer.height,
-      () => {
-        // Silence the highlight-failed warning that tree-sitter logs when
-        // destroyTreeSitterClient rejects in-flight requests during shutdown.
-        console.warn = () => {}
-        renderer.destroy()
-      },
-      fileLabel,
-      onOpenEditor,
-    )
+    dispatch(action, commands)
   })
 
-  const dispatchTocAction = (action: Action) =>
-    dispatch(action, state, toc, headingIds, renderer.height, () => {}, fileLabel)
+  const dispatchTocAction = (action: Action) => dispatch(action, commands)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
   // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
@@ -304,13 +323,13 @@ export function App({
       <box flexDirection="column" height="100%">
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />
-          <SearchBar nodes={nodes} toc={toc} fileLabel={fileLabel} />
+          <SearchBar toc={toc} fileLabel={fileLabel} />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
             tailReserve={tailReserve}
             docKey={nav.doc.absPath ?? '<stdin>'}
-            onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
+            onScroll={() => commands.syncFromScroll()}
           />
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
               makes it flash its own vertical scrollbar for one frame before layout
@@ -348,50 +367,4 @@ function seedDocFromProps(props: {
     absPath,
     dir: absPath ? dirname(absPath) : undefined,
   }
-}
-
-function applyScrollIntent(params: {
-  viewer: ScrollboxHandle
-  scroll: ScrollIntent
-  toc: TocEntry[]
-  headingIds: string[]
-  fileLabel?: string
-  historyDepth: number
-  setCurrentHeadingId: (id: string | null) => void
-  setVisibleHeadingIds: (s: Set<string>) => void
-}): void {
-  const { viewer, scroll, toc, headingIds, fileLabel, historyDepth } = params
-  const { setCurrentHeadingId, setVisibleHeadingIds } = params
-
-  if (scroll.kind === 'restore') {
-    viewer.scrollTo(scroll.scrollTop)
-    if (scroll.currentHeadingId) setCurrentHeadingId(scroll.currentHeadingId)
-    setVisibleHeadingIds(findVisibleHeadingIds(viewer.getGeometry(), headingIds, 0))
-    return
-  }
-
-  if (scroll.kind === 'anchor' && !scroll.postSwap) {
-    viewer.scrollChildToTop(scroll.headingId)
-    return
-  }
-
-  if (scroll.kind === 'anchor' && headingIds.includes(scroll.headingId)) {
-    // Pin post-layout: the box is committed but reads y=0 right after a swap, so
-    // pinHeadingPostLayout runs the scroll once geometry is real; its scroll
-    // re-syncs the breadcrumb, so no visibility bookkeeping here.
-    const height = foldOffset({
-      toc,
-      id: scroll.headingId,
-      fileLabel,
-      historyDepth,
-    })
-    viewer.pinHeadingPostLayout(scroll.headingId, height)
-    setCurrentHeadingId(scroll.headingId)
-    return
-  }
-
-  // `top`, or a postSwap anchor whose id is absent from the swapped-in doc.
-  viewer.scrollTo(0)
-  setCurrentHeadingId(null)
-  setVisibleHeadingIds(findVisibleHeadingIds(viewer.getGeometry(), headingIds, 0))
 }

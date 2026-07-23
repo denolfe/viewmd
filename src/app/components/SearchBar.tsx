@@ -1,61 +1,23 @@
 import { TextAttributes } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useAppState } from '../state'
-import { findMatches } from '../lib/search'
 import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
 import { theme } from '../styles/theme'
-import type { Node, TocEntry } from '../lib/ast'
+import type { TocEntry } from '../lib/ast'
 
 // Fixed overlay width: a constant input width sidesteps the buffer-scroll bug
 // where fast typing outruns React resizing an input sized to its pattern.
 const BAR_WIDTH = 28
 
-export function SearchBar({
-  nodes,
-  toc,
-  fileLabel,
-}: {
-  nodes: Node[]
-  toc: TocEntry[]
-  fileLabel?: string
-}) {
-  const {
-    search,
-    setSearch,
-    setFocus,
-    viewerRef,
-    focus,
-    currentHeadingId,
-    visibleHeadingIds,
-    contentWidth,
-  } = useAppState()
+export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
+  const { search, focus, currentHeadingId, visibleHeadingIds, contentWidth, commands } =
+    useAppState()
 
-  // Recompute from the input's current string: Enter arriving before React
-  // re-renders must not commit a stale (truncated/empty) pattern.
-  const applyPattern = (pattern: string, committed: boolean) => {
-    if (!search) return
-    const matches = findMatches(nodes, pattern)
-    const index = matches.length
-      ? (viewerRef.current?.seedMatchIndex({ matches, dir: search.dir }) ?? 0)
-      : -1
-    setSearch({ ...search, pattern, matches, index, committed })
-  }
-
-  const commit = (pattern: string) => {
-    applyPattern(pattern, true)
-    setFocus('viewer')
-  }
-
-  const onInput = (pattern: string) => {
-    applyPattern(pattern, false)
-  }
+  const onInput = (pattern: string) => commands.applySearchPattern({ pattern, commit: false })
 
   useKeyboard(ev => {
     if (focus !== 'search') return // committed-mode keys go through mapKey/dispatch
-    if (ev.name === 'escape') {
-      setSearch(null)
-      setFocus('viewer')
-    }
+    if (ev.name === 'escape') commands.clearSearch()
   })
 
   if (!search) return null
@@ -120,7 +82,8 @@ export function SearchBar({
             // by @opentui/core); at runtime the input's ENTER event always
             // emits its current string value.
             onSubmit={(value: unknown) => {
-              if (typeof value === 'string') commit(value)
+              if (typeof value === 'string')
+                commands.applySearchPattern({ pattern: value, commit: true })
             }}
           />
         </box>

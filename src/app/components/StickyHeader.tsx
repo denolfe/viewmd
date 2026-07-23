@@ -14,7 +14,7 @@ export function StickyHeader({
   fileLabel?: string
   onCrumbClick: (id: string) => void
 }) {
-  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, goBack } =
+  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, commands } =
     useAppState()
 
   const hasH1 = documentHasH1(toc)
@@ -24,7 +24,7 @@ export function StickyHeader({
 
   const backBadge =
     historyDepth > 0 ? (
-      <box key="__back" height={1} overflow="hidden" onMouseDown={onPrimaryClick(goBack)}>
+      <box key="__back" height={1} overflow="hidden" onMouseDown={onPrimaryClick(commands.goBack)}>
         <text>
           <strong>{'‹'.repeat(historyDepth)} Back</strong>
           {backLabel ? <span fg={theme.foregroundMuted}>{` to ${backLabel}`}</span> : ''}

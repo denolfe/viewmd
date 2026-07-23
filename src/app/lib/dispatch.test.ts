@@ -1,455 +1,152 @@
 import { describe, expect, test, mock } from 'bun:test'
-import { dispatch, syncHeadings } from './dispatch'
-import { makeGeometry } from './viewport-geometry.testutil'
-import type { AppState, ScrollboxHandle } from '../state'
-import type { TocEntry } from './ast'
-import type { RefObject } from 'react'
+import { dispatch } from './dispatch'
+import type { Commands } from './commands'
 
-function makeViewerRef(opts: { positions?: Record<string, number> } = {}): {
-  ref: RefObject<ScrollboxHandle | null>
-  calls: string[]
-} {
-  const calls: string[] = []
-  const handle: ScrollboxHandle = {
-    scrollBy: d => calls.push(`scrollBy(${d})`),
-    scrollTo: y => calls.push(`scrollTo(${y})`),
-    scrollToBottom: () => calls.push('scrollToBottom'),
-    scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
-    pinHeadingPostLayout: (id, topOffset) =>
-      calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
-    getGeometry: () =>
-      makeGeometry({
-        positions: Object.fromEntries(
-          Object.entries(opts.positions ?? {}).map(([k, y]) => [k, { y }]),
-        ),
-      }),
-    getScrollMarks: () => ({
-      marks: [],
-      scrollTop: 0,
-      scrollHeight: 0,
-      viewportHeight: 0,
-      realContentHeight: 0,
-    }),
-    jumpToMatch: () => {},
-    seedMatchIndex: () => 0,
-    subscribeScroll: () => () => {},
-    getScrollTop: () => 0,
-  }
-  return { ref: { current: handle }, calls }
-}
-
-function makeState(overrides: Partial<AppState> = {}): AppState {
-  const viewer = overrides.viewerRef ?? makeViewerRef().ref
+function makeCommands(): Commands {
   return {
-    focus: 'viewer',
-    setFocus: mock(),
-    currentHeadingId: null,
-    setCurrentHeadingId: mock(),
-    viewerRef: viewer,
-    expanded: new Map(),
+    scrollBy: mock(),
+    scrollPage: mock(),
+    scrollHalf: mock(),
+    scrollToTop: mock(),
+    scrollToBottom: mock(),
+    syncFromScroll: mock(),
+    jumpHeadingBy: mock(),
+    jumpToHeading: mock(),
+    jumpToCursor: mock(),
+    focusSidebar: mock(),
+    focusViewer: mock(),
+    tocMove: mock(),
+    toggleCursorExpanded: mock(),
     toggleExpanded: mock(),
-    tocCursorId: null,
-    setTocCursorId: mock(),
-    search: null,
-    setSearch: mock(),
-    mouseEnabled: false,
-    toggleMouse: mock(),
-    tocVisible: true,
     toggleTocVisible: mock(),
-    visibleHeadingIds: new Set<string>(),
-    setVisibleHeadingIds: mock(),
-    dir: undefined,
-    followLink: mock(() => {}),
-    goBack: mock(() => {}),
-    historyDepth: 0,
-    status: { kind: 'idle' },
-    setStatus: mock(),
-    ...overrides,
-  } as AppState
-}
-
-const toc: TocEntry[] = [
-  {
-    id: 'a',
-    level: 1,
-    text: 'A',
-    inline: [],
-    children: [{ id: 'a1', level: 2, text: 'A1', inline: [], children: [] }],
-  },
-  { id: 'b', level: 1, text: 'B', inline: [], children: [] },
-]
-const headingIds = ['a', 'a1', 'b']
-
-// Viewer mock driven by absolute heading y-positions (viewport top = 0), so
-// `topOffset` (the breadcrumb overlay height) actually changes what counts as
-// "near top" / "visible" — the raw-position mock ignores it.
-function makePositionalViewerRef(
-  positions: Record<string, number>,
-  viewportBottom = 20,
-): { ref: RefObject<ScrollboxHandle | null> } {
-  const handle: ScrollboxHandle = {
-    scrollBy: () => {},
-    scrollTo: () => {},
-    scrollToBottom: () => {},
-    scrollChildToTop: () => {},
-    pinHeadingPostLayout: () => {},
-    getGeometry: () =>
-      makeGeometry({
-        positions: Object.fromEntries(Object.entries(positions).map(([k, y]) => [k, { y }])),
-        viewportHeight: viewportBottom,
-      }),
-    getScrollMarks: () => ({
-      marks: [],
-      scrollTop: 0,
-      scrollHeight: 0,
-      viewportHeight: 0,
-      realContentHeight: 0,
-    }),
-    jumpToMatch: () => {},
-    seedMatchIndex: () => 0,
-    subscribeScroll: () => () => {},
-    getScrollTop: () => 0,
+    startSearch: mock(),
+    applySearchPattern: mock(),
+    stepMatch: mock(),
+    clearSearch: mock(),
+    followLink: mock(),
+    goBack: mock(),
+    openEditor: mock(),
+    toggleMouse: mock(),
+    quit: mock(),
+    resetForNewDoc: mock(),
+    pinHeadingPostSwap: mock(),
+    restoreScroll: mock(),
+    resetToTop: mock(),
   }
-  return { ref: { current: handle } }
 }
 
-describe('dispatch', () => {
-  test('focusSidebar sets cursor to first when null', () => {
-    const state = makeState()
-    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 24, () => {})
-    expect(state.setTocCursorId).toHaveBeenCalledWith('a')
-    expect(state.setFocus).toHaveBeenCalledWith('sidebar')
+describe('dispatch routing', () => {
+  test('nextHeading → jumpHeadingBy(1)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'nextHeading' }, c)
+    expect(c.jumpHeadingBy).toHaveBeenCalledWith(1)
   })
-
-  test('focusSidebar no-op when toc empty', () => {
-    const state = makeState()
-    dispatch({ kind: 'focusSidebar' }, state, [], [], 24, () => {})
-    expect(state.setTocCursorId).not.toHaveBeenCalled()
-    expect(state.setFocus).not.toHaveBeenCalled()
+  test('prevHeading → jumpHeadingBy(-1)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'prevHeading' }, c)
+    expect(c.jumpHeadingBy).toHaveBeenCalledWith(-1)
   })
-
-  test('focusSidebar does not reset cursor when already set', () => {
-    const state = makeState({ tocCursorId: 'b' })
-    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 24, () => {})
-    expect(state.setTocCursorId).not.toHaveBeenCalled()
-    expect(state.setFocus).toHaveBeenCalledWith('sidebar')
+  test('scrollLine → scrollBy(delta)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'scrollLine', delta: 3 }, c)
+    expect(c.scrollBy).toHaveBeenCalledWith(3)
   })
-
-  test('tocSelect scrolls to cursor heading and focuses viewer', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, tocCursorId: 'a1' })
-    dispatch({ kind: 'tocSelect' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
-    expect(state.setFocus).toHaveBeenCalledWith('viewer')
+  test('scrollPage → scrollPage(delta)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'scrollPage', delta: 1 }, c)
+    expect(c.scrollPage).toHaveBeenCalledWith(1)
   })
-
-  test('tocSelect is no-op when no cursor', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, tocCursorId: null })
-    dispatch({ kind: 'tocSelect' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toHaveLength(0)
-    expect(state.setCurrentHeadingId).not.toHaveBeenCalled()
+  test('scrollHalf → scrollHalf(delta)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'scrollHalf', delta: -1 }, c)
+    expect(c.scrollHalf).toHaveBeenCalledWith(-1)
   })
-
-  test('tocJump scrolls to the given id and focuses viewer', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'tocJump', id: 'a1' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
-    expect(state.setFocus).toHaveBeenCalledWith('viewer')
+  test('top/bottom → scrollToTop/scrollToBottom', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'top' }, c)
+    expect(c.scrollToTop).toHaveBeenCalled()
+    dispatch({ kind: 'bottom' }, c)
+    expect(c.scrollToBottom).toHaveBeenCalled()
   })
-
-  test('tocToggleId toggles the given id without touching focus', () => {
-    const state = makeState()
-    dispatch({ kind: 'tocToggleId', id: 'a' }, state, toc, headingIds, 24, () => {})
-    expect(state.toggleExpanded).toHaveBeenCalledWith('a')
-    expect(state.setFocus).not.toHaveBeenCalled()
-    expect(state.setCurrentHeadingId).not.toHaveBeenCalled()
+  test('tocSelect → jumpToCursor', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'tocSelect' }, c)
+    expect(c.jumpToCursor).toHaveBeenCalled()
   })
-
-  test('tocDown advances cursor through visible entries', () => {
-    const state = makeState({ tocCursorId: 'a' })
-    dispatch({ kind: 'tocDown' }, state, toc, headingIds, 24, () => {})
-    // a1 is visible because level 2 entries are expanded by default
-    expect(state.setTocCursorId).toHaveBeenCalledWith('a1')
+  test('tocJump → jumpToHeading(id)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'tocJump', id: 'a1' }, c)
+    expect(c.jumpToHeading).toHaveBeenCalledWith('a1')
   })
-
-  test('tocUp moves cursor backward', () => {
-    const state = makeState({ tocCursorId: 'a1' })
-    dispatch({ kind: 'tocUp' }, state, toc, headingIds, 24, () => {})
-    expect(state.setTocCursorId).toHaveBeenCalledWith('a')
+  test('tocToggle → toggleCursorExpanded', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'tocToggle' }, c)
+    expect(c.toggleCursorExpanded).toHaveBeenCalled()
   })
-
-  test('tocToggle calls toggleExpanded with cursor id', () => {
-    const state = makeState({ tocCursorId: 'a' })
-    dispatch({ kind: 'tocToggle' }, state, toc, headingIds, 24, () => {})
-    expect(state.toggleExpanded).toHaveBeenCalledWith('a')
+  test('tocToggleId → toggleExpanded(id)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'tocToggleId', id: 'a' }, c)
+    expect(c.toggleExpanded).toHaveBeenCalledWith('a')
   })
-
-  test('tocToggle is no-op when no cursor', () => {
-    const state = makeState({ tocCursorId: null })
-    dispatch({ kind: 'tocToggle' }, state, toc, headingIds, 24, () => {})
-    expect(state.toggleExpanded).not.toHaveBeenCalled()
+  test('tocUp/tocDown → tocMove(∓1)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'tocUp' }, c)
+    expect(c.tocMove).toHaveBeenCalledWith(-1)
+    dispatch({ kind: 'tocDown' }, c)
+    expect(c.tocMove).toHaveBeenCalledWith(1)
   })
-
-  test('nextHeading advances to next in doc order', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
-    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+  test('focusSidebar/focusViewer', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'focusSidebar' }, c)
+    expect(c.focusSidebar).toHaveBeenCalled()
+    dispatch({ kind: 'focusViewer' }, c)
+    expect(c.focusViewer).toHaveBeenCalled()
   })
-
-  test('nextHeading goes to first when no current', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
+  test('quit → quit()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'quit' }, c)
+    expect(c.quit).toHaveBeenCalled()
   })
-
-  test('nextHeading clamps at last heading', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
-    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(b,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
+  test('startSearch → startSearch(dir)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'startSearch', dir: 'forward' }, c)
+    expect(c.startSearch).toHaveBeenCalledWith('forward')
   })
-
-  test('prevHeading goes backward from currentHeadingId', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'b' })
-    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+  test('nextMatch/prevMatch → stepMatch(±1)', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'nextMatch' }, c)
+    expect(c.stepMatch).toHaveBeenCalledWith(1)
+    dispatch({ kind: 'prevMatch' }, c)
+    expect(c.stepMatch).toHaveBeenCalledWith(-1)
   })
-
-  test('prevHeading seeds from viewport heading when current is null', () => {
-    // User scrolled past `a1` with j/k; pressing N should go back to `a1`'s predecessor.
-    const vref = makeViewerRef({ positions: { a1: 0 } })
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
+  test('clearSearch → clearSearch()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'clearSearch' }, c)
+    expect(c.clearSearch).toHaveBeenCalled()
   })
-
-  test('nextHeading seeds from viewport heading when current is null', () => {
-    const vref = makeViewerRef({ positions: { a: 0 } })
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a1,1)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
+  test('toggleMouse → toggleMouse()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'toggleMouse' }, c)
+    expect(c.toggleMouse).toHaveBeenCalled()
   })
-
-  test('prevHeading with no current and no viewport heading goes to last', () => {
-    const vref = makeViewerRef({ positions: {} })
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
-    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(b,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('b')
+  test('openEditor → openEditor()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'openEditor' }, c)
+    expect(c.openEditor).toHaveBeenCalled()
   })
-
-  test('prevHeading clamps at first heading', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
-    dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
+  test('goBack → goBack()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'goBack' }, c)
+    expect(c.goBack).toHaveBeenCalled()
   })
-
-  test('prevHeading from first heading stops on the frontmatter id', () => {
-    const vref = makeViewerRef()
-    const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: 'a' })
-    dispatch({ kind: 'prevHeading' }, state, toc, fmIds, 24, () => {})
-    // Frontmatter is not in the toc, so its breadcrumb offset is 0.
-    expect(vref.calls).toContain('scrollChildToTop(\x00frontmatter,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('\x00frontmatter')
+  test('toggleTocVisible → toggleTocVisible()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'toggleTocVisible' }, c)
+    expect(c.toggleTocVisible).toHaveBeenCalled()
   })
-
-  test('nextHeading leaves the frontmatter for the first real heading', () => {
-    const vref = makeViewerRef()
-    const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
-    const state = makeState({ viewerRef: vref.ref, currentHeadingId: '\x00frontmatter' })
-    dispatch({ kind: 'nextHeading' }, state, toc, fmIds, 24, () => {})
-    expect(vref.calls).toContain('scrollChildToTop(a,0)')
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a')
-  })
-
-  test('clearSearch clears search and returns to viewer when in search focus', () => {
-    const state = makeState({
-      focus: 'search',
-      search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: false },
-    })
-    dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
-    expect(state.setSearch).toHaveBeenCalledWith(null)
-    expect(state.setFocus).toHaveBeenCalledWith('viewer')
-  })
-
-  test('startSearch opens an empty uncommitted search and focuses the input', () => {
-    const state = makeState()
-    dispatch({ kind: 'startSearch', dir: 'forward' }, state, toc, headingIds, 24, () => {})
-    expect(state.setSearch).toHaveBeenCalledWith({
-      pattern: '',
-      matches: [],
-      index: -1,
-      dir: 'forward',
-      committed: false,
-    })
-    expect(state.setFocus).toHaveBeenCalledWith('search')
-  })
-
-  test('clearSearch does not refocus when already in viewer', () => {
-    const state = makeState({
-      focus: 'viewer',
-      search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: false },
-    })
-    dispatch({ kind: 'clearSearch' }, state, toc, headingIds, 24, () => {})
-    expect(state.setSearch).toHaveBeenCalledWith(null)
-    expect(state.setFocus).not.toHaveBeenCalled()
-  })
-
-  test('quit calls onQuit', () => {
-    const state = makeState()
-    let quit = false
-    dispatch({ kind: 'quit' }, state, toc, headingIds, 24, () => {
-      quit = true
-    })
-    expect(quit).toBe(true)
-  })
-
-  test('scrollLine calls scrollBy with delta', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'scrollLine', delta: 3 }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollBy(3)')
-  })
-
-  test('scrollPage multiplies by viewport height minus 2', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'scrollPage', delta: 1 }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollBy(22)')
-  })
-
-  test('top scrolls to 0', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'top' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollTo(0)')
-  })
-
-  test('bottom calls scrollToBottom', () => {
-    const vref = makeViewerRef()
-    const state = makeState({ viewerRef: vref.ref })
-    dispatch({ kind: 'bottom' }, state, toc, headingIds, 24, () => {})
-    expect(vref.calls).toContain('scrollToBottom')
-  })
-
-  test('toggleMouse calls toggleMouse on state', () => {
-    const state = makeState()
-    dispatch({ kind: 'toggleMouse' }, state, toc, headingIds, 24, () => {})
-    expect(state.toggleMouse).toHaveBeenCalled()
-  })
-
-  test('openEditor invokes onOpenEditor callback once', () => {
-    const state = makeState()
-    const onOpenEditor = mock()
-    dispatch({ kind: 'openEditor' }, state, toc, headingIds, 20, () => {}, undefined, onOpenEditor)
-    expect(onOpenEditor).toHaveBeenCalledTimes(1)
-  })
-
-  test('goBack calls state.goBack', () => {
-    const state = makeState()
-    dispatch({ kind: 'goBack' }, state, toc, headingIds, 24, () => {})
-    expect(state.goBack).toHaveBeenCalledTimes(1)
-  })
-})
-
-describe('dispatch toggleTocVisible', () => {
-  test('toggles visibility', () => {
-    const toggleTocVisible = mock()
-    const state = makeState({ toggleTocVisible })
-    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
-    expect(toggleTocVisible).toHaveBeenCalledTimes(1)
-  })
-
-  test('hiding from sidebar returns focus to viewer', () => {
-    const setFocus = mock()
-    const state = makeState({ focus: 'sidebar', tocVisible: true, setFocus })
-    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
-    expect(setFocus).toHaveBeenCalledWith('viewer')
-  })
-
-  test('hiding from viewer does not change focus', () => {
-    const setFocus = mock()
-    const state = makeState({ focus: 'viewer', tocVisible: true, setFocus })
-    dispatch({ kind: 'toggleTocVisible' }, state, toc, headingIds, 20, () => {})
-    expect(setFocus).not.toHaveBeenCalled()
-  })
-
-  test('focusSidebar is a no-op when toc hidden', () => {
-    const setFocus = mock()
-    const state = makeState({ tocVisible: false, setFocus })
-    dispatch({ kind: 'focusSidebar' }, state, toc, headingIds, 20, () => {})
-    expect(setFocus).not.toHaveBeenCalled()
-  })
-})
-
-const siblingToc: TocEntry[] = [
-  {
-    id: 'h1',
-    level: 1,
-    text: 'H1',
-    inline: [],
-    children: [
-      { id: 'sa', level: 2, text: 'SA', inline: [], children: [] },
-      { id: 'sb', level: 2, text: 'SB', inline: [], children: [] },
-    ],
-  },
-]
-const siblingIds = ['h1', 'sa', 'sb']
-
-describe('syncHeadings sibling handoff (blip fix)', () => {
-  test('previous section stays current until the new header passes the fold + slack', () => {
-    // sa scrolled above; sb sits at row 3, still below the handoff line
-    // (fold offset 1 + PIN_TOP_OFFSET 1 = row 2). Current must stay sa.
-    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 3 })
-    const state = makeState({ viewerRef: ref, currentHeadingId: null })
-    syncHeadings(state, siblingToc, siblingIds)
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sa')
-    expect(state.setCurrentHeadingId).not.toHaveBeenCalledWith('sb')
-  })
-
-  test('handoff fires when the new header reaches the fold + slack (row 2)', () => {
-    // sb at row 2 = fold offset (1) + PIN_TOP_OFFSET (1). Current flips to sb.
-    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 })
-    const state = makeState({ viewerRef: ref, currentHeadingId: 'sa' })
-    syncHeadings(state, siblingToc, siblingIds)
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sb')
-  })
-})
-
-describe('syncHeadings breadcrumb-overlay offset', () => {
-  test('a heading behind the overlay becomes current and is excluded from visible', () => {
-    // a (H1) is scrolled off above; a1 (H2 under a) sits at row 0, behind the
-    // breadcrumb overlay; b is far below the fold. Without offset resolution a1
-    // would count as "visible" (filtered from the breadcrumb) yet be hidden
-    // behind the overlay — it would vanish. The fixed point must instead make a1
-    // current and exclude it from the visible set so it shows as a crumb.
-    const { ref } = makePositionalViewerRef({ a: -3, a1: 0, b: 50 })
-    const state = makeState({
-      viewerRef: ref,
-      currentHeadingId: null,
-      visibleHeadingIds: new Set(['a1']),
-    })
-    syncHeadings(state, toc, headingIds)
-    expect(state.setCurrentHeadingId).toHaveBeenCalledWith('a1')
-    const lastVisible = (state.setVisibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(
-      -1,
-    )?.[0]
-    expect(lastVisible?.has('a1')).toBe(false)
+  test('noop → nothing', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'noop' }, c)
+    for (const fn of Object.values(c)) expect(fn).not.toHaveBeenCalled()
   })
 })

@@ -4,6 +4,7 @@ import type { AppState, ScrollboxHandle } from './state'
 import { NodeList } from './components/blocks/NodeRenderer'
 import { Frontmatter } from './components/blocks/Frontmatter'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
+import { createNoopCommands } from './lib/commands'
 import type { Node } from './lib/ast'
 import type { FrontmatterRow } from './lib/frontmatter'
 
@@ -22,36 +23,28 @@ export function RenderView({
 }: Props) {
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
+  // Static one-shot render has no interaction; commands exist only to satisfy the
+  // AppState shape.
+  const commands = useMemo(() => createNoopCommands(), [])
+
   const state = useMemo<AppState>(
     () => ({
       focus: 'viewer',
-      setFocus: () => {},
       currentHeadingId: null,
-      setCurrentHeadingId: () => {},
       visibleHeadingIds: new Set(),
-      setVisibleHeadingIds: () => {},
       viewerRef,
       expanded: new Map(),
-      toggleExpanded: () => {},
       tocCursorId: null,
-      setTocCursorId: () => {},
       search: null,
-      setSearch: () => {},
-      mouseEnabled: false,
-      toggleMouse: () => {},
-      tocVisible: true,
-      toggleTocVisible: () => {},
       contentWidth: Math.min(contentMaxWidth, width),
       contentMaxWidth,
       dir: undefined,
-      followLink: () => {},
-      goBack: () => {},
       historyDepth: 0,
       backLabel: undefined,
       status: { kind: 'idle' },
-      setStatus: () => {},
+      commands,
     }),
-    [width, contentMaxWidth],
+    [width, contentMaxWidth, commands],
   )
 
   return (

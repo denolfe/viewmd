@@ -16,13 +16,11 @@ import {
   resolveScrollMarks,
 } from '../lib/viewport-geometry'
 import { theme } from '../styles/theme'
+import { VIEWER_OVERHEAD } from '../styles/layout'
 import type { BoxGeometry, TextBearer } from '../lib/viewport-geometry'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
-
-// Scrollbar (1) + inner paddingRight (1). Mirrors App.tsx VIEWER_OVERHEAD.
-const VIEWER_OVERHEAD = 2
 
 export function Viewer({
   nodes,
