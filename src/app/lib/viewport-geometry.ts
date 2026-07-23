@@ -75,6 +75,11 @@ export function findVisibleHeadingIds(
   return out
 }
 
+/** Rows to scroll so the content top sits at `targetTop`. The box clamps on apply. */
+export function scrollTopDelta(geom: BoxGeometry, targetTop: number): number {
+  return targetTop - geom.scrollTop
+}
+
 /** Rows to scroll so `id` sits at the viewport top (offset `topOffset` down). Null if unmounted. */
 export function childToTopDelta(geom: BoxGeometry, id: string, topOffset: number): number | null {
   const child = geom.findChild(id)

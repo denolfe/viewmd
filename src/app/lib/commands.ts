@@ -240,14 +240,16 @@ export function createCommands(deps: CommandDeps): Commands {
     restoreScroll: ({ scrollTop, currentHeadingId }) => {
       const v = viewerRef.current
       if (!v) return
-      v.scrollTo(scrollTop)
+      // Retry-until-reached: a just-swapped doc mounts progressively, so a
+      // one-shot scrollTo would clamp short of a deep saved offset. The final
+      // breadcrumb state is re-resolved when the reposition settles (onRepositioned).
+      v.pinScrollTop(scrollTop)
       if (currentHeadingId) set.currentHeadingId(currentHeadingId)
-      set.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
     },
     resetToTop: () => {
       const v = viewerRef.current
       if (!v) return
-      v.scrollTo(0)
+      v.pinScrollTop(0)
       set.currentHeadingId(null)
       set.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
     },

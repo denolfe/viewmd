@@ -14,6 +14,7 @@ import {
   matchScrollDelta,
   resolveMatchY,
   resolveScrollMarks,
+  scrollTopDelta,
 } from '../lib/viewport-geometry'
 import { theme } from '../styles/theme'
 import { VIEWER_OVERHEAD } from '../styles/layout'
@@ -27,12 +28,19 @@ export function Viewer({
   frontmatter = [],
   tailReserve = 0,
   onScroll,
+  onRepositioned,
   docKey,
 }: {
   nodes: Node[]
   frontmatter?: FrontmatterRow[]
   tailReserve?: number
   onScroll?: () => void
+  /**
+   * Fired (deferred) when a post-swap reposition (`pinScrollTop` /
+   * `pinHeadingPostLayout`) settles — reached its target or the doc fully
+   * mounted. Lets the shell drop the swap cover once the incoming doc is placed.
+   */
+  onRepositioned?: () => void
   /**
    * Stable identity of the current document (its path). Keying the content
    * subtree on it forces a full remount on navigation instead of reconciling:
@@ -57,7 +65,12 @@ export function Viewer({
   tailRef.current = tailSpace
   const onScrollRef = useRef(onScroll)
   onScrollRef.current = onScroll
+  const onRepositionedRef = useRef(onRepositioned)
+  onRepositionedRef.current = onRepositioned
   const pendingRef = useRef<PendingTarget | null>(null)
+  // True while the current pending is a post-swap reposition, so its resolution
+  // fires onRepositioned (user-driven jumps reuse pendingRef but must not).
+  const swapPendingRef = useRef(false)
   const notifyRef = useRef<() => void>(() => {})
   const needsNotifyRef = useRef(false)
   // True only while the frame retry itself scrolls, so watchScroll can tell a
@@ -116,6 +129,18 @@ export function Viewer({
       if (delta !== 0) box.scrollBy(delta)
       return true
     }
+    const applyScrollTop = (top: number): boolean => {
+      const delta = scrollTopDelta(geom, top)
+      if (delta !== 0) box.scrollBy(delta)
+      // Progressive mount may not have grown scrollHeight yet, clamping short of
+      // `top`; resolved only once actually reached.
+      return Math.abs(box.scrollTop - top) <= 1
+    }
+    const applyPending = (pending: PendingTarget): boolean => {
+      if (pending.kind === 'heading') return applyHeading(pending.id, pending.topOffset)
+      if (pending.kind === 'match') return applyMatch(pending.params)
+      return applyScrollTop(pending.top)
+    }
     // Any explicit navigation supersedes a jump still waiting on its chunk —
     // otherwise a stale pending target would yank the viewport later.
     const handle: ScrollboxHandle = {
@@ -143,6 +168,11 @@ export function Viewer({
         // found — falsely report success, leaving the reader stranded above the
         // anchor. onFrame runs it once geometry is real.
         pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
+        swapPendingRef.current = true
+      },
+      pinScrollTop: top => {
+        pendingRef.current = { kind: 'scrollTop', top }
+        swapPendingRef.current = true
       },
       getGeometry: () => geom,
       getScrollMarks: ({ matches, activeIndex }) =>
@@ -171,7 +201,15 @@ export function Viewer({
     const restoreScroll = watchScroll(box, () => {
       // A scroll not initiated by the retry means the user moved (wheel/drag
       // bypass the handle) — their navigation supersedes the pending jump.
-      if (!completingRef.current) pendingRef.current = null
+      if (!completingRef.current) {
+        pendingRef.current = null
+        // Drop the cover too: the user placed the viewport themselves, so the
+        // swap reposition is moot and its settle signal would never arrive.
+        if (swapPendingRef.current) {
+          swapPendingRef.current = false
+          queueMicrotask(() => onRepositionedRef.current?.())
+        }
+      }
       notifyRef.current()
     })
     // Retries run on the renderer's post-layout `frame` event, not in a React
@@ -184,14 +222,20 @@ export function Viewer({
         // A completed scroll also triggers watchScroll → notify, keeping the
         // breadcrumb in sync mid-mount.
         completingRef.current = true
-        const done =
-          pending.kind === 'heading'
-            ? applyHeading(pending.id, pending.topOffset)
-            : applyMatch(pending.params)
+        const done = applyPending(pending)
         completingRef.current = false
         // Done, or unresolvable (the doc is fully mounted and the target still
         // isn't there) — either way no stale pending survives.
-        if (done || fullyMountedRef.current) pendingRef.current = null
+        if (done || fullyMountedRef.current) {
+          pendingRef.current = null
+          // A settled post-swap reposition signals the shell to drop the cover.
+          // Deferred: onRepositioned commits parent state, and committing inside
+          // OpenTUI's frame handler risks a re-entrant render.
+          if (swapPendingRef.current) {
+            swapPendingRef.current = false
+            queueMicrotask(() => onRepositionedRef.current?.())
+          }
+        }
       }
       if (needsNotifyRef.current) {
         needsNotifyRef.current = false
@@ -270,6 +314,7 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
 type PendingTarget =
   | { kind: 'heading'; id: string; topOffset: number }
   | { kind: 'match'; params: Parameters<ScrollboxHandle['jumpToMatch']>[0] }
+  | { kind: 'scrollTop'; top: number }
 
 function asTextBearer(node: unknown): TextBearer | null {
   if (!node || typeof node !== 'object') return null

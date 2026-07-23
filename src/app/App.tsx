@@ -19,6 +19,7 @@ import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
+import { theme } from './styles/theme'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
@@ -70,6 +71,9 @@ export function App({
   const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
   const [tocVisible, setTocVisible] = useState(true)
+  // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
+  // so the reader never sees it painted at scrollTop 0 before the jump lands.
+  const [covering, setCovering] = useState(false)
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
     // At startup the H1 (if any) sits at the top of the viewport — seed it so
     // the breadcrumb's hide-when-visible rule fires on the first paint.
@@ -98,6 +102,16 @@ export function App({
   )
   const nav = useDocumentNavigation({ initialDoc, captureScroll, onError })
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = nav.doc
+
+  // Raise the cover in the same render that swaps in the new doc, keyed on the
+  // intent seq. A layout effect would commit the cover one render later, leaving a
+  // gap where the incoming doc paints at scrollTop 0 before the jump lands. The
+  // Viewer drops it via onRepositioned once the reposition settles.
+  const coverRaisedSeqRef = useRef(-1)
+  if (nav.intent && nav.intent.reset !== 'none' && nav.intent.seq !== coverRaisedSeqRef.current) {
+    coverRaisedSeqRef.current = nav.intent.seq
+    if (!covering) setCovering(true)
+  }
 
   const toggleExpanded = useCallback(
     (id: string) => {
@@ -358,7 +372,25 @@ export function App({
             tailReserve={tailReserve}
             docKey={nav.doc.absPath ?? '<stdin>'}
             onScroll={() => commands.syncFromScroll()}
+            onRepositioned={() => {
+              setCovering(false)
+              commands.syncFromScroll()
+            }}
           />
+          {/* Opaque cover masking the swap-in reposition (see `covering`). Spans the
+              viewer column (content + scrollbar + padding) and sits above the sticky
+              header so the whole viewer reads as one clean transition. */}
+          {covering && (
+            <box
+              position="absolute"
+              top={0}
+              left={0}
+              width={contentWidth + VIEWER_OVERHEAD}
+              height="100%"
+              backgroundColor={theme.background}
+              zIndex={20}
+            />
+          )}
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
               makes it flash its own vertical scrollbar for one frame before layout
               settles. `visible={false}` still frees the column so the viewer reclaims

@@ -62,15 +62,13 @@ async function mountAA() {
 test('Back to a tall document does not flash the incoming doc at scrollTop 0', async () => {
   const { renderer, mockInput, mockMouse, settle, renderOnce, captureCharFrame } = await mountAA()
 
-  // Scroll A down away from the top so its "restored" position is non-zero.
-  for (let i = 0; i < 6; i++) {
+  // Jump heading-by-heading to the last section, where the "to B" link lives. This
+  // pins that heading near the top (link visible below) with a deep, non-zero scroll,
+  // so restoring to 0 on Back would be a visible flash rather than a correct restore.
+  for (let i = 0; i < 13; i++) {
     await mockInput.typeText('n')
     await settle()
   }
-
-  // Jump back to the very top so the "to B" link is on screen to click.
-  await mockInput.typeText('g')
-  await settle()
 
   const frameLines = captureCharFrame().split('\n')
   const linkRow = frameLines.findIndex(line => line.includes('to B'))
@@ -87,11 +85,18 @@ test('Back to a tall document does not flash the incoming doc at scrollTop 0', a
   // A at its saved scroll position, not flash A's top before jumping there.
   mockInput.pressBackspace()
 
+  // Clip to the viewer's columns (the TOC sidebar on the right legitimately shows
+  // the incoming doc's title — that's not the viewer content flashing).
+  const VIEWER_COLS = 58
   const flashes: string[] = []
   for (let k = 0; k < 10; k++) {
     await renderOnce()
     const frame = captureCharFrame()
-    const top = frame.split('\n').slice(0, 3).join('\n')
+    const top = frame
+      .split('\n')
+      .slice(0, 3)
+      .map(line => line.slice(0, VIEWER_COLS))
+      .join('\n')
     const scrollbox = findScrollbox(renderer as unknown as { root: Renderable })
     if (top.includes('Document Alpha') && scrollbox?.scrollTop === 0) {
       flashes.push(`frame ${k}`)

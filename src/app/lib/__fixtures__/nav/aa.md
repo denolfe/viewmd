@@ -1,7 +1,5 @@
 # Document Alpha
 
-Go [to B](./bb.md) to continue.
-
 ## A Section 1
 
 Alpha body 1.1 lorem ipsum.
@@ -121,3 +119,5 @@ Alpha body 12.2 lorem ipsum.
 Alpha body 12.3 lorem ipsum.
 
 Alpha body 12.4 lorem ipsum.
+
+Go [to B](./bb.md) to continue.
