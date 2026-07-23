@@ -12,13 +12,9 @@ import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import {
-  backBadgeRowsForDepth,
-  breadcrumbHeightForHeading,
-  tocVisibleContentWidth,
-  toggleTocExpanded,
-  FILE_ROW_ID,
-} from './lib/toc-util'
+import { tocVisibleContentWidth, toggleTocExpanded, FILE_ROW_ID } from './lib/toc-util'
+import { foldOffset } from './lib/heading-resolution'
+import { findVisibleHeadingIds } from './lib/viewport-geometry'
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
@@ -119,12 +115,7 @@ export function App({
   // just below the overlay instead of sliding up behind it.
   const lastHeadingId = headingIds.at(-1)
   const tailReserve = lastHeadingId
-    ? breadcrumbHeightForHeading({
-        toc,
-        id: lastHeadingId,
-        fileLabel,
-        backBadgeRows: backBadgeRowsForDepth(nav.historyDepth),
-      })
+    ? foldOffset({ toc, id: lastHeadingId, fileLabel, historyDepth: nav.historyDepth })
     : 0
 
   const backLabel = nav.backLabel
@@ -155,7 +146,7 @@ export function App({
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
+      setVisibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), headingIds, 0))
     }, 0)
     return () => clearTimeout(tid)
   }, [headingIds])

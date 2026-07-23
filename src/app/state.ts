@@ -4,6 +4,7 @@ import type { Match } from './lib/search'
 import type { Focus } from './lib/keys'
 import type { ResolvedMark } from './lib/scroll-marks'
 import type { Commands } from './lib/commands'
+import type { BoxGeometry } from './lib/viewport-geometry'
 
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
@@ -25,16 +26,8 @@ export type ScrollboxHandle = {
    * y=0 — an immediate scroll would strand the reader at the top.
    */
   pinHeadingPostLayout: (childId: string, topOffset?: number) => void
-  /**
-   * Returns the id from `headingIds` whose box sits at or just above the visible
-   * content top, or null. `topOffset` shifts that top down past the breadcrumb overlay.
-   */
-  getHeadingNearTop: (headingIds: string[], topOffset?: number) => string | null
-  /**
-   * Returns the subset of `headingIds` whose box vertically intersects the visible
-   * content region. `topOffset` excludes the rows occluded by the breadcrumb overlay.
-   */
-  getVisibleHeadingIds: (headingIds: string[], topOffset?: number) => Set<string>
+  /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
+  getGeometry: () => BoxGeometry
   /**
    * Resolves search matches to absolute content-y for the scrollbar overlay.
    * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry

@@ -3,7 +3,9 @@ import type { ScrollboxHandle, SearchState } from '../state'
 import type { Node, TocEntry } from './ast'
 import type { Focus } from './keys'
 import type { DocReset } from './documentNavigation'
-import { backBadgeRowsForDepth, breadcrumbHeightForHeading, flattenVisible } from './toc-util'
+import { flattenVisible } from './toc-util'
+import { foldOffset, resolveHeadings as resolveHeadingsPure } from './heading-resolution'
+import { findHeadingNearTop, findVisibleHeadingIds } from './viewport-geometry'
 import { findMatches } from './search'
 
 export type CommandDeps = {
@@ -74,48 +76,36 @@ export function createCommands(deps: CommandDeps): Commands {
   // itself lands below the overlay (visible, so filtered out); its ancestors stack
   // above, plus the back badge when a history exists. Used as the pin/visibility
   // offset so a jump lands the target just below its crumbs rather than hidden
-  // behind them.
+  // behind them. See `foldOffset` for the offset-convention rationale.
   const offsetFor = (id: string): number =>
-    breadcrumbHeightForHeading({
-      toc: doc.toc,
-      id,
-      fileLabel: doc.fileLabel,
-      backBadgeRows: backBadgeRowsForDepth(read.historyDepth),
-    })
+    foldOffset({ toc: doc.toc, id, fileLabel: doc.fileLabel, historyDepth: read.historyDepth })
 
   const refreshVisible = (topOffset: number): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
-    const next = v.getVisibleHeadingIds(doc.headingIds, topOffset)
+    const next = findVisibleHeadingIds(v.getGeometry(), doc.headingIds, topOffset)
     if (!setsEqual(read.visibleHeadingIds, next)) set.visibleHeadingIds(next)
   }
 
-  // The breadcrumb overlay occludes the top rows of the viewport, so "near top"
-  // and "visible" must be measured against the content below it. The fold offset is
-  // the current heading's *ancestor stack* height (`offsetFor`, which excludes the
-  // heading itself) — the same offset a jump uses, so scrolling to a heading lands
-  // identically to navigating to it. Excluding the heading's own crumb is deliberate:
-  // including it makes the offset self-referential and lets two states (crumb shown /
-  // not shown) both be consistent at the boundary, which is the frame-to-frame blip.
-  // Resolve the remaining current↔offset dependency as a fixed point; a shallow
-  // heading sitting at a deeper one's fold can cycle, so bail deterministically if an
-  // offset repeats.
+  // Resolve current + visible headings against live geometry and apply the setters
+  // only on change. The breadcrumb overlay occludes the top rows, so resolution
+  // measures against the content below the fold (see `resolveHeadings`).
   const resolveHeadings = (): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
-    let offset = 0
-    let id: string | null = null
-    const seen = new Set<number>()
-    for (let pass = 0; pass < 8; pass++) {
-      id = v.getHeadingNearTop(doc.headingIds, offset) ?? null
-      const next = id ? offsetFor(id) : 0
-      if (next === offset || seen.has(next)) break
-      seen.add(offset)
-      offset = next
+    const { currentHeadingId, visibleHeadingIds } = resolveHeadingsPure({
+      geom: v.getGeometry(),
+      toc: doc.toc,
+      headingIds: doc.headingIds,
+      fileLabel: doc.fileLabel,
+      historyDepth: read.historyDepth,
+    })
+    if (currentHeadingId && currentHeadingId !== read.currentHeadingId) {
+      set.currentHeadingId(currentHeadingId)
     }
-    const visible = v.getVisibleHeadingIds(doc.headingIds, offset)
-    if (id && id !== read.currentHeadingId) set.currentHeadingId(id)
-    if (!setsEqual(read.visibleHeadingIds, visible)) set.visibleHeadingIds(visible)
+    if (!setsEqual(read.visibleHeadingIds, visibleHeadingIds)) {
+      set.visibleHeadingIds(visibleHeadingIds)
+    }
   }
 
   const jumpTo = (id: string): void => {
@@ -145,8 +135,9 @@ export function createCommands(deps: CommandDeps): Commands {
       if (doc.headingIds.length === 0) return
       // Seed current heading from scroll position so n/N walk relative to the
       // viewport when the user scrolled with j/k rather than via heading nav.
+      const geom = viewerRef.current?.getGeometry()
       const cur =
-        read.currentHeadingId ?? viewerRef.current?.getHeadingNearTop(doc.headingIds) ?? null
+        read.currentHeadingId ?? (geom ? findHeadingNearTop(geom, doc.headingIds, 0) : null)
       const idx = cur ? doc.headingIds.indexOf(cur) : -1
       let nextIdx: number
       if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(doc.headingIds.length - 1, idx + 1)
@@ -251,14 +242,14 @@ export function createCommands(deps: CommandDeps): Commands {
       if (!v) return
       v.scrollTo(scrollTop)
       if (currentHeadingId) set.currentHeadingId(currentHeadingId)
-      set.visibleHeadingIds(v.getVisibleHeadingIds(doc.headingIds))
+      set.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
     },
     resetToTop: () => {
       const v = viewerRef.current
       if (!v) return
       v.scrollTo(0)
       set.currentHeadingId(null)
-      set.visibleHeadingIds(v.getVisibleHeadingIds(doc.headingIds))
+      set.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
     },
   }
 }

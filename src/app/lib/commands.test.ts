@@ -23,38 +23,17 @@ function makePositionalViewerRef(
     scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
     pinHeadingPostLayout: (id, topOffset) =>
       calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
-    getHeadingNearTop: (ids, topOffset = 0) => {
-      let best: string | null = null
-      let bestY = -Infinity
-      for (const id of ids) {
+    getGeometry: () => ({
+      viewportTop: 0,
+      viewportHeight: viewportBottom,
+      scrollTop: 0,
+      scrollHeight: 0,
+      findChild: id => {
         const y = positions[id]
-        if (y === undefined) continue
-        if (y <= topOffset && y > bestY) {
-          bestY = y
-          best = id
-        }
-      }
-      if (best) return best
-      let firstBelow: string | null = null
-      let firstBelowY = Infinity
-      for (const id of ids) {
-        const y = positions[id]
-        if (y !== undefined && y < firstBelowY) {
-          firstBelowY = y
-          firstBelow = id
-        }
-      }
-      return firstBelow
-    },
-    getVisibleHeadingIds: (ids, topOffset = 0) => {
-      const out = new Set<string>()
-      for (const id of ids) {
-        const y = positions[id]
-        if (y === undefined) continue
-        if (y + 1 > topOffset && y < viewportBottom) out.add(id)
-      }
-      return out
-    },
+        return y === undefined ? null : { y, height: 1 }
+      },
+      collectTextBearers: () => [],
+    }),
     getScrollMarks: () => ({
       marks: [],
       scrollTop: 0,
@@ -159,10 +138,11 @@ describe('createCommands.jumpHeadingBy', () => {
 
 describe('createCommands.syncFromScroll', () => {
   test('resolves current heading against the breadcrumb-overlay offset', () => {
-    // a (H1) sits above the fold, a1 just below (row 1), b far down. The fixed
-    // point resolves to `a`: near-top at offset 0 is `a`, and `a`'s own H1 crumb
-    // is filtered out (offset 0), so the loop terminates on the first pass.
-    const ref = makePositionalViewerRef({ a: -10, a1: 1, b: 40 }).ref
+    // a (H1) sits above the fold, a1 below it (row 2, clear of the near-top
+    // slack), b far down. The fixed point resolves to `a`: near-top at offset 0
+    // is `a`, and `a`'s own H1 crumb is filtered out (offset 0), so the loop
+    // terminates on the first pass.
+    const ref = makePositionalViewerRef({ a: -10, a1: 2, b: 40 }).ref
     const { deps, set } = makeDeps({ viewerRef: ref })
     createCommands(deps).syncFromScroll()
     expect(set.currentHeadingId).toHaveBeenCalledWith('a')
@@ -381,9 +361,9 @@ const siblingIds = ['h1', 'sa', 'sb']
 
 describe('createCommands.syncFromScroll sibling handoff (blip fix)', () => {
   test('previous section stays current while a blank line (not the new header) is at the fold', () => {
-    // sa scrolled above; a blank line sits at the fold (row 1) with sb one row
-    // below it (row 2). The handoff must NOT fire early — current resolves to sa.
-    const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 }).ref
+    // sa scrolled above; sb still sits below the fold plus the near-top slack
+    // (row 3). The handoff must NOT fire early — current resolves to sa.
+    const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 3 }).ref
     const { deps, set } = makeDeps({
       viewerRef: ref,
       doc: { toc: siblingToc, headingIds: siblingIds },
