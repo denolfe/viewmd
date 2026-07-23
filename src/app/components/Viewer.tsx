@@ -72,6 +72,16 @@ export function Viewer({
   const [mountedCount, setMountedCount] = useState(() =>
     initialMountCount({ nodes, contentWidth, viewportHeight: height }),
   )
+
+  // Reset progressive mount when the document swaps (follow-link / go-back).
+  // "Adjust state on prop change" during render — no stale frame, and the
+  // Viewer instance (scroll handle, listeners, thumb override) is preserved.
+  const prevNodes = useRef(nodes)
+  if (prevNodes.current !== nodes) {
+    prevNodes.current = nodes
+    setMountedCount(initialMountCount({ nodes, contentWidth, viewportHeight: height }))
+  }
+
   const fullyMounted = mountedCount >= nodes.length
   const fullyMountedRef = useRef(fullyMounted)
   fullyMountedRef.current = fullyMounted

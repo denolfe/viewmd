@@ -47,4 +47,33 @@ describe('classifyHref', () => {
   test('relative .md ignored when baseDir undefined (stdin)', () => {
     expect(classifyHref({ baseDir: undefined, href: './a.md' }).kind).toBe('ignore')
   })
+  test('in-doc anchor is decoded and slugified to match heading ids', () => {
+    expect(classifyHref({ href: '#Installation' })).toEqual({ kind: 'anchor', id: 'installation' })
+    expect(classifyHref({ href: '#my-section' })).toEqual({ kind: 'anchor', id: 'my-section' })
+    expect(classifyHref({ href: '#secci%C3%B3n' })).toEqual({ kind: 'anchor', id: 'seccin' })
+  })
+  test('relative doc path is URL-decoded', () => {
+    expect(classifyHref({ baseDir: '/docs', href: './My%20Doc.md' })).toEqual({
+      kind: 'doc',
+      absPath: '/docs/My Doc.md',
+      anchor: undefined,
+    })
+  })
+  test('malformed percent-encoding falls back to the raw path', () => {
+    const t = classifyHref({ baseDir: '/docs', href: './bad%zz.md' })
+    expect(t).toEqual({ kind: 'doc', absPath: '/docs/bad%zz.md', anchor: undefined })
+  })
+  test('doc-link anchor is normalized too', () => {
+    expect(classifyHref({ baseDir: '/docs', href: 'other.md#Frag' })).toMatchObject({
+      kind: 'doc',
+      anchor: 'frag',
+    })
+  })
+  test('percent-encoded absolute path does not escape baseDir', () => {
+    // Decodes to `/etc/passwd.md`; must be re-checked against isAbsolute so
+    // resolve() cannot discard baseDir and escape the doc's directory.
+    expect(classifyHref({ baseDir: '/docs', href: '%2Fetc%2Fpasswd.md' })).toEqual({
+      kind: 'ignore',
+    })
+  })
 })

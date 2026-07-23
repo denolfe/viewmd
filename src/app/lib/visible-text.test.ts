@@ -4,6 +4,7 @@ import {
   alignOffset,
   listItemRowId,
   listItemRunText,
+  listMarkerText,
   projectDocument,
   runText,
 } from './visible-text'
@@ -105,8 +106,18 @@ describe('projectDocument', () => {
     const projs = projectDocument(nodes)
     list.items.forEach((item, i) => {
       const run = projs[i]?.runs[0]
-      expect(run && runText(run)).toBe(listItemRunText({ item, ordered: list.ordered, index: i }))
+      expect(run && runText(run)).toBe(
+        listItemRunText({ item, ordered: list.ordered, index: i, start: list.start }),
+      )
     })
+  })
+
+  test('ordered list marker honors start offset', () => {
+    const plainItem = () => ({ task: false, checked: false, children: [] })
+    expect(listMarkerText({ item: plainItem(), ordered: true, index: 0, start: 5 })).toBe('5. ')
+    expect(listMarkerText({ item: plainItem(), ordered: true, index: 1, start: 5 })).toBe('6. ')
+    expect(listMarkerText({ item: plainItem(), ordered: true, index: 0 })).toBe('1. ')
+    expect(listMarkerText({ item: plainItem(), ordered: false, index: 0 })).toBe('- ')
   })
 
   test('blockquote children project with their own block ids', () => {

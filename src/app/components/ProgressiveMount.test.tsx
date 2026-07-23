@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { expect, test } from 'bun:test'
 import { createTestRenderer } from '@opentui/core/testing'
 import { ScrollBoxRenderable } from '@opentui/core'
@@ -10,6 +11,7 @@ import type { AppState, ScrollboxHandle } from '../state'
 import { buildTree } from '../lib/ast'
 import { findMatches } from '../lib/search'
 import { initialMountCount } from '../lib/progressive'
+import type { Node } from '../lib/ast'
 
 const bigFixture = (): string =>
   [
@@ -180,6 +182,78 @@ test('a direct scroll while a jump is pending supersedes the pending jump', asyn
   const frame = setup.captureCharFrame()
   expect(frame).toContain('filler paragraph')
   expect(frame).not.toContain('Last Heading')
+})
+
+/**
+ * Wraps Viewer in its own `nodes` state and exposes the setter via
+ * `controller.current` — swapping via this setter re-renders the SAME
+ * `Viewer` fiber with new props (the real follow-link/go-back scenario:
+ * `App`'s state changes, `Viewer` itself never remounts). Calling
+ * `root.render(...)` a second time does NOT reproduce this: `createRoot`
+ * builds a brand-new reconciler container per call, so a second `render`
+ * mounts a second, independent tree rather than updating the first.
+ */
+function DocHost({
+  initial,
+  state,
+  controller,
+}: {
+  initial: Node[]
+  state: AppState
+  controller: { current: ((nodes: Node[]) => void) | null }
+}) {
+  const [nodes, setNodes] = useState(initial)
+  controller.current = setNodes
+  return (
+    <AppStateContext.Provider value={state}>
+      <Viewer nodes={nodes} />
+    </AppStateContext.Provider>
+  )
+}
+
+test('swapping to a longer doc re-expands the initial mounted prefix', async () => {
+  const { nodes: shortNodes } = buildTree('# Small\n\njust one paragraph\n')
+  const { nodes: longNodes } = buildTree(bigFixture())
+  const setup = await createTestRenderer({ width: 80, height: 20 })
+  const viewerRef: { current: ScrollboxHandle | null } = { current: null }
+  const state = { viewerRef, contentWidth: 78, search: null } as AppState
+  const controller: { current: ((nodes: Node[]) => void) | null } = { current: null }
+
+  createRoot(setup.renderer).render(
+    <DocHost initial={shortNodes} state={state} controller={controller} />,
+  )
+  // Settle fully so the short doc (which fully mounts in one pass) is stable
+  // before the swap — the real follow-link scenario navigates from a
+  // steady-state document, not one mid-mount.
+  await setup.flush({ maxPasses: 20 })
+  await new Promise(r => setTimeout(r, 30))
+  await setup.renderOnce()
+
+  // Swap to the long doc on the SAME Viewer instance (no key change, same
+  // fiber) via the host's own state setter — exactly the follow-link/go-back
+  // path: `mountedCount` is preserved across the swap unless Viewer itself
+  // resets it.
+  if (!controller.current) throw new Error('DocHost setter never installed')
+  controller.current(longNodes)
+
+  // Capture the FIRST commit after the swap without letting the growth
+  // effect's own setTimeout(0) tick fire. React's concurrent-mode commit for
+  // an update outside an event handler needs one real macrotask to flush —
+  // a single `setTimeout(0)` round-trip lets exactly that happen. Any NEW
+  // timer the just-committed render's growth effect schedules is queued
+  // during that same timer-phase pass, so it can't also fire within this
+  // same tick (Node defers it to the next loop iteration) — it won't grow
+  // the stale count and mask the bug before we capture.
+  await new Promise(r => setTimeout(r, 0))
+  await setup.renderOnce()
+
+  // `filler paragraph 0` is the third node of the long doc, immediately
+  // after `Top Title` / `first paragraph` — well within the first-page
+  // viewport. Pre-fix, only the stale short-doc prefix (2 nodes) mounts on
+  // this first commit, so it's absent. Post-fix, the reset re-expands the
+  // prefix to the long doc's own initialMountCount (~39 nodes here), so it's
+  // present.
+  expect(setup.captureCharFrame()).toContain('filler paragraph 0')
 })
 
 test('search jump issued before mount completes lands once the target mounts', async () => {

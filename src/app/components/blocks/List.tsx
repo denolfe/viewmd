@@ -11,8 +11,13 @@ export function List({ node, path }: { node: Extract<Node, { kind: 'list' }>; pa
     <box paddingLeft={2}>
       {node.items.map((item, i) => {
         const itemPath = [...path, i]
-        const marker = listMarkerText(item, node.ordered, i)
-        const runText = listItemRunText({ item, ordered: node.ordered, index: i })
+        const marker = listMarkerText({ item, ordered: node.ordered, index: i, start: node.start })
+        const runText = listItemRunText({
+          item,
+          ordered: node.ordered,
+          index: i,
+          start: node.start,
+        })
         return (
           <box key={i} id={listItemRowId(itemPath)} flexDirection="row">
             <RunScope blockId={listItemRowId(itemPath)} text={runText}>

@@ -88,6 +88,20 @@ describe('stripHtml — entity decoding', () => {
   test('unknown named entity passes through verbatim', () => {
     expect(stripHtml('&fakeentity;')).toBe('&fakeentity;')
   })
+
+  test('out-of-range hex numeric entity decodes to U+FFFD, does not throw', () => {
+    expect(() => stripHtml('<div>&#x110000;</div>')).not.toThrow()
+    expect(stripHtml('<div>&#x110000;</div>')).toBe('�')
+  })
+
+  test('out-of-range decimal numeric entity decodes to U+FFFD, does not throw', () => {
+    expect(() => stripHtml('<div>&#9999999999;</div>')).not.toThrow()
+    expect(stripHtml('<div>&#9999999999;</div>')).toBe('�')
+  })
+
+  test('valid hex numeric entity still decodes correctly', () => {
+    expect(stripHtml('<span>&#x41;</span>')).toBe('A')
+  })
 })
 
 describe('stripHtml — whitespace normalization', () => {

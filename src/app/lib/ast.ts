@@ -38,7 +38,7 @@ export type Node =
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; id: string; text: InlineNode[] }
   | { kind: 'paragraph'; inline: InlineNode[] }
   | { kind: 'code'; lang?: string; value: string }
-  | { kind: 'list'; ordered: boolean; items: ListItem[] }
+  | { kind: 'list'; ordered: boolean; start?: number; items: ListItem[] }
   | { kind: 'blockquote'; children: Node[] }
   | { kind: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
   | { kind: 'hr' }
@@ -256,7 +256,8 @@ function blockToNode(t: Tokens.Generic, ctx: ParseContext): Node | null {
           .map(it => blockToNode(it as Tokens.Generic, ctx))
           .filter((n): n is Node => n !== null),
       }))
-      return { kind: 'list', ordered: l.ordered, items }
+      const start = l.ordered && typeof l.start === 'number' ? l.start : undefined
+      return { kind: 'list', ordered: l.ordered, start, items }
     }
     case 'blockquote': {
       const b = t as Tokens.Blockquote

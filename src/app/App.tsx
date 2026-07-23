@@ -335,7 +335,10 @@ export function App({
       return
     }
     loadDocument(activePath)
-      .then(next => setDoc(next))
+      .then(next => {
+        setSearch(null)
+        setDoc(next)
+      })
       .catch(() => {
         setStatus({ kind: 'error', text: 'Reload failed: file unreadable' })
         pendingReanchorRef.current = null

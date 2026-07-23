@@ -9,6 +9,7 @@ import { parseArgs } from './app/lib/args'
 import { extraParsers } from './app/parsers'
 import { buildDocument } from './app/lib/loadDocument'
 import { loadConfig, resolveSettings } from './app/lib/config'
+import { fileReadErrorMessage } from './app/lib/read-error'
 import { renderAnsi } from './app/lib/renderAnsi'
 import { version } from '../package.json'
 
@@ -135,7 +136,16 @@ function keyboardStream(): NodeJS.ReadStream {
 }
 
 async function readInput(filePath?: string): Promise<string> {
-  if (filePath) return Bun.file(filePath).text()
+  if (filePath) {
+    try {
+      return await Bun.file(filePath).text()
+    } catch (e) {
+      const code = e instanceof Error && 'code' in e ? String(e.code) : undefined
+      const raw = e instanceof Error ? e.message : String(e)
+      console.error(`viewmd: ${fileReadErrorMessage({ code, path: filePath, raw })}`)
+      process.exit(1)
+    }
+  }
   if (!process.stdin.isTTY) return Bun.stdin.text()
   console.error('Usage: viewmd <file.md>  (or pipe markdown via stdin; see viewmd --help)')
   process.exit(1)

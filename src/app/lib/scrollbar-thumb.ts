@@ -32,7 +32,15 @@ export function installRealisticThumb(
     const scrollSize = ssDesc.get!.call(sb) as number
     const viewport = vpDesc.get!.call(sb) as number
     const real = Math.max(1, scrollSize - tailRef.current)
-    if (real <= viewport || scrollSize <= 0) return
+    if (real <= viewport || scrollSize <= 0) {
+      // Content now fits: restore the natural (full-viewport) thumb size. OpenTUI's
+      // native viewportSize setter does this itself, but a scrollSize-only shrink
+      // (content getting shorter without a viewport resize) never touches
+      // slider.viewPortSize, so a prior proportional shrink from recompute would
+      // otherwise stick.
+      sb.slider.viewPortSize = Math.max(1, viewport)
+      return
+    }
     const desired = Math.max(1, Math.round((viewport * scrollSize) / real))
     sb.slider.viewPortSize = desired
   }
