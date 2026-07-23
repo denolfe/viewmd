@@ -21,7 +21,7 @@ import {
 import { SearchBar } from './components/SearchBar'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
-import { CONTENT_MAX_WIDTH } from './styles/layout'
+import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
@@ -121,8 +121,6 @@ export function App({
     Math.floor(termWidth * 0.4),
     Math.max(16, tocVisibleContentWidth(toc, expanded) + TOC_PADDING),
   )
-  // Viewer reserves 1 col for the vertical scrollbar and the inner box adds paddingRight={1}.
-  const VIEWER_OVERHEAD = 2
   const viewerColumnWidth = Math.max(
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
