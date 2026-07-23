@@ -268,7 +268,7 @@ describe('dispatch', () => {
 
   test('prevHeading seeds from viewport heading when current is null', () => {
     // User scrolled past `a1` with j/k; pressing N should go back to `a1`'s predecessor.
-    const vref = makeViewerRef({ nearTop: 'a1' })
+    const vref = makeViewerRef({ positions: { a1: 0 } })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a,0)')
@@ -276,7 +276,7 @@ describe('dispatch', () => {
   })
 
   test('nextHeading seeds from viewport heading when current is null', () => {
-    const vref = makeViewerRef({ nearTop: 'a' })
+    const vref = makeViewerRef({ positions: { a: 0 } })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'nextHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(a1,1)')
@@ -284,7 +284,7 @@ describe('dispatch', () => {
   })
 
   test('prevHeading with no current and no viewport heading goes to last', () => {
-    const vref = makeViewerRef({ nearTop: null })
+    const vref = makeViewerRef({ positions: {} })
     const state = makeState({ viewerRef: vref.ref, currentHeadingId: null })
     dispatch({ kind: 'prevHeading' }, state, toc, headingIds, 24, () => {})
     expect(vref.calls).toContain('scrollChildToTop(b,0)')
@@ -453,19 +453,19 @@ const siblingToc: TocEntry[] = [
 const siblingIds = ['h1', 'sa', 'sb']
 
 describe('syncHeadings sibling handoff (blip fix)', () => {
-  test('previous section stays current while a blank line (not the new header) is at the fold', () => {
-    // sa scrolled above; a blank line sits at the fold (row 1) with sb one row
-    // below it (row 2). The handoff must NOT fire early — current stays sa.
-    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 })
+  test('previous section stays current until the new header passes the fold + slack', () => {
+    // sa scrolled above; sb sits at row 3, still below the handoff line
+    // (fold offset 1 + PIN_TOP_OFFSET 1 = row 2). Current must stay sa.
+    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 3 })
     const state = makeState({ viewerRef: ref, currentHeadingId: null })
     syncHeadings(state, siblingToc, siblingIds)
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sa')
     expect(state.setCurrentHeadingId).not.toHaveBeenCalledWith('sb')
   })
 
-  test('handoff fires exactly when the new header reaches the fold', () => {
-    // sb now at the fold (row 1, = ancestor-stack height of 1). Current flips to sb.
-    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 1 })
+  test('handoff fires when the new header reaches the fold + slack (row 2)', () => {
+    // sb at row 2 = fold offset (1) + PIN_TOP_OFFSET (1). Current flips to sb.
+    const { ref } = makePositionalViewerRef({ h1: -100, sa: -5, sb: 2 })
     const state = makeState({ viewerRef: ref, currentHeadingId: 'sa' })
     syncHeadings(state, siblingToc, siblingIds)
     expect(state.setCurrentHeadingId).toHaveBeenCalledWith('sb')
