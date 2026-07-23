@@ -258,6 +258,10 @@ export function App({
       headingIds,
       fileLabel,
       renderer,
+      // `useRenderer` is a stable singleton whose `.height` mutates in place on
+      // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the
+      // new page size instead of the pre-resize one.
+      renderer.height,
       currentHeadingId,
       visibleHeadingIds,
       expanded,
