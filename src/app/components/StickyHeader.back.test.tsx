@@ -29,6 +29,7 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     dir: undefined,
     followLink: mock(),
     goBack: mock(),
+    commands: { goBack: mock() },
     historyDepth: 0,
     contentMaxWidth: 80,
     status: { kind: 'idle' },
@@ -72,7 +73,7 @@ test('back badge renders and clicking it calls goBack', async () => {
   await mouse.click(col, row, MouseButtons.LEFT)
   await settle()
 
-  expect(stub.goBack).toHaveBeenCalled()
+  expect(stub.commands.goBack).toHaveBeenCalled()
 
   renderer.destroy()
 })
@@ -101,7 +102,7 @@ test('right-click on the badge does not call goBack', async () => {
   await mouse.click(col, row, MouseButtons.RIGHT)
   await settle()
 
-  expect(stub.goBack).not.toHaveBeenCalled()
+  expect(stub.commands.goBack).not.toHaveBeenCalled()
 
   renderer.destroy()
 })

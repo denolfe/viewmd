@@ -16,7 +16,7 @@ type LinkClickEvent = {
 
 /** onMouseDown handler that follows a link under the cursor. */
 export function useLinkClick(inline: InlineNode[]): (event: MouseEvent) => void {
-  const { followLink } = useAppState()
+  const { commands } = useAppState()
   const renderer = useRenderer()
   return useCallback(
     (event: MouseEvent) => {
@@ -25,9 +25,9 @@ export function useLinkClick(inline: InlineNode[]): (event: MouseEvent) => void 
       // OpenTUI anchors a text selection on mousedown before this handler runs;
       // clear it so a consumed link click doesn't leave a stray highlight.
       renderer.clearSelection()
-      followLink(href)
+      commands.followLink(href)
     },
-    [followLink, inline, renderer],
+    [commands.followLink, inline, renderer],
   )
 }
 

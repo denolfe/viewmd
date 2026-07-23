@@ -8,6 +8,8 @@ import { App } from '../App'
 import { Viewer } from './Viewer'
 import { AppStateContext } from '../state'
 import type { AppState, ScrollboxHandle } from '../state'
+import type { Commands } from '../lib/commands'
+
 import { buildTree } from '../lib/ast'
 import { findMatches } from '../lib/search'
 import { initialMountCount } from '../lib/progressive'
@@ -110,7 +112,8 @@ const mountViewerOnly = async (md: string, onScroll?: () => void) => {
   const { nodes, headingIds } = buildTree(md)
   const setup = await createTestRenderer({ width: 80, height: 20 })
   const viewerRef: { current: ScrollboxHandle | null } = { current: null }
-  const state = { viewerRef, contentWidth: 78, search: null } as AppState
+  const commands = { followLink: () => {} } as unknown as Commands
+  const state = { viewerRef, contentWidth: 78, search: null, commands } as AppState
   const settle = async () => {
     await setup.flush({ maxPasses: 20 })
     await new Promise(r => setTimeout(r, 30))
@@ -216,7 +219,8 @@ test('swapping to a longer doc re-expands the initial mounted prefix', async () 
   const { nodes: longNodes } = buildTree(bigFixture())
   const setup = await createTestRenderer({ width: 80, height: 20 })
   const viewerRef: { current: ScrollboxHandle | null } = { current: null }
-  const state = { viewerRef, contentWidth: 78, search: null } as AppState
+  const commands = { followLink: () => {} } as unknown as Commands
+  const state = { viewerRef, contentWidth: 78, search: null, commands } as AppState
   const controller: { current: ((nodes: Node[]) => void) | null } = { current: null }
 
   createRoot(setup.renderer).render(

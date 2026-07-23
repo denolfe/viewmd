@@ -26,7 +26,6 @@ import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
-import type { DocReset, ScrollIntent } from './lib/documentNavigation'
 
 type Props = {
   nodes: Node[]
@@ -88,19 +87,6 @@ export function App({
   )
   const nav = useDocumentNavigation({ initialDoc, captureScroll, onError })
   const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = nav.doc
-
-  const applyReset = useCallback((reset: DocReset) => {
-    if (reset === 'full') {
-      setFocus('viewer')
-      setCurrentHeadingId(null)
-      setSearch(null)
-      setExpanded(new Map())
-      setTocCursorId(null)
-      setVisibleHeadingIds(new Set())
-    } else if (reset === 'searchOnly') {
-      setSearch(null)
-    }
-  }, [])
 
   const toggleExpanded = useCallback(
     (id: string) => {
@@ -188,22 +174,21 @@ export function App({
   useLayoutEffect(() => {
     const it = nav.intent
     if (!it) return
-    applyReset(it.reset)
+    commands.resetForNewDoc(it.reset)
     const tid = setTimeout(() => {
-      const v = viewerRef.current
-      if (!v) return
-      applyScrollIntent({
-        viewer: v,
-        scroll: it.scroll,
-        toc,
-        headingIds,
-        fileLabel,
-        historyDepth: nav.historyDepth,
-        setCurrentHeadingId,
-        setVisibleHeadingIds,
-      })
+      const s = it.scroll
+      if (s.kind === 'restore') {
+        commands.restoreScroll({ scrollTop: s.scrollTop, currentHeadingId: s.currentHeadingId })
+      } else if (s.kind === 'anchor' && !s.postSwap) {
+        commands.jumpToHeading(s.headingId)
+      } else if (s.kind === 'anchor' && headingIds.includes(s.headingId)) {
+        commands.pinHeadingPostSwap(s.headingId)
+      } else {
+        commands.resetToTop()
+      }
     }, 0)
     return () => clearTimeout(tid)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.intent])
 
   const onOpenEditor = useCallback(() => {
@@ -403,50 +388,4 @@ function seedDocFromProps(props: {
     absPath,
     dir: absPath ? dirname(absPath) : undefined,
   }
-}
-
-function applyScrollIntent(params: {
-  viewer: ScrollboxHandle
-  scroll: ScrollIntent
-  toc: TocEntry[]
-  headingIds: string[]
-  fileLabel?: string
-  historyDepth: number
-  setCurrentHeadingId: (id: string | null) => void
-  setVisibleHeadingIds: (s: Set<string>) => void
-}): void {
-  const { viewer, scroll, toc, headingIds, fileLabel, historyDepth } = params
-  const { setCurrentHeadingId, setVisibleHeadingIds } = params
-
-  if (scroll.kind === 'restore') {
-    viewer.scrollTo(scroll.scrollTop)
-    if (scroll.currentHeadingId) setCurrentHeadingId(scroll.currentHeadingId)
-    setVisibleHeadingIds(viewer.getVisibleHeadingIds(headingIds))
-    return
-  }
-
-  if (scroll.kind === 'anchor' && !scroll.postSwap) {
-    viewer.scrollChildToTop(scroll.headingId)
-    return
-  }
-
-  if (scroll.kind === 'anchor' && headingIds.includes(scroll.headingId)) {
-    // Pin post-layout: the box is committed but reads y=0 right after a swap, so
-    // pinHeadingPostLayout runs the scroll once geometry is real; its scroll
-    // re-syncs the breadcrumb, so no visibility bookkeeping here.
-    const height = breadcrumbHeightForHeading({
-      toc,
-      id: scroll.headingId,
-      fileLabel,
-      backBadgeRows: backBadgeRowsForDepth(historyDepth),
-    })
-    viewer.pinHeadingPostLayout(scroll.headingId, height)
-    setCurrentHeadingId(scroll.headingId)
-    return
-  }
-
-  // `top`, or a postSwap anchor whose id is absent from the swapped-in doc.
-  viewer.scrollTo(0)
-  setCurrentHeadingId(null)
-  setVisibleHeadingIds(viewer.getVisibleHeadingIds(headingIds))
 }
