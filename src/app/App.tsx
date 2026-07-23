@@ -180,7 +180,11 @@ export function App({
       if (s.kind === 'restore') {
         commands.restoreScroll({ scrollTop: s.scrollTop, currentHeadingId: s.currentHeadingId })
       } else if (s.kind === 'anchor' && !s.postSwap) {
-        commands.jumpToHeading(s.headingId)
+        // Same-doc anchor. A real heading gets the breadcrumb-aware jump (lands below the
+        // overlay, updates current heading). An unknown/non-heading slug (e.g. a broken
+        // #fragment) is a no-op: scrolling to it would find no box and setting it current
+        // would blank the breadcrumb and break n/N nav.
+        if (headingIds.includes(s.headingId)) commands.jumpToHeading(s.headingId)
       } else if (s.kind === 'anchor' && headingIds.includes(s.headingId)) {
         commands.pinHeadingPostSwap(s.headingId)
       } else {
