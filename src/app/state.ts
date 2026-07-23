@@ -28,16 +28,6 @@ export type ScrollboxHandle = {
   /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
   getGeometry: () => BoxGeometry
   /**
-   * Returns the id from `headingIds` whose box sits at or just above the visible
-   * content top, or null. `topOffset` shifts that top down past the breadcrumb overlay.
-   */
-  getHeadingNearTop: (headingIds: string[], topOffset?: number) => string | null
-  /**
-   * Returns the subset of `headingIds` whose box vertically intersects the visible
-   * content region. `topOffset` excludes the rows occluded by the breadcrumb overlay.
-   */
-  getVisibleHeadingIds: (headingIds: string[], topOffset?: number) => Set<string>
-  /**
    * Resolves search matches to absolute content-y for the scrollbar overlay.
    * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry
    * for `computeTrackCells`. Unresolvable marks are omitted (never throws).

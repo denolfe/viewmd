@@ -5,13 +5,7 @@ import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 
-function makeViewerRef(
-  opts: {
-    nearTop?: string | null
-    visible?: Set<string>
-    positions?: Record<string, number>
-  } = {},
-): {
+function makeViewerRef(opts: { positions?: Record<string, number> } = {}): {
   ref: RefObject<ScrollboxHandle | null>
   calls: string[]
 } {
@@ -29,8 +23,6 @@ function makeViewerRef(
           Object.entries(opts.positions ?? {}).map(([k, y]) => [k, { y }]),
         ),
       }),
-    getHeadingNearTop: () => opts.nearTop ?? null,
-    getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
     getScrollMarks: () => ({
       marks: [],
       scrollTop: 0,
@@ -106,38 +98,6 @@ function makePositionalViewerRef(
         positions: Object.fromEntries(Object.entries(positions).map(([k, y]) => [k, { y }])),
         viewportHeight: viewportBottom,
       }),
-    getHeadingNearTop: (ids, topOffset = 0) => {
-      let best: string | null = null
-      let bestY = -Infinity
-      for (const id of ids) {
-        const y = positions[id]
-        if (y === undefined) continue
-        if (y <= topOffset && y > bestY) {
-          bestY = y
-          best = id
-        }
-      }
-      if (best) return best
-      let firstBelow: string | null = null
-      let firstBelowY = Infinity
-      for (const id of ids) {
-        const y = positions[id]
-        if (y !== undefined && y < firstBelowY) {
-          firstBelowY = y
-          firstBelow = id
-        }
-      }
-      return firstBelow
-    },
-    getVisibleHeadingIds: (ids, topOffset = 0) => {
-      const out = new Set<string>()
-      for (const id of ids) {
-        const y = positions[id]
-        if (y === undefined) continue
-        if (y + 1 > topOffset && y < viewportBottom) out.add(id)
-      }
-      return out
-    },
     getScrollMarks: () => ({
       marks: [],
       scrollTop: 0,

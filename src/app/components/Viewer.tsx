@@ -11,8 +11,6 @@ import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progres
 import { projectionMap } from '../lib/visible-text'
 import {
   childToTopDelta,
-  findHeadingNearTop,
-  findVisibleHeadingIds,
   matchScrollDelta,
   resolveMatchY,
   resolveScrollMarks,
@@ -175,8 +173,6 @@ export function Viewer({
         pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
       getGeometry: () => geom,
-      getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(geom, ids, topOffset ?? 0),
-      getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(geom, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, activeIndex }) =>
         resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches, activeIndex }),
       seedMatchIndex: ({ matches, dir }) =>
