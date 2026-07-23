@@ -3,21 +3,13 @@ import { useKeyboard } from '@opentui/react'
 import { useAppState } from '../state'
 import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
 import { theme } from '../styles/theme'
-import type { Node, TocEntry } from '../lib/ast'
+import type { TocEntry } from '../lib/ast'
 
 // Fixed overlay width: a constant input width sidesteps the buffer-scroll bug
 // where fast typing outruns React resizing an input sized to its pattern.
 const BAR_WIDTH = 28
 
-export function SearchBar({
-  nodes,
-  toc,
-  fileLabel,
-}: {
-  nodes: Node[]
-  toc: TocEntry[]
-  fileLabel?: string
-}) {
+export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
   const { search, focus, currentHeadingId, visibleHeadingIds, contentWidth, commands } =
     useAppState()
 

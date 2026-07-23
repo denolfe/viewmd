@@ -198,6 +198,9 @@ export function createCommands(deps: CommandDeps): Commands {
       set.search({ pattern: '', matches: [], index: -1, dir, committed: false })
       set.focus('search')
     },
+    // Recompute matches from the passed `pattern`, not `read.search.pattern`: the
+    // input's Enter can arrive before React re-renders, so committing a stale
+    // snapshot would search a truncated/empty string.
     applySearchPattern: ({ pattern, commit }) => {
       const s = read.search
       if (!s) return
