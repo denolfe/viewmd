@@ -13,10 +13,16 @@ export function buildEditorArgv(params: {
 }): string[] {
   const tokens = tokenize(params.command)
   if (tokens.length === 0) return ['vi', params.filePath]
-  const hasPlaceholder = tokens.some(t => t.includes('{file}') || t.includes('{line}'))
-  if (hasPlaceholder) {
+  const hasFile = tokens.some(t => t.includes('{file}'))
+  const hasLine = tokens.some(t => t.includes('{line}'))
+  if (hasFile || hasLine) {
     const lineStr = params.line === undefined ? '' : String(params.line)
-    return tokens.map(t => t.replaceAll('{file}', params.filePath).replaceAll('{line}', lineStr))
+    const substituted = tokens.map(t =>
+      t.replaceAll('{file}', params.filePath).replaceAll('{line}', lineStr),
+    )
+    // A {line}-only template has nowhere to carry the file path — append it so
+    // the editor still opens the file.
+    return hasFile ? substituted : [...substituted, params.filePath]
   }
   if (params.line === undefined) return [...tokens, params.filePath]
   return appendFileWithLine({ tokens, filePath: params.filePath, line: params.line })

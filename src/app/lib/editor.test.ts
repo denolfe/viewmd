@@ -130,6 +130,25 @@ describe('buildEditorArgv with line', () => {
       buildEditorArgv({ command: 'code --wait {file}', filePath: '/a/b.md', line: 5 }),
     ).toEqual(['code', '--wait', '/a/b.md'])
   })
+  test('{line}-only template still appends the file path', () => {
+    expect(
+      buildEditorArgv({ command: 'myeditor --goto {line}', filePath: '/f.md', line: 5 }),
+    ).toEqual(['myeditor', '--goto', '5', '/f.md'])
+  })
+  test('{line}-only template with no line substitutes empty and appends file', () => {
+    expect(buildEditorArgv({ command: 'myeditor --goto {line}', filePath: '/f.md' })).toEqual([
+      'myeditor',
+      '--goto',
+      '',
+      '/f.md',
+    ])
+  })
+  test('{file} present means no extra append', () => {
+    expect(buildEditorArgv({ command: 'ed {file}:{line}', filePath: '/f.md', line: 5 })).toEqual([
+      'ed',
+      '/f.md:5',
+    ])
+  })
 })
 
 function makeRenderer(): { renderer: CliRenderer; calls: string[] } {
