@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
 import { useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
@@ -23,9 +23,9 @@ import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
 import type { LoadedDocument } from './lib/loadDocument'
-import { loadDocument, fileLabel as fileLabelFor } from './lib/loadDocument'
-import { classifyHref } from './lib/links'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
+import { useDocumentNavigation } from './lib/documentNavigation'
+import type { DocReset, ScrollIntent } from './lib/documentNavigation'
 
 type Props = {
   nodes: Node[]
@@ -50,32 +50,10 @@ export function App({
 }: Props) {
   const renderer = useRenderer()
   const viewerRef = useRef<ScrollboxHandle | null>(null)
-  const pendingReanchorRef = useRef<string | null>(null)
-  const restoreScrollRef = useRef<{ scrollTop: number; currentHeadingId: string | null } | null>(
-    null,
-  )
-  const [history, setHistory] = useState<
-    { document: LoadedDocument; scrollTop: number; currentHeadingId: string | null }[]
-  >([])
 
-  const [doc, setDoc] = useState<LoadedDocument>(() => {
-    const absPath = filePath ? resolve(filePath) : undefined
-    return {
-      nodes: initialNodes,
-      toc: initialToc,
-      headingIds: initialHeadingIds,
-      frontmatter: initialFrontmatter,
-      fileLabel: initialFileLabel,
-      headingLines: initialHeadingLines,
-      absPath,
-      dir: absPath ? dirname(absPath) : undefined,
-    }
-  })
-  const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = doc
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
-
-  const [focus, setFocus] = useState<Focus>('viewer')
   const [currentHeadingId, setCurrentHeadingId] = useState<string | null>(null)
+  const [focus, setFocus] = useState<Focus>('viewer')
   const [expanded, setExpanded] = useState<Map<string, boolean>>(() => new Map())
   const [tocCursorId, setTocCursorId] = useState<string | null>(null)
   const [search, setSearch] = useState<SearchState | null>(null)
@@ -84,8 +62,44 @@ export function App({
   const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
     // At startup the H1 (if any) sits at the top of the viewport — seed it so
     // the breadcrumb's hide-when-visible rule fires on the first paint.
-    toc[0]?.level === 1 ? new Set([toc[0].id]) : new Set(),
+    initialToc[0]?.level === 1 ? new Set([initialToc[0].id]) : new Set(),
   )
+
+  const onError = useCallback((text: string) => setStatus({ kind: 'error', text }), [])
+  const captureScroll = useCallback(
+    () => ({ scrollTop: viewerRef.current?.getScrollTop() ?? 0, currentHeadingId }),
+    [currentHeadingId],
+  )
+  const initialDoc = useMemo(
+    () =>
+      seedDocFromProps({
+        nodes: initialNodes,
+        toc: initialToc,
+        headingIds: initialHeadingIds,
+        frontmatter: initialFrontmatter,
+        fileLabel: initialFileLabel,
+        headingLines: initialHeadingLines,
+        filePath,
+      }),
+    // Seed computed once from the launch props; later docs come from the hook.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  )
+  const nav = useDocumentNavigation({ initialDoc, captureScroll, onError })
+  const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = nav.doc
+
+  const applyReset = useCallback((reset: DocReset) => {
+    if (reset === 'full') {
+      setFocus('viewer')
+      setCurrentHeadingId(null)
+      setSearch(null)
+      setExpanded(new Map())
+      setTocCursorId(null)
+      setVisibleHeadingIds(new Set())
+    } else if (reset === 'searchOnly') {
+      setSearch(null)
+    }
+  }, [])
 
   const toggleExpanded = useCallback(
     (id: string) => {
@@ -95,57 +109,6 @@ export function App({
   )
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
   const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
-
-  const resetForNewDoc = useCallback(() => {
-    setFocus('viewer')
-    setCurrentHeadingId(null)
-    setSearch(null)
-    setExpanded(new Map())
-    setTocCursorId(null)
-    setVisibleHeadingIds(new Set())
-  }, [])
-
-  const followLink = useCallback(
-    (href: string) => {
-      const target = classifyHref({ baseDir: doc.dir, href })
-      if (target.kind === 'ignore') return
-      if (target.kind === 'anchor') {
-        viewerRef.current?.scrollChildToTop(target.id)
-        return
-      }
-      // A link back into the current file is an in-doc jump, not a reload.
-      if (target.absPath === doc.absPath) {
-        if (target.anchor) viewerRef.current?.scrollChildToTop(target.anchor)
-        else viewerRef.current?.scrollTo(0)
-        return
-      }
-      const scrollTop = viewerRef.current?.getScrollTop() ?? 0
-      loadDocument(target.absPath)
-        .then(next => {
-          setHistory(h => [...h, { document: doc, scrollTop, currentHeadingId }])
-          resetForNewDoc()
-          pendingReanchorRef.current = target.anchor ?? null
-          setDoc(next)
-        })
-        .catch(() => {
-          setStatus({ kind: 'error', text: `Cannot open ${fileLabelFor(target.absPath)}` })
-        })
-    },
-    [doc, currentHeadingId, resetForNewDoc],
-  )
-
-  const goBack = useCallback(() => {
-    const entry = history[history.length - 1]
-    if (!entry) return
-    resetForNewDoc()
-    pendingReanchorRef.current = null
-    restoreScrollRef.current = {
-      scrollTop: entry.scrollTop,
-      currentHeadingId: entry.currentHeadingId,
-    }
-    setDoc(entry.document)
-    setHistory(h => h.slice(0, -1))
-  }, [history, resetForNewDoc])
 
   const isTocShown = toc.length > 0 && tocVisible
   const { width: termWidth } = useTerminalDimensions()
@@ -175,11 +138,11 @@ export function App({
         toc,
         id: lastHeadingId,
         fileLabel,
-        backBadgeRows: backBadgeRowsForDepth(history.length),
+        backBadgeRows: backBadgeRowsForDepth(nav.historyDepth),
       })
     : 0
 
-  const backLabel = history[history.length - 1]?.document.fileLabel
+  const backLabel = nav.backLabel
   const state = useMemo<AppState>(
     () => ({
       focus,
@@ -201,10 +164,10 @@ export function App({
       setVisibleHeadingIds,
       contentWidth,
       contentMaxWidth,
-      dir: doc.dir,
-      followLink,
-      goBack,
-      historyDepth: history.length,
+      dir: nav.doc.dir,
+      followLink: nav.follow,
+      goBack: nav.back,
+      historyDepth: nav.historyDepth,
       backLabel,
       status,
       setStatus,
@@ -223,10 +186,10 @@ export function App({
       visibleHeadingIds,
       contentWidth,
       contentMaxWidth,
-      doc.dir,
-      followLink,
-      goBack,
-      history.length,
+      nav.doc.dir,
+      nav.follow,
+      nav.back,
+      nav.historyDepth,
       backLabel,
       status,
     ],
@@ -269,59 +232,39 @@ export function App({
     return () => clearTimeout(tid)
   }, [status])
 
-  // After any doc swap (editor reload, followLink, goBack) position scroll once
-  // the new content mounts. restoreScrollRef (goBack) wins; else pin the pending
-  // heading id (editor reload / followLink anchor); else go to top. On first mount
-  // both refs are null and this harmlessly re-pins the top.
-  //
-  // Keyed on `nodes` only: safe because `doc` updates atomically, so toc/headingIds/
-  // fileLabel captured here are always fresh whenever `nodes` changes.
-  useEffect(() => {
-    const restore = restoreScrollRef.current
-    const target = pendingReanchorRef.current
-    restoreScrollRef.current = null
-    pendingReanchorRef.current = null
+  // Consume the latest navigation intent. Reset runs synchronously (pre-paint) so
+  // the new doc never renders against a stale currentHeadingId; the scroll defers
+  // one tick because a just-swapped box is committed but unlaid-out (reads y=0).
+  // nav.intent and nav.doc update in the same render, so headingIds/toc/fileLabel
+  // closed over here are always consistent with the intent.
+  useLayoutEffect(() => {
+    const it = nav.intent
+    if (!it) return
+    applyReset(it.reset)
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      if (restore) {
-        v.scrollTo(restore.scrollTop)
-        if (restore.currentHeadingId) setCurrentHeadingId(restore.currentHeadingId)
-        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
-        return
-      }
-      // Pin the anchor target post-layout: right after a doc swap its box is
-      // committed but unlaid-out (reads y=0), so an effect-time scroll would
-      // strand the reader at the top. onFrame runs the pin once geometry is real;
-      // its scroll re-syncs the breadcrumb, so no visibility bookkeeping here.
-      // setCurrentHeadingId seeds a sensible value before that frame lands.
-      if (target && headingIds.includes(target)) {
-        const height = breadcrumbHeightForHeading({
-          toc,
-          id: target,
-          fileLabel,
-          backBadgeRows: backBadgeRowsForDepth(history.length),
-        })
-        v.pinHeadingPostLayout(target, height)
-        setCurrentHeadingId(target)
-      } else {
-        v.scrollTo(0)
-        setCurrentHeadingId(null)
-        setVisibleHeadingIds(v.getVisibleHeadingIds(headingIds))
-      }
+      applyScrollIntent({
+        viewer: v,
+        scroll: it.scroll,
+        toc,
+        headingIds,
+        fileLabel,
+        historyDepth: nav.historyDepth,
+        setCurrentHeadingId,
+        setVisibleHeadingIds,
+      })
     }, 0)
     return () => clearTimeout(tid)
-  }, [nodes])
+  }, [nav.intent])
 
   const onOpenEditor = useCallback(() => {
-    // Edit the document currently on screen, not the CLI-arg file: followLink/
-    // goBack may have swapped `doc` to another file since launch.
-    const activePath = doc.absPath
+    // Edit the doc currently on screen, not the CLI-arg file: nav may have swapped it.
+    const activePath = nav.doc.absPath
     if (!activePath) {
       setStatus({ kind: 'error', text: 'Cannot edit: reading from stdin' })
       return
     }
-    pendingReanchorRef.current = currentHeadingId
     const line = currentHeadingId ? headingLines[currentHeadingId] : undefined
     const argv = buildEditorArgv({
       command: resolveEditorCommand(process.env),
@@ -331,19 +274,10 @@ export function App({
     const result = openInEditor({ renderer, argv })
     if (!result.ok) {
       setStatus({ kind: 'error', text: `Editor failed: ${result.error}` })
-      pendingReanchorRef.current = null
       return
     }
-    loadDocument(activePath)
-      .then(next => {
-        setSearch(null)
-        setDoc(next)
-      })
-      .catch(() => {
-        setStatus({ kind: 'error', text: 'Reload failed: file unreadable' })
-        pendingReanchorRef.current = null
-      })
-  }, [doc.absPath, currentHeadingId, renderer, headingLines])
+    nav.reload()
+  }, [nav, currentHeadingId, renderer, headingLines])
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
@@ -384,7 +318,7 @@ export function App({
             nodes={nodes}
             frontmatter={frontmatter}
             tailReserve={tailReserve}
-            docKey={doc.absPath ?? '<stdin>'}
+            docKey={nav.doc.absPath ?? '<stdin>'}
             onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
           />
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
@@ -401,4 +335,72 @@ export function App({
       </box>
     </AppStateContext.Provider>
   )
+}
+
+function seedDocFromProps(props: {
+  nodes: Node[]
+  toc: TocEntry[]
+  headingIds: string[]
+  frontmatter: FrontmatterRow[]
+  fileLabel?: string
+  headingLines: Record<string, number>
+  filePath?: string
+}): LoadedDocument {
+  const absPath = props.filePath ? resolve(props.filePath) : undefined
+  return {
+    nodes: props.nodes,
+    toc: props.toc,
+    headingIds: props.headingIds,
+    frontmatter: props.frontmatter,
+    fileLabel: props.fileLabel,
+    headingLines: props.headingLines,
+    absPath,
+    dir: absPath ? dirname(absPath) : undefined,
+  }
+}
+
+function applyScrollIntent(params: {
+  viewer: ScrollboxHandle
+  scroll: ScrollIntent
+  toc: TocEntry[]
+  headingIds: string[]
+  fileLabel?: string
+  historyDepth: number
+  setCurrentHeadingId: (id: string | null) => void
+  setVisibleHeadingIds: (s: Set<string>) => void
+}): void {
+  const { viewer, scroll, toc, headingIds, fileLabel, historyDepth } = params
+  const { setCurrentHeadingId, setVisibleHeadingIds } = params
+
+  if (scroll.kind === 'restore') {
+    viewer.scrollTo(scroll.scrollTop)
+    if (scroll.currentHeadingId) setCurrentHeadingId(scroll.currentHeadingId)
+    setVisibleHeadingIds(viewer.getVisibleHeadingIds(headingIds))
+    return
+  }
+
+  if (scroll.kind === 'anchor' && !scroll.postSwap) {
+    viewer.scrollChildToTop(scroll.headingId)
+    return
+  }
+
+  if (scroll.kind === 'anchor' && headingIds.includes(scroll.headingId)) {
+    // Pin post-layout: the box is committed but reads y=0 right after a swap, so
+    // pinHeadingPostLayout runs the scroll once geometry is real; its scroll
+    // re-syncs the breadcrumb, so no visibility bookkeeping here.
+    const height = breadcrumbHeightForHeading({
+      toc,
+      id: scroll.headingId,
+      fileLabel,
+      backBadgeRows: backBadgeRowsForDepth(historyDepth),
+    })
+    viewer.pinHeadingPostLayout(scroll.headingId, height)
+    setCurrentHeadingId(scroll.headingId)
+    return
+  }
+
+  // `top`, or a postSwap anchor whose id is absent from the swapped-in doc.
+  viewer.scrollTo(0)
+  setCurrentHeadingId(null)
+  setVisibleHeadingIds(viewer.getVisibleHeadingIds(headingIds))
 }
