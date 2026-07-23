@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useRenderer, useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { NodeList } from './blocks/NodeRenderer'
 import { Frontmatter } from './blocks/Frontmatter'
 import { ScrollIndicators } from './ScrollIndicators'
+import { useProgressiveMount } from './useProgressiveMount'
 import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { seedMatchIndex } from '../lib/match-nav'
-import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
 import { projectionMap } from '../lib/visible-text'
 import {
   childToTopDelta,
@@ -73,39 +73,13 @@ export function Viewer({
   const projectionsRef = useRef(projections)
   projectionsRef.current = projections
 
-  const [mountedCount, setMountedCount] = useState(() =>
-    initialMountCount({ nodes, contentWidth, viewportHeight: height }),
-  )
-
-  // Reset progressive mount when the document swaps (follow-link / go-back).
-  // "Adjust state on prop change" during render — no stale frame, and the
-  // Viewer instance (scroll handle, listeners, thumb override) is preserved.
-  const prevNodes = useRef(nodes)
-  if (prevNodes.current !== nodes) {
-    prevNodes.current = nodes
-    setMountedCount(initialMountCount({ nodes, contentWidth, viewportHeight: height }))
-  }
-
-  const fullyMounted = mountedCount >= nodes.length
+  const { mountedNodes, estimatedRemaining, fullyMounted } = useProgressiveMount({
+    nodes,
+    contentWidth,
+    viewportHeight: height,
+  })
   const fullyMountedRef = useRef(fullyMounted)
   fullyMountedRef.current = fullyMounted
-
-  // Grow one chunk per task until the whole doc is mounted. setTimeout(0)
-  // yields between commits so keyboard/scroll stay live during mount.
-  useEffect(() => {
-    if (fullyMounted) return
-    const tid = setTimeout(() => {
-      setMountedCount(c => Math.min(c + CHUNK_SIZE, nodes.length))
-    }, 0)
-    return () => clearTimeout(tid)
-  }, [fullyMounted, mountedCount, nodes])
-
-  const mountedNodes = fullyMounted ? nodes : nodes.slice(0, mountedCount)
-  // Spacer stands in for unmounted content so scrollbar/G read ~right.
-  const estimatedRemaining = useMemo(
-    () => (fullyMounted ? 0 : estimateTotalRows(nodes.slice(mountedCount), contentWidth)),
-    [fullyMounted, nodes, mountedCount, contentWidth],
-  )
 
   useEffect(() => {
     const box = localRef.current
