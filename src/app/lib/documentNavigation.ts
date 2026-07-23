@@ -1,3 +1,7 @@
+import { useCallback, useReducer } from 'react'
+
+import { classifyHref } from './links'
+import { loadDocument, fileLabel as fileLabelFor } from './loadDocument'
 import type { LoadedDocument } from './loadDocument'
 
 export type HistoryEntry = {
@@ -73,5 +77,75 @@ export function navReducer(state: NavState, action: NavAction): NavState {
     }
     case 'IN_DOC_JUMP':
       return { ...state, intent: { scroll: action.scroll, reset: 'none', seq } }
+  }
+}
+
+export function useDocumentNavigation(params: {
+  initialDoc: LoadedDocument
+  captureScroll: () => { scrollTop: number; currentHeadingId: string | null }
+  onError: (text: string) => void
+}) {
+  const { initialDoc, captureScroll, onError } = params
+  const [state, doDispatch] = useReducer(navReducer, {
+    doc: initialDoc,
+    history: [],
+    intent: null,
+  })
+
+  const follow = useCallback(
+    (href: string) => {
+      const target = classifyHref({ baseDir: state.doc.dir, href })
+      if (target.kind === 'ignore') return
+      if (target.kind === 'anchor') {
+        doDispatch({
+          type: 'IN_DOC_JUMP',
+          scroll: { kind: 'anchor', headingId: target.id, postSwap: false },
+        })
+        return
+      }
+      // A link back into the current file is an in-doc jump, not a reload.
+      if (target.absPath === state.doc.absPath) {
+        const scroll: ScrollIntent = target.anchor
+          ? { kind: 'anchor', headingId: target.anchor, postSwap: false }
+          : { kind: 'top' }
+        doDispatch({ type: 'IN_DOC_JUMP', scroll })
+        return
+      }
+      const { scrollTop, currentHeadingId } = captureScroll()
+      loadDocument(target.absPath)
+        .then(next => {
+          doDispatch({
+            type: 'FOLLOW_LOADED',
+            doc: next,
+            from: { document: state.doc, scrollTop, currentHeadingId },
+            anchor: target.anchor,
+          })
+        })
+        .catch(() => onError(`Cannot open ${fileLabelFor(target.absPath)}`))
+    },
+    [state.doc, captureScroll, onError],
+  )
+
+  const back = useCallback(() => doDispatch({ type: 'BACK' }), [])
+
+  const reload = useCallback(() => {
+    const path = state.doc.absPath
+    if (!path) return
+    const { currentHeadingId } = captureScroll()
+    loadDocument(path)
+      .then(next => doDispatch({ type: 'RELOAD_LOADED', doc: next, anchor: currentHeadingId }))
+      .catch(() => onError('Reload failed: file unreadable'))
+  }, [state.doc.absPath, captureScroll, onError])
+
+  const backLabel = state.history[state.history.length - 1]?.document.fileLabel
+
+  return {
+    doc: state.doc,
+    intent: state.intent,
+    follow,
+    back,
+    reload,
+    backLabel,
+    historyDepth: state.history.length,
   }
 }
