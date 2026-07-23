@@ -203,6 +203,78 @@ describe('resolveMatchY', () => {
     }
     expect(resolveMatchY(geom, match, proj)).toBe(20)
   })
+
+  test('maps offset to a wrapped visual line via lineStartCols', () => {
+    // targetText === plainText → alignOffset is identity; offset 22 with
+    // lineStartCols [0,10,20] resolves to visual line 2 (greatest i where col<=22).
+    const proj = new Map<string, BlockProjection>([
+      [
+        'blk',
+        {
+          blockElementId: 'blk',
+          blockPath: [0],
+          runs: [
+            {
+              key: 'r0',
+              segments: [{ element: 0, text: 'abcdefghijklmnopqrstuvwxy', searchable: true }],
+            },
+          ],
+        },
+      ],
+    ])
+    const geom = makeGeometry({
+      positions: { blk: { y: 100 } },
+      bearers: {
+        blk: [
+          {
+            y: 100,
+            plainText: 'abcdefghijklmnopqrstuvwxy',
+            lineInfo: { lineStartCols: [0, 10, 20] },
+          },
+        ],
+      },
+    })
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 22,
+      length: 1,
+    }
+    // bearer.y(100) + visualLineForOffset([0,10,20], 22)=2 → 102.
+    expect(resolveMatchY(geom, match, proj)).toBe(102)
+  })
+
+  test('aligns through whitespace divergence between projected and rendered text', () => {
+    // projected 'ab' vs rendered ' ab': alignOffset(projected, rendered, 1) walks
+    // past the leading rendered space (j++ only) → returns 2, not the identity 1.
+    // With lineStartCols [0,2], aligned 2 → line 1 (identity 1 would be line 0),
+    // so the +1 result proves the divergence branch ran.
+    const proj = new Map<string, BlockProjection>([
+      [
+        'blk',
+        {
+          blockElementId: 'blk',
+          blockPath: [0],
+          runs: [{ key: 'r0', segments: [{ element: 0, text: 'ab', searchable: true }] }],
+        },
+      ],
+    ])
+    const geom = makeGeometry({
+      positions: { blk: { y: 100 } },
+      bearers: {
+        blk: [{ y: 100, plainText: ' ab', lineInfo: { lineStartCols: [0, 2] } }],
+      },
+    })
+    const match: Match = {
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 1,
+      length: 1,
+    }
+    expect(resolveMatchY(geom, match, proj)).toBe(101)
+  })
 })
 
 describe('matchScrollDelta', () => {
