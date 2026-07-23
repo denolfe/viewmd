@@ -4,36 +4,27 @@ import { createRoot } from '@opentui/react'
 import { StickyHeader } from './StickyHeader'
 import { AppStateContext } from '../state'
 import type { AppState } from '../state'
+import { createNoopCommands } from '../lib/commands'
 
 function makeStub(overrides: Partial<AppState> = {}): AppState {
   return {
     focus: 'viewer',
-    setFocus: mock(),
     currentHeadingId: null,
-    setCurrentHeadingId: mock(),
     // Unused by StickyHeader; provided so the context object type-checks.
     viewerRef: { current: null },
     expanded: new Map(),
-    toggleExpanded: mock(),
     tocCursorId: null,
-    setTocCursorId: mock(),
     search: null,
-    setSearch: mock(),
-    toggleMouse: mock(),
-    toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
-    setVisibleHeadingIds: mock(),
     contentWidth: 80,
     dir: undefined,
-    followLink: mock(),
-    goBack: mock(),
-    commands: { goBack: mock() },
+    // Real Commands surface with an assertable goBack for the back-badge click test.
+    commands: { ...createNoopCommands(), goBack: mock() },
     historyDepth: 0,
     contentMaxWidth: 80,
     status: { kind: 'idle' },
-    setStatus: mock(),
     ...overrides,
-  } as AppState
+  }
 }
 
 async function renderHeader(stub: AppState) {

@@ -4,36 +4,27 @@ import { createRoot } from '@opentui/react'
 import { StickyHeader } from './StickyHeader'
 import { AppStateContext } from '../state'
 import type { AppState } from '../state'
+import { createNoopCommands } from '../lib/commands'
 import { FILE_ROW_ID } from '../lib/toc-util'
 import type { TocEntry } from '../lib/ast'
 
 function makeStub(overrides: Partial<AppState> = {}): AppState {
   return {
     focus: 'viewer',
-    setFocus: mock(),
     currentHeadingId: null,
-    setCurrentHeadingId: mock(),
     viewerRef: { current: null },
     expanded: new Map(),
-    toggleExpanded: mock(),
     tocCursorId: null,
-    setTocCursorId: mock(),
     search: null,
-    setSearch: mock(),
-    toggleMouse: mock(),
-    toggleTocVisible: mock(),
     visibleHeadingIds: new Set<string>(),
-    setVisibleHeadingIds: mock(),
     contentWidth: 80,
     dir: undefined,
-    followLink: mock(),
-    goBack: mock(),
+    commands: createNoopCommands(),
     historyDepth: 0,
     contentMaxWidth: 80,
     status: { kind: 'idle' },
-    setStatus: mock(),
     ...overrides,
-  } as AppState
+  }
 }
 
 function tocEntry(partial: Partial<TocEntry> & Pick<TocEntry, 'id' | 'level' | 'text'>): TocEntry {
