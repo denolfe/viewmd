@@ -6,8 +6,8 @@ import type { BoxGeometry } from './viewport-geometry'
 /**
  * Rows the overlay occludes once `id` is pinned as the current heading: the
  * ancestor stack (self excluded, since a pinned heading sits visible below the
- * fold) plus the back badge when a history exists. The offset a jump pins below,
- * the resolver's "near top" offset, and the scrollbox tail reserve.
+ * fold) plus the back badge when a history exists. This is the offset a jump
+ * pins below, the resolver's "near top" offset, and the scrollbox tail reserve.
  */
 export function foldOffset(params: {
   toc: TocEntry[]
