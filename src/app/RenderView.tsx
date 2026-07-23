@@ -4,6 +4,7 @@ import type { AppState, ScrollboxHandle } from './state'
 import { NodeList } from './components/blocks/NodeRenderer'
 import { Frontmatter } from './components/blocks/Frontmatter'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
+import { createCommands } from './lib/commands'
 import type { Node } from './lib/ast'
 import type { FrontmatterRow } from './lib/frontmatter'
 
@@ -21,6 +22,42 @@ export function RenderView({
   contentMaxWidth = CONTENT_MAX_WIDTH,
 }: Props) {
   const viewerRef = useRef<ScrollboxHandle | null>(null)
+
+  // Static one-shot render has no interaction; commands exist only to satisfy the
+  // AppState shape, wired to no-op setters.
+  const commands = useMemo(
+    () =>
+      createCommands({
+        viewerRef,
+        doc: { nodes, toc: [], headingIds: [] },
+        viewportHeight: 0,
+        read: {
+          currentHeadingId: null,
+          visibleHeadingIds: new Set(),
+          expanded: new Map(),
+          tocCursorId: null,
+          search: null,
+          focus: 'viewer',
+          tocVisible: true,
+          historyDepth: 0,
+        },
+        set: {
+          focus: () => {},
+          currentHeadingId: () => {},
+          visibleHeadingIds: () => {},
+          tocCursorId: () => {},
+          search: () => {},
+          expanded: () => {},
+          toggleMouse: () => {},
+          toggleTocVisible: () => {},
+          toggleExpanded: () => {},
+        },
+        onQuit: () => {},
+        onOpenEditor: () => {},
+        nav: { follow: () => {}, back: () => {} },
+      }),
+    [nodes],
+  )
 
   const state = useMemo<AppState>(
     () => ({
@@ -50,8 +87,9 @@ export function RenderView({
       backLabel: undefined,
       status: { kind: 'idle' },
       setStatus: () => {},
+      commands,
     }),
-    [width, contentMaxWidth],
+    [width, contentMaxWidth, commands],
   )
 
   return (

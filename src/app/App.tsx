@@ -6,7 +6,8 @@ import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
-import { dispatch, syncHeadings } from './lib/dispatch'
+import { dispatch } from './lib/dispatch'
+import { createCommands } from './lib/commands'
 import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
@@ -141,57 +142,6 @@ export function App({
     : 0
 
   const backLabel = nav.backLabel
-  const state = useMemo<AppState>(
-    () => ({
-      focus,
-      setFocus,
-      currentHeadingId,
-      setCurrentHeadingId,
-      viewerRef,
-      expanded,
-      toggleExpanded,
-      tocCursorId,
-      setTocCursorId,
-      search,
-      setSearch,
-      mouseEnabled,
-      toggleMouse,
-      tocVisible,
-      toggleTocVisible,
-      visibleHeadingIds,
-      setVisibleHeadingIds,
-      contentWidth,
-      contentMaxWidth,
-      dir: nav.doc.dir,
-      followLink: nav.follow,
-      goBack: nav.back,
-      historyDepth: nav.historyDepth,
-      backLabel,
-      status,
-      setStatus,
-    }),
-    [
-      focus,
-      currentHeadingId,
-      tocCursorId,
-      search,
-      expanded,
-      mouseEnabled,
-      toggleExpanded,
-      toggleMouse,
-      tocVisible,
-      toggleTocVisible,
-      visibleHeadingIds,
-      contentWidth,
-      contentMaxWidth,
-      nav.doc.dir,
-      nav.follow,
-      nav.back,
-      nav.historyDepth,
-      backLabel,
-      status,
-    ],
-  )
 
   useEffect(() => {
     if (!search?.committed || search.index < 0) return
@@ -277,28 +227,126 @@ export function App({
     nav.reload()
   }, [nav, currentHeadingId, renderer, headingLines])
 
+  const commands = useMemo(
+    () =>
+      createCommands({
+        viewerRef,
+        doc: { nodes, toc, headingIds, fileLabel },
+        viewportHeight: renderer.height,
+        read: {
+          currentHeadingId,
+          visibleHeadingIds,
+          expanded,
+          tocCursorId,
+          search,
+          focus,
+          tocVisible,
+          historyDepth: nav.historyDepth,
+        },
+        set: {
+          focus: setFocus,
+          currentHeadingId: setCurrentHeadingId,
+          visibleHeadingIds: setVisibleHeadingIds,
+          tocCursorId: setTocCursorId,
+          search: setSearch,
+          expanded: setExpanded,
+          toggleMouse,
+          toggleTocVisible,
+          toggleExpanded,
+        },
+        onQuit: () => {
+          // Silence the highlight-failed warning tree-sitter logs when
+          // destroyTreeSitterClient rejects in-flight requests during shutdown.
+          console.warn = () => {}
+          renderer.destroy()
+        },
+        onOpenEditor,
+        nav: { follow: nav.follow, back: nav.back },
+      }),
+    [
+      nodes,
+      toc,
+      headingIds,
+      fileLabel,
+      renderer,
+      currentHeadingId,
+      visibleHeadingIds,
+      expanded,
+      tocCursorId,
+      search,
+      focus,
+      tocVisible,
+      nav.historyDepth,
+      nav.follow,
+      nav.back,
+      toggleMouse,
+      toggleTocVisible,
+      toggleExpanded,
+      onOpenEditor,
+    ],
+  )
+
+  const state = useMemo<AppState>(
+    () => ({
+      focus,
+      setFocus,
+      currentHeadingId,
+      setCurrentHeadingId,
+      viewerRef,
+      expanded,
+      toggleExpanded,
+      tocCursorId,
+      setTocCursorId,
+      search,
+      setSearch,
+      mouseEnabled,
+      toggleMouse,
+      tocVisible,
+      toggleTocVisible,
+      visibleHeadingIds,
+      setVisibleHeadingIds,
+      contentWidth,
+      contentMaxWidth,
+      dir: nav.doc.dir,
+      followLink: nav.follow,
+      goBack: nav.back,
+      historyDepth: nav.historyDepth,
+      backLabel,
+      status,
+      setStatus,
+      commands,
+    }),
+    [
+      focus,
+      currentHeadingId,
+      tocCursorId,
+      search,
+      expanded,
+      mouseEnabled,
+      toggleExpanded,
+      toggleMouse,
+      tocVisible,
+      toggleTocVisible,
+      visibleHeadingIds,
+      contentWidth,
+      contentMaxWidth,
+      nav.doc.dir,
+      nav.follow,
+      nav.back,
+      nav.historyDepth,
+      backLabel,
+      status,
+      commands,
+    ],
+  )
+
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
     const action = mapKey(ev, focus, { searchActive: !!search })
-    dispatch(
-      action,
-      state,
-      toc,
-      headingIds,
-      renderer.height,
-      () => {
-        // Silence the highlight-failed warning that tree-sitter logs when
-        // destroyTreeSitterClient rejects in-flight requests during shutdown.
-        console.warn = () => {}
-        renderer.destroy()
-      },
-      fileLabel,
-      onOpenEditor,
-    )
+    dispatch(action, commands)
   })
 
-  const dispatchTocAction = (action: Action) =>
-    dispatch(action, state, toc, headingIds, renderer.height, () => {}, fileLabel)
+  const dispatchTocAction = (action: Action) => dispatch(action, commands)
   const onEntryJump = (id: string) => dispatchTocAction({ kind: 'tocJump', id })
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
   // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
@@ -317,7 +365,7 @@ export function App({
             frontmatter={frontmatter}
             tailReserve={tailReserve}
             docKey={nav.doc.absPath ?? '<stdin>'}
-            onScroll={() => syncHeadings(state, toc, headingIds, fileLabel)}
+            onScroll={() => commands.syncFromScroll()}
           />
           {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
               makes it flash its own vertical scrollbar for one frame before layout

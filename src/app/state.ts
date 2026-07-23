@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import type { Match } from './lib/search'
 import type { Focus } from './lib/keys'
 import type { ResolvedMark } from './lib/scroll-marks'
+import type { Commands } from './lib/commands'
 
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
@@ -129,6 +130,8 @@ export type AppState = {
   /** Bottom statusline state; idle shows the viewmd badge + filename. */
   status: Status
   setStatus: (s: Status) => void
+
+  commands: Commands
 }
 
 export const AppStateContext = createContext<AppState | null>(null)
