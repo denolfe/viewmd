@@ -95,6 +95,24 @@ describe('renderAnsi', () => {
     },
   )
 
+  test('trailing background padding on styled lines is trimmed', async () => {
+    // H1 renders as a <text bg=... fg=...> with a single trailing space
+    // ({` `} after the inline content) inside the styled span, so the raw
+    // captured line ends in `... Hello \x1b[0m` — a space immediately before
+    // the reset escape, not at the literal end of the string.
+    const { nodes } = buildTree('# Hello\n')
+    const out = await renderAnsi({ nodes, width: 80, maxHeight: 200 })
+    const headingLine = out.split('\n').find(l => stripAnsi(l).includes('Hello'))
+    expect(headingLine).toBeDefined()
+    // Assert directly on the raw (non-stripped) line: the trailing space must
+    // be gone even though it sits inside the styled bg span, right before the
+    // reset escape rather than at the string's literal end.
+    expect(headingLine ?? '').not.toMatch(/ \x1b\[0m$/)
+    expect(stripAnsi(headingLine ?? '')).not.toMatch(/ $/)
+    // and the styling on 'Hello' itself is preserved (still has an escape)
+    expect(headingLine ?? '').toMatch(/\x1b\[[0-9;]*m/)
+  })
+
   test('trims rows that contain only ANSI background escapes', async () => {
     const { nodes } = buildTree('# One line\n')
     const out = await renderAnsi({ nodes, width: 80, maxHeight: 500 })

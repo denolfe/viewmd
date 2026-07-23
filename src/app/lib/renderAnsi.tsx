@@ -150,10 +150,12 @@ function restoreStdoutBlocking(): void {
 
 /** Convert a single captured line to an ANSI-colored string. */
 function lineToAnsi(line: CapturedLine): string {
+  const spans = trimTrailingSpaceCells(line.spans)
+
   let out = ''
   let needsReset = false
 
-  for (const span of line.spans) {
+  for (const span of spans) {
     if (span.text === '') continue
 
     const codes = spanEscapeCodes(span)
@@ -170,7 +172,32 @@ function lineToAnsi(line: CapturedLine): string {
 
   if (needsReset) out += '\x1b[0m'
 
-  return out.replace(/\s+$/, '')
+  return out
+}
+
+/**
+ * Drop trailing space characters regardless of the span's styling (colored
+ * padding included), and drop spans emptied by the trim. Interior content is
+ * untouched.
+ */
+function trimTrailingSpaceCells(spans: CapturedLine['spans']): CapturedLine['spans'] {
+  const out = spans.slice()
+  while (out.length > 0) {
+    const last = out[out.length - 1]
+    if (!last) {
+      out.pop()
+      continue
+    }
+    const trimmed = last.text.replace(/ +$/, '')
+    if (trimmed === last.text) break
+    if (trimmed === '') {
+      out.pop()
+    } else {
+      out[out.length - 1] = { ...last, text: trimmed }
+      break
+    }
+  }
+  return out
 }
 
 /**
