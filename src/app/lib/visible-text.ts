@@ -73,6 +73,7 @@ export function listItemRunText(params: {
   item: ListItem
   ordered: boolean
   index: number
+  start?: number
 }): string {
   return listItemSegments(params)
     .map(s => s.text)
@@ -114,9 +115,15 @@ export function alignOffset(projected: string, rendered: string, offset: number)
   return j
 }
 
-export function listMarkerText(item: ListItem, ordered: boolean, index: number): string {
+export function listMarkerText(params: {
+  item: ListItem
+  ordered: boolean
+  index: number
+  start?: number
+}): string {
+  const { item, ordered, index, start } = params
   if (item.task) return item.checked ? '[✓] ' : '[ ] '
-  return ordered ? `${index + 1}. ` : '- '
+  return ordered ? `${(start ?? 1) + index}. ` : '- '
 }
 
 export function headingPrefixText(level: number): string {
@@ -166,7 +173,7 @@ function walkChild(n: Node, p: number[], out: BlockProjection[]): void {
       })
       break
     case 'list':
-      projectListItems(n.ordered, n.items, p, out)
+      projectListItems(n.ordered, n.start, n.items, p, out)
       break
     case 'blockquote':
       walkBlocks(n.children, p, out)
@@ -210,6 +217,7 @@ function walkChild(n: Node, p: number[], out: BlockProjection[]): void {
 
 function projectListItems(
   ordered: boolean,
+  start: number | undefined,
   items: ListItem[],
   listPath: number[],
   out: BlockProjection[],
@@ -223,7 +231,7 @@ function projectListItems(
     out.push({
       blockElementId: listItemRowId(itemPath),
       blockPath: itemPath,
-      runs: [{ key: 'main', segments: listItemSegments({ item, ordered, index: j }) }],
+      runs: [{ key: 'main', segments: listItemSegments({ item, ordered, index: j, start }) }],
     })
     // Child paths must match render paths (List.tsx ItemBody) even though the
     // first child was consumed by the joined marker run above.
@@ -237,9 +245,14 @@ function projectListItems(
 }
 
 /** Segments for a list-item row's 'main' run: marker (element 0) + first-paragraph inline (element 1). */
-function listItemSegments(params: { item: ListItem; ordered: boolean; index: number }): Segment[] {
-  const { item, ordered, index } = params
-  const marker = seg(listMarkerText(item, ordered, index), 0)
+function listItemSegments(params: {
+  item: ListItem
+  ordered: boolean
+  index: number
+  start?: number
+}): Segment[] {
+  const { item, ordered, index, start } = params
+  const marker = seg(listMarkerText({ item, ordered, index, start }), 0)
   const [first] = item.children
   return first?.kind === 'paragraph' ? [marker, ...inlineSegments(first.inline, 1)] : [marker]
 }

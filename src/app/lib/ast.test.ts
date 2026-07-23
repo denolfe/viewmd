@@ -38,6 +38,12 @@ describe('buildTree', () => {
     expect(nodes[0]).toEqual({ kind: 'image', alt: 'a', src: 'b.png' })
   })
 
+  test('ordered list captures source start', () => {
+    const { nodes } = buildTree('5. five\n6. six\n')
+    const list = nodes.find(n => n.kind === 'list')
+    expect(list).toMatchObject({ kind: 'list', ordered: true, start: 5 })
+  })
+
   test('<kbd> renders as a kbd inline node', () => {
     const { nodes } = buildTree('Press <kbd>Ctrl+C</kbd> to quit.')
     const para = nodes.find(n => n.kind === 'paragraph')
