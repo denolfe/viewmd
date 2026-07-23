@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { foldOffset, aboveOffset } from './heading-resolution'
+import { foldOffset, aboveOffset, resolveHeadings } from './heading-resolution'
+import { makeGeometry } from './viewport-geometry.testutil'
 import type { TocEntry } from './ast'
 
 const toc: TocEntry[] = [
@@ -58,5 +59,39 @@ describe('aboveOffset', () => {
 
   test('top-level H1: only its own crumb -> 1', () => {
     expect(aboveOffset({ toc, id: 'a' })).toBe(1)
+  })
+})
+
+describe('resolveHeadings', () => {
+  const headingIds = ['a', 'b', 'c', 'd']
+
+  test('empty headingIds resolves to null / empty set', () => {
+    const geom = makeGeometry()
+    const res = resolveHeadings({ geom, toc, headingIds: [], historyDepth: 0 })
+    expect(res.currentHeadingId).toBeNull()
+    expect(res.visibleHeadingIds.size).toBe(0)
+  })
+
+  test('heading behind the overlay becomes current and is excluded from visible', () => {
+    // a (H1) scrolled above; c (L3 under a>b) sits at row 0, behind the overlay
+    // (its fold offset is 2); d far below. The fixed point must make c current
+    // and drop it from the visible set so it renders as a crumb, not a ghost.
+    const geom = makeGeometry({
+      positions: { a: { y: -5 }, b: { y: -3 }, c: { y: 0 }, d: { y: 50 } },
+    })
+    const res = resolveHeadings({ geom, toc, headingIds, historyDepth: 0 })
+    expect(res.currentHeadingId).toBe('c')
+    expect(res.visibleHeadingIds.has('c')).toBe(false)
+  })
+
+  test('bails without looping when the fold offset cycles', () => {
+    // Two headings whose folds leapfrog each other could cycle; the seen-offset
+    // guard must terminate. Assert it returns (does not hang) and picks one.
+    const geom = makeGeometry({
+      positions: { a: { y: 0 }, b: { y: 1 }, c: { y: 2 }, d: { y: 3 } },
+    })
+    const res = resolveHeadings({ geom, toc, headingIds, historyDepth: 0 })
+    expect(res.currentHeadingId).not.toBeNull()
+    expect(headingIds).toContain(res.currentHeadingId ?? '')
   })
 })
