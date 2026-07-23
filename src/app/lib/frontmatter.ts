@@ -1,4 +1,4 @@
-const FRONTMATTER_REGEX = /^---\r?\n([\s\S]*?)(?:\r?\n)?---(?:\r?\n|$)/
+const FRONTMATTER_REGEX = /^---\r?\n(?:([\s\S]*?)\r?\n)?---[ \t]*(?:\r?\n|$)/
 
 // Synthetic heading id for the frontmatter block. Prefixed with NUL (like
 // FILE_ROW_ID) so it can never collide with a real heading slug, letting n/N

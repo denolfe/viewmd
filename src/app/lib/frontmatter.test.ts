@@ -57,6 +57,22 @@ describe('splitFrontmatter', () => {
       body: 'First line\n\n## Section\n',
     })
   })
+
+  it('value ending in --- does not close the block early', () => {
+    const md = '---\ntitle: a---\nauthor: b\n---\nbody\n'
+    expect(splitFrontmatter(md)).toEqual({
+      frontmatter: 'title: a---\nauthor: b',
+      body: 'body\n',
+    })
+  })
+
+  it('tolerates trailing spaces/tabs after the closing fence', () => {
+    const md = '---\ntitle: a\n---  \nbody\n'
+    expect(splitFrontmatter(md)).toEqual({
+      frontmatter: 'title: a',
+      body: 'body\n',
+    })
+  })
 })
 
 describe('parseFrontmatter', () => {
