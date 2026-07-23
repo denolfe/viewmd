@@ -1,10 +1,17 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { dispatch, syncHeadings } from './dispatch'
+import { makeGeometry } from './viewport-geometry.testutil'
 import type { AppState, ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { RefObject } from 'react'
 
-function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } = {}): {
+function makeViewerRef(
+  opts: {
+    nearTop?: string | null
+    visible?: Set<string>
+    positions?: Record<string, number>
+  } = {},
+): {
   ref: RefObject<ScrollboxHandle | null>
   calls: string[]
 } {
@@ -16,6 +23,12 @@ function makeViewerRef(opts: { nearTop?: string | null; visible?: Set<string> } 
     scrollChildToTop: (id, topOffset) => calls.push(`scrollChildToTop(${id},${topOffset ?? 0})`),
     pinHeadingPostLayout: (id, topOffset) =>
       calls.push(`pinHeadingPostLayout(${id},${topOffset ?? 0})`),
+    getGeometry: () =>
+      makeGeometry({
+        positions: Object.fromEntries(
+          Object.entries(opts.positions ?? {}).map(([k, y]) => [k, { y }]),
+        ),
+      }),
     getHeadingNearTop: () => opts.nearTop ?? null,
     getVisibleHeadingIds: () => opts.visible ?? new Set<string>(),
     getScrollMarks: () => ({
@@ -88,6 +101,11 @@ function makePositionalViewerRef(
     scrollToBottom: () => {},
     scrollChildToTop: () => {},
     pinHeadingPostLayout: () => {},
+    getGeometry: () =>
+      makeGeometry({
+        positions: Object.fromEntries(Object.entries(positions).map(([k, y]) => [k, { y }])),
+        viewportHeight: viewportBottom,
+      }),
     getHeadingNearTop: (ids, topOffset = 0) => {
       let best: string | null = null
       let bestY = -Infinity

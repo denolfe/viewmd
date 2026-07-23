@@ -3,6 +3,7 @@ import type { RefObject } from 'react'
 import type { Match } from './lib/search'
 import type { Focus } from './lib/keys'
 import type { ResolvedMark } from './lib/scroll-marks'
+import type { BoxGeometry } from './lib/viewport-geometry'
 
 /**
  * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
@@ -24,6 +25,8 @@ export type ScrollboxHandle = {
    * y=0 — an immediate scroll would strand the reader at the top.
    */
   pinHeadingPostLayout: (childId: string, topOffset?: number) => void
+  /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
+  getGeometry: () => BoxGeometry
   /**
    * Returns the id from `headingIds` whose box sits at or just above the visible
    * content top, or null. `topOffset` shifts that top down past the breadcrumb overlay.

@@ -174,6 +174,7 @@ export function Viewer({
         // anchor. onFrame runs it once geometry is real.
         pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
       },
+      getGeometry: () => geom,
       getHeadingNearTop: (ids, topOffset) => findHeadingNearTop(geom, ids, topOffset ?? 0),
       getVisibleHeadingIds: (ids, topOffset) => findVisibleHeadingIds(geom, ids, topOffset ?? 0),
       getScrollMarks: ({ matches, activeIndex }) =>
