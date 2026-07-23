@@ -98,10 +98,6 @@ export type AppState = {
 
   search: SearchState | null
 
-  mouseEnabled: boolean
-
-  tocVisible: boolean
-
   /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
   contentWidth: number
 

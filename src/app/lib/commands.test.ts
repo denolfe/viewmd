@@ -1,5 +1,5 @@
 import { describe, expect, test, mock } from 'bun:test'
-import { createCommands } from './commands'
+import { createCommands, createNoopCommands } from './commands'
 import type { CommandDeps } from './commands'
 import type { ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
@@ -360,5 +360,17 @@ describe('createCommands.applySearchPattern', () => {
     const { deps, set } = makeDeps({ read: { search: null } })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: false })
     expect(set.search).not.toHaveBeenCalled()
+  })
+})
+
+describe('createNoopCommands', () => {
+  test('every method is a callable no-op that does not throw', () => {
+    const c = createNoopCommands()
+    // `never[]` params keep the call site typed without an `as` cast: every
+    // Commands method is assignable to it, and each no-op ignores its args.
+    const call = (fn: (...args: never[]) => unknown) => fn()
+    expect(() => {
+      for (const fn of Object.values(c)) call(fn)
+    }).not.toThrow()
   })
 })

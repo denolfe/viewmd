@@ -36,8 +36,6 @@ export function RenderView({
       expanded: new Map(),
       tocCursorId: null,
       search: null,
-      mouseEnabled: false,
-      tocVisible: true,
       contentWidth: Math.min(contentMaxWidth, width),
       contentMaxWidth,
       dir: undefined,
