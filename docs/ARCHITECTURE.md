@@ -75,7 +75,7 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
   - `viewerColumnWidth = (hasToc ? termWidth - tocWidth : termWidth) - 2` (2 cols for the viewer scrollbar + paddingRight).
   - `contentWidth = min(CONTENT_MAX_WIDTH, viewerColumnWidth)` — exposed via context so block renderers can size to it.
 - Memoises an `AppState` object into `AppStateContext` so descendants read state via `useAppState()`.
-- Wires `useKeyboard` → `mapKey(ev, focus, { searchActive })` → `dispatch(action, state, toc, headingIds, renderer.height, onQuit)`. When `focus === 'search'`, `App` skips dispatch entirely — `SearchInput` owns its own `useKeyboard`.
+- Wires `useKeyboard` → `mapKey(ev, focus, { searchActive, helpOpen })` → `dispatch(action, commands)`. When `focus === 'search'`, `App` skips dispatch entirely — `SearchInput` owns its own `useKeyboard`.
 - Runs two effects:
   - When the search index/pattern changes, jump less-style: scroll the match line to a few context rows (`JUMP_CONTEXT_ROWS`) below the breadcrumb overlay of its nearest preceding heading (`matchScrollTarget` + `jumpToMatch`).
   - On first paint (and whenever `headingIds` changes), populate `visibleHeadingIds` once via the viewer handle so the sticky header's hide-when-visible rule fires before any keypress.
