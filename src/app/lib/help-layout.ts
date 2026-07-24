@@ -13,12 +13,19 @@ export function groupHints(hints: Hint[]): HintSection[] {
 }
 
 /**
- * Splits sections into one or two columns (kept whole, canonical order). Only the
- * LEFT column is bounded by `maxRows`; the right takes the remainder. Single column when it all fits.
+ * Splits sections into one or two columns (kept whole, canonical order). Stays a
+ * single column when everything fits within `maxRows`, or when `allowTwoColumns`
+ * is false (the viewer is too narrow to split without cramping descriptions) — in
+ * which case the column grows tall instead. When it does split, only the LEFT
+ * column is bounded by `maxRows`; the right takes the remainder.
  */
-export function layoutColumns(sections: HintSection[], maxRows: number): HintSection[][] {
+export function layoutColumns(
+  sections: HintSection[],
+  maxRows: number,
+  allowTwoColumns: boolean,
+): HintSection[][] {
   const total = sections.reduce((n, s) => n + sectionRows(s), 0)
-  if (total <= maxRows) return [sections]
+  if (total <= maxRows || !allowTwoColumns) return [sections]
 
   const left: HintSection[] = []
   const right: HintSection[] = []

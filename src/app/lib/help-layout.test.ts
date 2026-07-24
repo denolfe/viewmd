@@ -14,14 +14,17 @@ describe('groupHints', () => {
 
 describe('layoutColumns', () => {
   test('one column when everything fits', () => {
-    expect(layoutColumns(groupHints(HINTS), 100)).toHaveLength(1)
+    expect(layoutColumns(groupHints(HINTS), 100, true)).toHaveLength(1)
   })
-  test('splits into two columns when height-constrained', () => {
+  test('splits into two columns when height-constrained and width allows', () => {
     const sections = groupHints(HINTS)
-    const cols = layoutColumns(sections, 5)
+    const cols = layoutColumns(sections, 5, true)
     expect(cols).toHaveLength(2)
     const placed = cols.reduce((n, col) => n + col.length, 0)
     expect(placed).toBe(sections.length)
+  })
+  test('stays single-column when width disallows a split, even if height-constrained', () => {
+    expect(layoutColumns(groupHints(HINTS), 5, false)).toHaveLength(1)
   })
   test('keeps canonical order when a small section trails a large one', () => {
     const mk = (group: HintGroup, n: number): HintSection => ({
@@ -36,7 +39,7 @@ describe('layoutColumns', () => {
     })
     // rows: A=1+3=4, B=1+5=6, C=1+2=3
     const sections = [mk('Navigation', 3), mk('Search', 5), mk('General', 2)]
-    const cols = layoutColumns(sections, 5)
+    const cols = layoutColumns(sections, 5, true)
     expect(cols.flat().map(s => s.group)).toEqual(['Navigation', 'Search', 'General'])
   })
 })

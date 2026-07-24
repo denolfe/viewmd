@@ -10,6 +10,9 @@ import { VIEWER_OVERHEAD } from '../styles/layout'
 const KEY_COL = 12
 // Cap the panel body at this fraction of the terminal height before spilling to a second column.
 const HELP_MAX_HEIGHT_FRACTION = 0.6
+// Below this viewer width a second column would cramp descriptions into ragged
+// wraps, so the panel stays single-column (and taller) instead.
+const MIN_TWO_COLUMN_WIDTH = 72
 
 export function HelpPanel() {
   const { helpVisible, contentWidth } = useAppState()
@@ -20,7 +23,7 @@ export function HelpPanel() {
   // Cap the body near HELP_MAX_HEIGHT_FRACTION of the terminal, leaving rows for the
   // title + border; the Math.max floor keeps 4 rows as the minimum usable body height.
   const maxBodyRows = Math.max(4, Math.floor(height * HELP_MAX_HEIGHT_FRACTION) - 3)
-  const columns = layoutColumns(sections, maxBodyRows)
+  const columns = layoutColumns(sections, maxBodyRows, contentWidth >= MIN_TWO_COLUMN_WIDTH)
 
   return (
     <box
