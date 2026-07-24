@@ -38,27 +38,21 @@ export function matchJumpDelta(params: {
 }
 
 /**
- * Seed index for a freshly committed search, less-style: forward takes the
- * first match at or below the viewport top (wrapping to the first match);
- * backward takes the last match above it (wrapping to the last). `matchYs`
- * holds each match's resolved screen line (null when unresolvable), in match order.
+ * Seed index for a freshly committed search, less-style: the first match at or
+ * below the viewport top, wrapping to the first match. `matchYs` holds each
+ * match's resolved screen line (null when unresolvable), in match order.
  */
 export function seedMatchIndex(params: {
   matchYs: (number | null)[]
   viewportTop: number
-  dir: 'forward' | 'backward'
 }): number {
-  const { matchYs, viewportTop, dir } = params
-  let firstAtOrBelow = -1
-  let lastAbove = -1
+  const { matchYs, viewportTop } = params
   for (let i = 0; i < matchYs.length; i++) {
     const y = matchYs[i]
     if (y === null || y === undefined) continue
-    if (firstAtOrBelow < 0 && y >= viewportTop) firstAtOrBelow = i
-    if (y < viewportTop) lastAbove = i
+    if (y >= viewportTop) return i
   }
-  if (dir === 'forward') return firstAtOrBelow >= 0 ? firstAtOrBelow : 0
-  return lastAbove >= 0 ? lastAbove : matchYs.length - 1
+  return 0
 }
 
 /**

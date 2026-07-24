@@ -56,28 +56,16 @@ describe('seedMatchIndex', () => {
   const viewport = { viewportTop: 100 }
 
   test('forward picks the first match at or below the viewport top', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [10, 105, 110, 200], dir: 'forward' })).toBe(1)
-    expect(seedMatchIndex({ ...viewport, matchYs: [10, 100, 200], dir: 'forward' })).toBe(1)
+    expect(seedMatchIndex({ ...viewport, matchYs: [10, 105, 110, 200] })).toBe(1)
+    expect(seedMatchIndex({ ...viewport, matchYs: [10, 100, 200] })).toBe(1)
   })
 
   test('forward wraps to the first match when all matches are above', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [10, 50], dir: 'forward' })).toBe(0)
-  })
-
-  test('backward picks the last match above the viewport top', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [10, 50, 130, 200], dir: 'backward' })).toBe(1)
-  })
-
-  test('backward ignores visible matches at or below the top', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [10, 105, 110], dir: 'backward' })).toBe(0)
-  })
-
-  test('backward wraps to the last match when all matches are below', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [130, 200], dir: 'backward' })).toBe(1)
+    expect(seedMatchIndex({ ...viewport, matchYs: [10, 50] })).toBe(0)
   })
 
   test('skips unresolvable match positions', () => {
-    expect(seedMatchIndex({ ...viewport, matchYs: [null, 105], dir: 'forward' })).toBe(1)
+    expect(seedMatchIndex({ ...viewport, matchYs: [null, 105] })).toBe(1)
   })
 })
 

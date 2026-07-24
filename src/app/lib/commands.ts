@@ -56,7 +56,7 @@ export type Commands = {
   toggleExpanded(id: string): void
   toggleTocVisible(): void
   toggleHelp(): void
-  startSearch(dir: 'forward' | 'backward'): void
+  startSearch(): void
   applySearchPattern(p: { pattern: string; commit: boolean }): void
   stepMatch(dir: 1 | -1): void
   clearSearch(): void
@@ -188,8 +188,8 @@ export function createCommands(deps: CommandDeps): Commands {
     },
     toggleHelp: () => set.toggleHelp(),
 
-    startSearch: dir => {
-      set.search({ pattern: '', matches: [], index: -1, dir, committed: false })
+    startSearch: () => {
+      set.search({ pattern: '', matches: [], index: -1, committed: false })
       set.focus('search')
     },
     // Recompute matches from the passed `pattern`, not `read.search.pattern`: the
@@ -199,9 +199,7 @@ export function createCommands(deps: CommandDeps): Commands {
       const s = read.search
       if (!s) return
       const matches = findMatches(doc.nodes, pattern)
-      const index = matches.length
-        ? (viewerRef.current?.seedMatchIndex({ matches, dir: s.dir }) ?? 0)
-        : -1
+      const index = matches.length ? (viewerRef.current?.seedMatchIndex({ matches }) ?? 0) : -1
       set.search({ ...s, pattern, matches, index, committed: commit })
       if (commit) set.focus('viewer')
     },

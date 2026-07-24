@@ -108,10 +108,10 @@ describe('dispatch routing', () => {
     dispatch({ kind: 'quit' }, c)
     expect(c.quit).toHaveBeenCalled()
   })
-  test('startSearch → startSearch(dir)', () => {
+  test('startSearch → startSearch()', () => {
     const c = makeCommands()
-    dispatch({ kind: 'startSearch', dir: 'forward' }, c)
-    expect(c.startSearch).toHaveBeenCalledWith('forward')
+    dispatch({ kind: 'startSearch' }, c)
+    expect(c.startSearch).toHaveBeenCalled()
   })
   test('nextMatch/prevMatch → stepMatch(±1)', () => {
     const c = makeCommands()

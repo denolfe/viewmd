@@ -31,8 +31,8 @@ describe('mapKey (viewer focus)', () => {
   test('tab -> focusSidebar', () => {
     expect(mapKey(k({ name: 'tab' }), 'viewer')).toEqual({ kind: 'focusSidebar' })
   })
-  test('/ -> startSearch forward', () => {
-    expect(mapKey(k({ name: '/' }), 'viewer')).toEqual({ kind: 'startSearch', dir: 'forward' })
+  test('/ -> startSearch', () => {
+    expect(mapKey(k({ name: '/' }), 'viewer')).toEqual({ kind: 'startSearch' })
   })
   test('n -> nextMatch when search active, nextHeading otherwise', () => {
     expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: true })).toEqual({

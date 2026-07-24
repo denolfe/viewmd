@@ -36,7 +36,7 @@ export function dispatch(action: Action, c: Commands): void {
     case 'tocToggleId':
       return c.toggleExpanded(action.id)
     case 'startSearch':
-      return c.startSearch(action.dir)
+      return c.startSearch()
     case 'nextMatch':
       return c.stepMatch(1)
     case 'prevMatch':

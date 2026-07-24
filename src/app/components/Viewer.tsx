@@ -177,11 +177,10 @@ export function Viewer({
       getGeometry: () => geom,
       getScrollMarks: ({ matches, activeIndex }) =>
         resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches, activeIndex }),
-      seedMatchIndex: ({ matches, dir }) =>
+      seedMatchIndex: ({ matches }) =>
         seedMatchIndex({
           matchYs: matches.map(m => resolveMatchY(geom, m, projectionsRef.current)),
           viewportTop: geom.viewportTop,
-          dir,
         }),
       jumpToMatch: params => {
         pendingRef.current = applyMatch(params) ? null : { kind: 'match', params }

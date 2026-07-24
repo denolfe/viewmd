@@ -20,7 +20,7 @@ export type Action =
   | { kind: 'tocUp' }
   | { kind: 'tocDown' }
   | { kind: 'toggleTocVisible' }
-  | { kind: 'startSearch'; dir: 'forward' | 'backward' }
+  | { kind: 'startSearch' }
   | { kind: 'nextMatch' }
   | { kind: 'prevMatch' }
   | { kind: 'clearSearch' }
@@ -77,7 +77,7 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
     case 't':
       return { kind: 'toggleTocVisible' }
     case '/':
-      return { kind: 'startSearch', dir: 'forward' }
+      return { kind: 'startSearch' }
     case '?':
       return { kind: 'toggleHelp' }
     case 'n':

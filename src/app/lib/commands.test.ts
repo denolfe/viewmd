@@ -267,7 +267,7 @@ describe('createCommands.clearSearch', () => {
     const { deps, set } = makeDeps({
       read: {
         focus: 'search',
-        search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: true },
+        search: { pattern: 'x', matches: [], index: -1, committed: true },
       },
     })
     createCommands(deps).clearSearch()
@@ -278,7 +278,7 @@ describe('createCommands.clearSearch', () => {
     const { deps, set } = makeDeps({
       read: {
         focus: 'viewer',
-        search: { pattern: 'x', matches: [], index: -1, dir: 'forward', committed: true },
+        search: { pattern: 'x', matches: [], index: -1, committed: true },
       },
     })
     createCommands(deps).clearSearch()
@@ -290,9 +290,9 @@ describe('createCommands.clearSearch', () => {
 describe('createCommands.startSearch', () => {
   test('opens an empty uncommitted search and focuses the input', () => {
     const { deps, set } = makeDeps()
-    createCommands(deps).startSearch('backward')
+    createCommands(deps).startSearch()
     expect(set.search).toHaveBeenCalledWith(
-      expect.objectContaining({ dir: 'backward', committed: false, pattern: '' }),
+      expect.objectContaining({ committed: false, pattern: '', index: -1 }),
     )
     expect(set.focus).toHaveBeenCalledWith('search')
   })
@@ -306,7 +306,6 @@ describe('createCommands.stepMatch', () => {
           pattern: 'x',
           matches: [m(), m(), m()],
           index: 2,
-          dir: 'forward',
           committed: true,
         },
       },
@@ -321,7 +320,6 @@ describe('createCommands.stepMatch', () => {
           pattern: 'x',
           matches: [m(), m(), m()],
           index: 0,
-          dir: 'forward',
           committed: true,
         },
       },
@@ -334,7 +332,7 @@ describe('createCommands.stepMatch', () => {
 describe('createCommands.applySearchPattern', () => {
   test('sets matches + seeds index; commit moves focus to viewer', () => {
     const { deps, set } = makeDeps({
-      read: { search: { pattern: '', matches: [], index: -1, dir: 'forward', committed: false } },
+      read: { search: { pattern: '', matches: [], index: -1, committed: false } },
     })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: true })
     expect(set.search).toHaveBeenCalled()
