@@ -147,7 +147,7 @@ export function App({
     ? foldOffset({ toc, id: lastHeadingId, fileLabel, historyDepth: nav.historyDepth })
     : 0
 
-  const backLabel = nav.backLabel
+  const trailLabels = nav.trailLabels
 
   useEffect(() => {
     if (!search?.committed || search.index < 0) return
@@ -270,7 +270,7 @@ export function App({
           renderer.destroy()
         },
         onOpenEditor,
-        nav: { follow: nav.follow, back: nav.back },
+        nav: { follow: nav.follow, back: nav.back, backTo: nav.backTo },
       }),
     [
       nodes,
@@ -292,6 +292,7 @@ export function App({
       nav.historyDepth,
       nav.follow,
       nav.back,
+      nav.backTo,
       toggleMouse,
       toggleTocVisible,
       toggleExpanded,
@@ -312,7 +313,7 @@ export function App({
       contentMaxWidth,
       dir: nav.doc.dir,
       historyDepth: nav.historyDepth,
-      backLabel,
+      trailLabels,
       status,
       commands,
     }),
@@ -327,7 +328,7 @@ export function App({
       contentMaxWidth,
       nav.doc.dir,
       nav.historyDepth,
-      backLabel,
+      trailLabels,
       status,
       commands,
     ],

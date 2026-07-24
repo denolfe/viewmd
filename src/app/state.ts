@@ -104,8 +104,8 @@ export type AppState = {
   dir?: string
   /** Number of entries on the back stack (drives the back affordance). */
   historyDepth: number
-  /** Label of the document `goBack` would return to (top of the back stack); undefined when empty. */
-  backLabel?: string
+  /** Full navigation label chain, origin first and current doc last; drives the breadcrumb trail. */
+  trailLabels: (string | undefined)[]
 
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */
   contentMaxWidth: number

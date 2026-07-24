@@ -1,4 +1,4 @@
-import { useCallback, useReducer } from 'react'
+import { useCallback, useMemo, useReducer } from 'react'
 
 import { classifyHref } from './links'
 import { loadDocument, fileLabel as fileLabelFor } from './loadDocument'
@@ -32,6 +32,7 @@ export type NavState = {
 export type NavAction =
   | { type: 'FOLLOW_LOADED'; doc: LoadedDocument; from: HistoryEntry; anchor?: string }
   | { type: 'BACK' }
+  | { type: 'BACK_TO'; index: number }
   | { type: 'RELOAD_LOADED'; doc: LoadedDocument; anchor: string | null }
   | { type: 'IN_DOC_JUMP'; scroll: ScrollIntent }
 
@@ -54,6 +55,23 @@ export function navReducer(state: NavState, action: NavAction): NavState {
       return {
         doc: entry.document,
         history: state.history.slice(0, -1),
+        intent: {
+          scroll: {
+            kind: 'restore',
+            scrollTop: entry.scrollTop,
+            currentHeadingId: entry.currentHeadingId,
+          },
+          reset: 'full',
+          seq,
+        },
+      }
+    }
+    case 'BACK_TO': {
+      const entry = state.history[action.index]
+      if (!entry) return state
+      return {
+        doc: entry.document,
+        history: state.history.slice(0, action.index),
         intent: {
           scroll: {
             kind: 'restore',
@@ -128,6 +146,8 @@ export function useDocumentNavigation(params: {
 
   const back = useCallback(() => doDispatch({ type: 'BACK' }), [])
 
+  const backTo = useCallback((index: number) => doDispatch({ type: 'BACK_TO', index }), [])
+
   const reload = useCallback(() => {
     const path = state.doc.absPath
     if (!path) return
@@ -137,15 +157,19 @@ export function useDocumentNavigation(params: {
       .catch(() => onError('Reload failed: file unreadable'))
   }, [state.doc.absPath, captureScroll, onError])
 
-  const backLabel = state.history[state.history.length - 1]?.document.fileLabel
+  const trailLabels = useMemo(
+    () => [...state.history.map(entry => entry.document.fileLabel), state.doc.fileLabel],
+    [state.history, state.doc],
+  )
 
   return {
     doc: state.doc,
     intent: state.intent,
     follow,
     back,
+    backTo,
     reload,
-    backLabel,
+    trailLabels,
     historyDepth: state.history.length,
   }
 }

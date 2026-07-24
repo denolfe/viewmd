@@ -21,6 +21,7 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     dir: undefined,
     commands: createNoopCommands(),
     historyDepth: 0,
+    trailLabels: [],
     contentMaxWidth: 80,
     status: { kind: 'idle' },
     ...overrides,

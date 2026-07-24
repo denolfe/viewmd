@@ -112,8 +112,8 @@ export function breadcrumbRows(params: {
   return rows
 }
 
-/** The sticky overlay's back-badge occupies exactly one row whenever a back stack exists. */
-export function backBadgeRowsForDepth(historyDepth: number): number {
+/** The sticky overlay's breadcrumb trail occupies exactly one row whenever a back stack exists. */
+export function trailRowsForDepth(historyDepth: number): number {
   return historyDepth > 0 ? 1 : 0
 }
 

@@ -98,7 +98,7 @@ function makeDeps(
     set,
     onQuit: mock(),
     onOpenEditor: mock(),
-    nav: { follow: mock(), back: mock() },
+    nav: { follow: mock(), back: mock(), backTo: mock() },
   }
   return { deps, set }
 }
