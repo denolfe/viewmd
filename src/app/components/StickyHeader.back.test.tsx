@@ -18,9 +18,10 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     visibleHeadingIds: new Set<string>(),
     contentWidth: 80,
     dir: undefined,
-    // Real Commands surface with an assertable goBack for the back-badge click test.
+    // Real Commands surface with an assertable goBack for the trail click test.
     commands: { ...createNoopCommands(), goBack: mock() },
     historyDepth: 0,
+    trailLabels: [],
     contentMaxWidth: 80,
     status: { kind: 'idle' },
     ...overrides,
@@ -46,18 +47,19 @@ async function renderHeader(stub: AppState) {
   return { renderer, settle, captureCharFrame }
 }
 
-test('back badge renders and clicking it calls goBack', async () => {
-  const stub = makeStub({ historyDepth: 1 })
+test('trail renders and clicking the back crumb calls goBack', async () => {
+  const stub = makeStub({ historyDepth: 1, trailLabels: ['README.md', 'docs/guide.md'] })
   const { renderer, settle, captureCharFrame } = await renderHeader(stub)
   const mouse = createMockMouse(renderer)
 
   const frame = captureCharFrame()
-  expect(frame).toContain('Back')
+  expect(frame).toContain('README.md')
+  expect(frame).toContain('docs/guide.md')
 
   const lines = frame.split('\n')
-  const row = lines.findIndex(l => l.includes('Back'))
+  const row = lines.findIndex(l => l.includes('README.md'))
   expect(row).toBeGreaterThanOrEqual(0)
-  const col = (lines[row] ?? '').indexOf('Back')
+  const col = (lines[row] ?? '').indexOf('README.md')
 
   await mouse.click(col, row, MouseButtons.LEFT)
   await settle()
@@ -67,26 +69,49 @@ test('back badge renders and clicking it calls goBack', async () => {
   renderer.destroy()
 })
 
-test('back affordance shows one arrow per depth level and the target filename', async () => {
-  const stub = makeStub({ historyDepth: 3, backLabel: 'nav/reference.md' })
+test('trail shows the whole chain joined by arrows', async () => {
+  const stub = makeStub({
+    historyDepth: 3,
+    trailLabels: ['a.md', 'b.md', 'nav/reference.md', 'api.md'],
+  })
   const { renderer, captureCharFrame } = await renderHeader(stub)
 
   const frame = captureCharFrame()
-  // One '‹' per navigation level, then the target document label.
-  expect(frame).toContain('‹‹‹ Back')
-  expect(frame).toContain('to nav/reference.md')
+  expect(frame).toContain('a.md')
+  expect(frame).toContain('→')
+  expect(frame).toContain('api.md')
 
   renderer.destroy()
 })
 
-test('right-click on the badge does not call goBack', async () => {
-  const stub = makeStub({ historyDepth: 1 })
+test('clicking a past crumb does not call goBack', async () => {
+  const stub = makeStub({
+    historyDepth: 3,
+    trailLabels: ['origin.md', 'mid.md', 'prev.md', 'current.md'],
+  })
   const { renderer, settle, captureCharFrame } = await renderHeader(stub)
   const mouse = createMockMouse(renderer)
 
   const lines = captureCharFrame().split('\n')
-  const row = lines.findIndex(l => l.includes('Back'))
-  const col = (lines[row] ?? '').indexOf('Back')
+  const row = lines.findIndex(l => l.includes('origin.md'))
+  const col = (lines[row] ?? '').indexOf('origin.md')
+
+  await mouse.click(col, row, MouseButtons.LEFT)
+  await settle()
+
+  expect(stub.commands.goBack).not.toHaveBeenCalled()
+
+  renderer.destroy()
+})
+
+test('right-click on the back crumb does not call goBack', async () => {
+  const stub = makeStub({ historyDepth: 1, trailLabels: ['README.md', 'docs/guide.md'] })
+  const { renderer, settle, captureCharFrame } = await renderHeader(stub)
+  const mouse = createMockMouse(renderer)
+
+  const lines = captureCharFrame().split('\n')
+  const row = lines.findIndex(l => l.includes('README.md'))
+  const col = (lines[row] ?? '').indexOf('README.md')
 
   await mouse.click(col, row, MouseButtons.RIGHT)
   await settle()
@@ -97,10 +122,10 @@ test('right-click on the badge does not call goBack', async () => {
 })
 
 test('no history and no breadcrumb rows renders nothing', async () => {
-  const stub = makeStub({ historyDepth: 0 })
+  const stub = makeStub({ historyDepth: 0, trailLabels: ['README.md'] })
   const { renderer, captureCharFrame } = await renderHeader(stub)
 
-  expect(captureCharFrame()).not.toContain('Back')
+  expect(captureCharFrame()).not.toContain('README.md')
 
   renderer.destroy()
 })

@@ -3,6 +3,8 @@ import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
 import { theme } from '../styles/theme'
 import { MutedInline } from './blocks/MutedInline'
 import { onPrimaryClick } from '../lib/mouse'
+import { documentTrail } from '../lib/trail'
+import type { Crumb } from '../lib/trail'
 import type { TocEntry } from '../lib/ast'
 
 export function StickyHeader({
@@ -14,7 +16,7 @@ export function StickyHeader({
   fileLabel?: string
   onCrumbClick: (id: string) => void
 }) {
-  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, backLabel, commands } =
+  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, trailLabels, commands } =
     useAppState()
 
   const hasH1 = documentHasH1(toc)
@@ -22,13 +24,23 @@ export function StickyHeader({
   const rows = breadcrumbRows({ chain, visibleHeadingIds, hasH1, fileLabel })
   if (rows.length === 0 && historyDepth === 0) return null
 
-  const backBadge =
+  const trailRow =
     historyDepth > 0 ? (
-      <box key="__back" height={1} overflow="hidden" onMouseDown={onPrimaryClick(commands.goBack)}>
-        <text>
-          <strong>{'‹'.repeat(historyDepth)} Back</strong>
-          {backLabel ? <span fg={theme.foregroundMuted}>{` to ${backLabel}`}</span> : ''}
-        </text>
+      <box key="__trail" height={1} flexDirection="row" overflow="hidden">
+        {documentTrail({ labels: trailLabels, maxWidth: Math.max(0, contentWidth - 3) }).flatMap(
+          (crumb, i) => {
+            const parts = []
+            if (i > 0) {
+              parts.push(
+                <text key={`sep-${i}`} fg={theme.foregroundMuted}>
+                  {' → '}
+                </text>,
+              )
+            }
+            parts.push(<TrailCrumb key={i} crumb={crumb} onBack={commands.goBack} />)
+            return parts
+          },
+        )}
       </box>
     ) : null
 
@@ -45,7 +57,7 @@ export function StickyHeader({
       paddingX={2}
       zIndex={10}
     >
-      {backBadge}
+      {trailRow}
       {rows.map(row =>
         row.variant === 'pill' ? (
           <box
@@ -80,4 +92,22 @@ export function StickyHeader({
       )}
     </box>
   )
+}
+
+function TrailCrumb({ crumb, onBack }: { crumb: Crumb; onBack: () => void }) {
+  if (crumb.kind === 'current') {
+    return (
+      <text fg={theme.heading}>
+        <strong>{crumb.label}</strong>
+      </text>
+    )
+  }
+  if (crumb.kind === 'back') {
+    return (
+      <box overflow="hidden" onMouseDown={onPrimaryClick(onBack)}>
+        <text fg={theme.foregroundMuted}>{crumb.label}</text>
+      </box>
+    )
+  }
+  return <text fg={theme.foregroundMuted}>{crumb.label}</text>
 }

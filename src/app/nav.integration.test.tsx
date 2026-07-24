@@ -81,13 +81,13 @@ function pointForLink(params: {
   return pointForOffset(bearer, inline, mid)
 }
 
-/** Locates the on-screen cell of the ` ‹ Back ` badge's "Back" substring. */
-function backBadgePoint(frame: string[]): Point {
+/** Locates the on-screen cell of the trail's back crumb (the previous doc's label). */
+function backCrumbPoint(frame: string[], label: string): Point {
   for (let y = 0; y < frame.length; y++) {
-    const x = frame[y]?.indexOf('Back') ?? -1
+    const x = frame[y]?.indexOf(label) ?? -1
     if (x >= 0) return { x, y }
   }
-  throw new Error('back badge not found in frame')
+  throw new Error(`back crumb "${label}" not found in frame`)
 }
 
 async function mountA() {
@@ -136,8 +136,8 @@ test('click ./b.md navigates to B; Backspace restores A', async () => {
   expect(root.findDescendantById('document-bravo')).toBeTruthy()
   expect(root.findDescendantById('document-alpha')).toBeFalsy()
   expect(captureCharFrame()).toContain('Document Bravo')
-  // The back affordance appears once history is non-empty.
-  expect(captureCharFrame()).toContain('Back')
+  // The trail row appears once history is non-empty.
+  expect(captureCharFrame()).toContain('nav/a.md')
 
   mockInput.pressBackspace()
   await settle()
@@ -165,7 +165,7 @@ test('clicking a navigable link leaves no stray text selection', async () => {
   renderer.destroy()
 })
 
-test('click ./b.md navigates to B; clicking the ‹ Back badge restores A', async () => {
+test('click ./b.md navigates to B; clicking the back crumb restores A', async () => {
   const { renderer, mockMouse, settle, captureCharFrame, root, nodes } = await mountA()
 
   const point = pointForLink({ root, nodes, paraIndex: 1, blockId: PARA_B_LINK, needle: 'to B' })
@@ -175,7 +175,7 @@ test('click ./b.md navigates to B; clicking the ‹ Back badge restores A', asyn
 
   expect(root.findDescendantById('document-bravo')).toBeTruthy()
 
-  const back = backBadgePoint(captureCharFrame().split('\n'))
+  const back = backCrumbPoint(captureCharFrame().split('\n'), 'nav/a.md')
   await mockMouse.pressDown(back.x, back.y)
   await settle()
   await settle()
@@ -204,8 +204,8 @@ test('clicking an external https link does not swap the document', async () => {
   expect(root.findDescendantById('document-alpha')).toBeTruthy()
   expect(root.findDescendantById('document-bravo')).toBeFalsy()
   expect(captureCharFrame()).toContain('Document Alpha')
-  // No navigation happened, so no back affordance.
-  expect(captureCharFrame()).not.toContain('Back')
+  // No navigation happened, so no trail row (its " → " separator is absent).
+  expect(captureCharFrame()).not.toContain('→')
 
   renderer.destroy()
 })

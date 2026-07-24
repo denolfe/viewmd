@@ -40,7 +40,7 @@ export function RenderView({
       contentMaxWidth,
       dir: undefined,
       historyDepth: 0,
-      backLabel: undefined,
+      trailLabels: [],
       status: { kind: 'idle' },
       commands,
     }),

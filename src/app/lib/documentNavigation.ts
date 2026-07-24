@@ -1,4 +1,4 @@
-import { useCallback, useReducer } from 'react'
+import { useCallback, useMemo, useReducer } from 'react'
 
 import { classifyHref } from './links'
 import { loadDocument, fileLabel as fileLabelFor } from './loadDocument'
@@ -137,7 +137,10 @@ export function useDocumentNavigation(params: {
       .catch(() => onError('Reload failed: file unreadable'))
   }, [state.doc.absPath, captureScroll, onError])
 
-  const backLabel = state.history[state.history.length - 1]?.document.fileLabel
+  const trailLabels = useMemo(
+    () => [...state.history.map(entry => entry.document.fileLabel), state.doc.fileLabel],
+    [state.history, state.doc],
+  )
 
   return {
     doc: state.doc,
@@ -145,7 +148,7 @@ export function useDocumentNavigation(params: {
     follow,
     back,
     reload,
-    backLabel,
+    trailLabels,
     historyDepth: state.history.length,
   }
 }
