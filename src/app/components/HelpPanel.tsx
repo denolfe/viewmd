@@ -4,33 +4,29 @@ import { useAppState } from '../state'
 import { HINTS } from '../lib/keys'
 import { groupHints, layoutColumns } from '../lib/help-layout'
 import { theme } from '../styles/theme'
-import { VIEWER_OVERHEAD } from '../styles/layout'
 
 // Fixed key-column width so descriptions line up across rows.
 const KEY_COL = 12
-// Cap the panel body at this fraction of the terminal height before spilling to a second column.
-const HELP_MAX_HEIGHT_FRACTION = 0.6
-// Below this viewer width a second column would cramp descriptions into ragged
+// Below this terminal width a second column would cramp descriptions into ragged
 // wraps, so the panel stays single-column (and taller) instead.
 const MIN_TWO_COLUMN_WIDTH = 72
 
 export function HelpPanel() {
-  const { helpVisible, contentWidth } = useAppState()
-  const { height } = useTerminalDimensions()
+  const { helpVisible } = useAppState()
+  const { width } = useTerminalDimensions()
   if (!helpVisible) return null
 
   const sections = groupHints(HINTS)
-  // Cap the body near HELP_MAX_HEIGHT_FRACTION of the terminal, leaving rows for the
-  // title + border; the Math.max floor keeps 4 rows as the minimum usable body height.
-  const maxBodyRows = Math.max(4, Math.floor(height * HELP_MAX_HEIGHT_FRACTION) - 3)
-  const columns = layoutColumns(sections, maxBodyRows, contentWidth >= MIN_TWO_COLUMN_WIDTH)
+  const columns = layoutColumns(sections, width >= MIN_TWO_COLUMN_WIDTH)
 
+  // The panel is modal (all keys are swallowed while open), so it spans the full
+  // terminal width — over the TOC too — giving two columns room to render cleanly.
   return (
     <box
       position="absolute"
       bottom={0}
       left={0}
-      width={contentWidth + VIEWER_OVERHEAD}
+      width={width}
       zIndex={20}
       flexDirection="column"
       backgroundColor={theme.background}
@@ -43,8 +39,8 @@ export function HelpPanel() {
       <box flexDirection="row">
         {columns.map(col => (
           <box key={col[0]?.group} flexDirection="column" flexGrow={1} paddingX={1}>
-            {col.map(section => (
-              <box key={section.group} flexDirection="column">
+            {col.map((section, i) => (
+              <box key={section.group} flexDirection="column" marginTop={i === 0 ? 0 : 1}>
                 <text fg={theme.foregroundMuted} attributes={TextAttributes.BOLD}>
                   {section.group}
                 </text>
