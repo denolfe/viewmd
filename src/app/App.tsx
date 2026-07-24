@@ -16,6 +16,7 @@ import { tocVisibleContentWidth, toggleTocExpanded, FILE_ROW_ID } from './lib/to
 import { foldOffset } from './lib/heading-resolution'
 import { findVisibleHeadingIds } from './lib/viewport-geometry'
 import { SearchBar } from './components/SearchBar'
+import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
@@ -372,6 +373,7 @@ export function App({
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />
           <SearchBar toc={toc} fileLabel={fileLabel} />
+          <HelpPanel />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}
