@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mapKey } from './keys'
+import { mapKey, HINTS } from './keys'
 import type { KeyEvent } from '@opentui/core'
 
 const k = (over: Partial<KeyEvent> = {}): KeyEvent =>
@@ -108,4 +108,14 @@ describe('mapKey (help open)', () => {
       kind: 'quit',
     })
   })
+})
+
+describe('HINTS stay in sync with mapKey', () => {
+  for (const h of HINTS) {
+    for (const p of h.probes) {
+      test(`"${h.keys}" (${h.group}/${h.focus}) ${JSON.stringify(p.ev)} maps to ${p.action}`, () => {
+        expect(mapKey(k(p.ev), h.focus, p.ctx).kind).toBe(p.action)
+      })
+    }
+  }
 })
