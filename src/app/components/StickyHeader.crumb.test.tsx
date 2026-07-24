@@ -23,6 +23,7 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     historyDepth: 0,
     contentMaxWidth: 80,
     status: { kind: 'idle' },
+    helpVisible: false,
     ...overrides,
   }
 }

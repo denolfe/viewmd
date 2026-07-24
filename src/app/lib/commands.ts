@@ -31,6 +31,7 @@ export type CommandDeps = {
     expanded: (m: Map<string, boolean>) => void
     toggleMouse: () => void
     toggleTocVisible: () => void
+    toggleHelp: () => void
     toggleExpanded: (id: string) => void
   }
   onQuit: () => void
@@ -54,6 +55,7 @@ export type Commands = {
   toggleCursorExpanded(): void
   toggleExpanded(id: string): void
   toggleTocVisible(): void
+  toggleHelp(): void
   startSearch(dir: 'forward' | 'backward'): void
   applySearchPattern(p: { pattern: string; commit: boolean }): void
   stepMatch(dir: 1 | -1): void
@@ -184,6 +186,7 @@ export function createCommands(deps: CommandDeps): Commands {
       if (read.tocVisible && read.focus === 'sidebar') set.focus('viewer')
       set.toggleTocVisible()
     },
+    toggleHelp: () => set.toggleHelp(),
 
     startSearch: dir => {
       set.search({ pattern: '', matches: [], index: -1, dir, committed: false })
@@ -275,6 +278,7 @@ export function createNoopCommands(): Commands {
     toggleCursorExpanded: noop,
     toggleExpanded: noop,
     toggleTocVisible: noop,
+    toggleHelp: noop,
     startSearch: noop,
     applySearchPattern: noop,
     stepMatch: noop,

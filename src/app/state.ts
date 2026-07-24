@@ -113,6 +113,9 @@ export type AppState = {
   /** Bottom statusline state; idle shows the viewmd badge + filename. */
   status: Status
 
+  /** Whether the keyboard-shortcuts help panel is open. */
+  helpVisible: boolean
+
   commands: Commands
 }
 

@@ -71,6 +71,7 @@ export function App({
   const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
   const [tocVisible, setTocVisible] = useState(true)
+  const [helpVisible, setHelpVisible] = useState(false)
   // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
   // so the reader never sees it painted at scrollTop 0 before the jump lands.
   const [covering, setCovering] = useState(false)
@@ -121,6 +122,7 @@ export function App({
   )
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
   const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
+  const toggleHelp = useCallback(() => setHelpVisible(v => !v), [])
 
   const isTocShown = toc.length > 0 && tocVisible
   const { width: termWidth } = useTerminalDimensions()
@@ -261,6 +263,7 @@ export function App({
           expanded: setExpanded,
           toggleMouse,
           toggleTocVisible,
+          toggleHelp,
           toggleExpanded,
         },
         onQuit: () => {
@@ -294,6 +297,7 @@ export function App({
       nav.back,
       toggleMouse,
       toggleTocVisible,
+      toggleHelp,
       toggleExpanded,
       onOpenEditor,
     ],
@@ -314,6 +318,7 @@ export function App({
       historyDepth: nav.historyDepth,
       backLabel,
       status,
+      helpVisible,
       commands,
     }),
     [
@@ -329,6 +334,7 @@ export function App({
       nav.historyDepth,
       backLabel,
       status,
+      helpVisible,
       commands,
     ],
   )
@@ -349,7 +355,7 @@ export function App({
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
-    run(mapKey(ev, focus, { searchActive: !!search }))
+    run(mapKey(ev, focus, { searchActive: !!search, helpOpen: helpVisible }))
   })
 
   const dispatchTocAction = (action: Action) => run(action)

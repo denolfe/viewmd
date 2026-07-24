@@ -78,6 +78,7 @@ function makeDeps(
     expanded: mock(),
     toggleMouse: mock(),
     toggleTocVisible: mock(),
+    toggleHelp: mock(),
     toggleExpanded: mock(),
   }
   const deps: CommandDeps = {

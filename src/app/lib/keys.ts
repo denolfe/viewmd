@@ -27,14 +27,23 @@ export type Action =
   | { kind: 'toggleMouse' }
   | { kind: 'openEditor' }
   | { kind: 'goBack' }
+  | { kind: 'toggleHelp' }
   | { kind: 'noop' }
 
-export type Ctx = { searchActive?: boolean }
+export type Ctx = { searchActive?: boolean; helpOpen?: boolean }
 
 export function mapKey(ev: KeyEvent, focus: Focus, ctx: Ctx = {}): Action {
   if (ev.name === 'c' && ev.ctrl) return { kind: 'quit' }
+  if (ctx.helpOpen) return mapHelpOpen(ev)
   if (focus === 'sidebar') return mapSidebar(ev)
   return mapViewer(ev, ctx)
+}
+
+// While the help panel is modal, only its close keys act; everything else is
+// swallowed so keystrokes don't scroll the masked content behind it.
+function mapHelpOpen(ev: KeyEvent): Action {
+  if (ev.name === '?' || ev.name === 'escape') return { kind: 'toggleHelp' }
+  return { kind: 'noop' }
 }
 
 function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
@@ -70,7 +79,7 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
     case '/':
       return { kind: 'startSearch', dir: 'forward' }
     case '?':
-      return { kind: 'startSearch', dir: 'backward' }
+      return { kind: 'toggleHelp' }
     case 'n':
       if (ev.shift) return ctx.searchActive ? { kind: 'prevMatch' } : { kind: 'prevHeading' }
       return ctx.searchActive ? { kind: 'nextMatch' } : { kind: 'nextHeading' }
@@ -103,6 +112,8 @@ function mapSidebar(ev: KeyEvent): Action {
       return { kind: 'toggleTocVisible' }
     case 'escape':
       return { kind: 'focusViewer' }
+    case '?':
+      return { kind: 'toggleHelp' }
     default:
       return { kind: 'noop' }
   }

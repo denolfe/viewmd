@@ -51,6 +51,8 @@ export function dispatch(action: Action, c: Commands): void {
       return c.goBack()
     case 'toggleTocVisible':
       return c.toggleTocVisible()
+    case 'toggleHelp':
+      return c.toggleHelp()
     case 'noop':
       return
   }

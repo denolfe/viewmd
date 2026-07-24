@@ -137,14 +137,6 @@ test('escape while typing dismisses the overlay and highlights', async () => {
   renderer.destroy()
 })
 
-test('? opens the overlay with the ? prefix', async () => {
-  const { renderer, mockInput, settle, captureCharFrame } = await setup()
-  await mockInput.typeText('?')
-  await settle()
-  expect(topRow(captureCharFrame)).toContain('?')
-  renderer.destroy()
-})
-
 test('overlay adopts the breadcrumb bg when the breadcrumb is showing', async () => {
   const long = ['# Title', '', ...Array.from({ length: 40 }, (_, i) => `filler ${i}\n`)].join('\n')
   const { renderer, mockInput, settle, captureCharFrame, captureSpans } = await setup(long)
