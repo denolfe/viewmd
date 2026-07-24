@@ -29,16 +29,14 @@ export function StickyHeader({
       <box key="__trail" height={1} flexDirection="row" overflow="hidden">
         {documentTrail({ labels: trailLabels, maxWidth: Math.max(0, contentWidth - 3) }).flatMap(
           (crumb, i) => {
-            const parts = []
-            if (i > 0) {
-              parts.push(
-                <text key={`sep-${i}`} fg={theme.foregroundMuted}>
-                  {' → '}
-                </text>,
-              )
-            }
-            parts.push(<TrailCrumb key={i} crumb={crumb} onBack={commands.goBack} />)
-            return parts
+            const crumbEl = <TrailCrumb key={i} crumb={crumb} onBack={commands.goBack} />
+            if (i === 0) return [crumbEl]
+            return [
+              <text key={`sep-${i}`} fg={theme.foregroundMuted}>
+                {' → '}
+              </text>,
+              crumbEl,
+            ]
           },
         )}
       </box>
