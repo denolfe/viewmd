@@ -25,6 +25,7 @@ function makeCommands(): Commands {
     clearSearch: mock(),
     followLink: mock(),
     goBack: mock(),
+    goToDocument: mock(),
     openEditor: mock(),
     toggleMouse: mock(),
     quit: mock(),

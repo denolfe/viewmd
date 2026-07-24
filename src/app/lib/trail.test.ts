@@ -3,15 +3,21 @@ import { documentTrail } from './trail'
 
 test('single doc yields one current crumb, no separators implied', () => {
   const crumbs = documentTrail({ labels: ['README.md'], maxWidth: 80 })
-  expect(crumbs).toEqual([{ label: 'README.md', kind: 'current' }])
+  expect(crumbs).toEqual([{ label: 'README.md', kind: 'current', index: 0 }])
 })
 
 test('two docs yield back then current', () => {
   const crumbs = documentTrail({ labels: ['README.md', 'docs/guide.md'], maxWidth: 80 })
   expect(crumbs).toEqual([
-    { label: 'README.md', kind: 'back' },
-    { label: 'docs/guide.md', kind: 'current' },
+    { label: 'README.md', kind: 'back', index: 0 },
+    { label: 'docs/guide.md', kind: 'current', index: 1 },
   ])
+})
+
+test('each crumb carries its source index; the ellipsis carries -1', () => {
+  const labels = ['origin.md', 'one.md', 'two.md', 'three.md', 'docs/guide.md', 'api.md']
+  const crumbs = documentTrail({ labels, maxWidth: 20 })
+  expect(crumbs.map(c => c.index)).toEqual([0, -1, 4, 5])
 })
 
 test('deep chain within width keeps every crumb and tags them', () => {
@@ -26,10 +32,10 @@ test('overflow collapses the middle, keeping first + last two', () => {
   const labels = ['origin.md', 'one.md', 'two.md', 'three.md', 'docs/guide.md', 'api.md']
   const crumbs = documentTrail({ labels, maxWidth: 20 })
   expect(crumbs).toEqual([
-    { label: 'origin.md', kind: 'past' },
-    { label: '…', kind: 'ellipsis' },
-    { label: 'docs/guide.md', kind: 'back' },
-    { label: 'api.md', kind: 'current' },
+    { label: 'origin.md', kind: 'past', index: 0 },
+    { label: '…', kind: 'ellipsis', index: -1 },
+    { label: 'docs/guide.md', kind: 'back', index: 4 },
+    { label: 'api.md', kind: 'current', index: 5 },
   ])
 })
 
@@ -45,8 +51,8 @@ test('overflow never truncates the back or current crumb', () => {
 test('undefined labels fall back to a placeholder', () => {
   const crumbs = documentTrail({ labels: [undefined, 'api.md'], maxWidth: 80 })
   expect(crumbs).toEqual([
-    { label: '<untitled>', kind: 'back' },
-    { label: 'api.md', kind: 'current' },
+    { label: '<untitled>', kind: 'back', index: 0 },
+    { label: 'api.md', kind: 'current', index: 1 },
   ])
 })
 

@@ -1,15 +1,16 @@
 export type CrumbKind = 'current' | 'back' | 'past' | 'ellipsis'
-export type Crumb = { label: string; kind: CrumbKind }
+/** `index` is the crumb's position in the source label chain (its navigation target); `-1` for the ellipsis. */
+export type Crumb = { label: string; kind: CrumbKind; index: number }
 
-const SEP = ' → '
+const SEP = ' › '
 const ELLIPSIS = '…'
 const UNTITLED = '<untitled>'
 
 /**
  * Maps an ordered list of document labels (origin first, current doc last) into
- * tagged breadcrumb crumbs. When the chain joined by " → " exceeds `maxWidth`,
+ * tagged breadcrumb crumbs. When the chain joined by " › " exceeds `maxWidth`,
  * the middle collapses to a single ellipsis crumb, always keeping the first
- * crumb and the last two (the clickable `back` crumb and the `current` doc).
+ * crumb and the last two (the immediate-previous `back` crumb and the `current` doc).
  */
 export function documentTrail({
   labels,
@@ -21,7 +22,7 @@ export function documentTrail({
   const named = labels.map(label => label ?? UNTITLED)
   if (named.length === 0) return []
 
-  const full = named.map((label, i): Crumb => ({ label, kind: tagAt(i, named.length) }))
+  const full = named.map((label, i): Crumb => ({ label, kind: tagAt(i, named.length), index: i }))
   if (named.length <= 3 || trailWidth(full) <= maxWidth) return full
 
   const first = full[0]
@@ -29,7 +30,7 @@ export function documentTrail({
   const current = full[full.length - 1]
   if (!first || !back || !current) return full
 
-  return [first, { label: ELLIPSIS, kind: 'ellipsis' }, back, current]
+  return [first, { label: ELLIPSIS, kind: 'ellipsis', index: -1 }, back, current]
 }
 
 function tagAt(i: number, n: number): CrumbKind {

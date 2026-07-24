@@ -204,8 +204,8 @@ test('clicking an external https link does not swap the document', async () => {
   expect(root.findDescendantById('document-alpha')).toBeTruthy()
   expect(root.findDescendantById('document-bravo')).toBeFalsy()
   expect(captureCharFrame()).toContain('Document Alpha')
-  // No navigation happened, so no trail row (its " → " separator is absent).
-  expect(captureCharFrame()).not.toContain('→')
+  // No navigation happened, so no trail row (its " › " separator is absent).
+  expect(captureCharFrame()).not.toContain('›')
 
   renderer.destroy()
 })

@@ -270,7 +270,7 @@ export function App({
           renderer.destroy()
         },
         onOpenEditor,
-        nav: { follow: nav.follow, back: nav.back },
+        nav: { follow: nav.follow, back: nav.back, backTo: nav.backTo },
       }),
     [
       nodes,
@@ -292,6 +292,7 @@ export function App({
       nav.historyDepth,
       nav.follow,
       nav.back,
+      nav.backTo,
       toggleMouse,
       toggleTocVisible,
       toggleExpanded,

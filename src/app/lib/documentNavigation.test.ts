@@ -61,6 +61,30 @@ describe('navReducer', () => {
     expect(navReducer(state, { type: 'BACK' })).toBe(state)
   })
 
+  test('BACK_TO an earlier index: restores that doc, discards docs visited after it', () => {
+    const c = makeDoc('c')
+    const fromA: HistoryEntry = { document: a, scrollTop: 7, currentHeadingId: 'intro' }
+    const fromB: HistoryEntry = { document: b, scrollTop: 20, currentHeadingId: 'usage' }
+    // Chain: a -> b -> c. history = [fromA, fromB], current doc = c.
+    const atB = navReducer(initial(a), { type: 'FOLLOW_LOADED', doc: b, from: fromA })
+    const atC = navReducer(atB, { type: 'FOLLOW_LOADED', doc: c, from: fromB })
+    const jumped = navReducer(atC, { type: 'BACK_TO', index: 0 })
+    expect(jumped.doc).toBe(a)
+    expect(jumped.history).toEqual([])
+    expect(jumped.intent?.scroll).toEqual({
+      kind: 'restore',
+      scrollTop: 7,
+      currentHeadingId: 'intro',
+    })
+    expect(jumped.intent?.reset).toBe('full')
+  })
+
+  test('BACK_TO an out-of-range index: no-op', () => {
+    const from: HistoryEntry = { document: a, scrollTop: 0, currentHeadingId: null }
+    const swapped = navReducer(initial(a), { type: 'FOLLOW_LOADED', doc: b, from })
+    expect(navReducer(swapped, { type: 'BACK_TO', index: 5 })).toBe(swapped)
+  })
+
   test('RELOAD_LOADED with current heading: unchanged history, searchOnly reset, postSwap anchor', () => {
     const state: NavState = { doc: a, history: [], intent: null }
     const next = navReducer(state, { type: 'RELOAD_LOADED', doc: b, anchor: 'intro' })

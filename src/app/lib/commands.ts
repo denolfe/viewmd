@@ -35,7 +35,7 @@ export type CommandDeps = {
   }
   onQuit: () => void
   onOpenEditor: () => void
-  nav: { follow: (href: string) => void; back: () => void }
+  nav: { follow: (href: string) => void; back: () => void; backTo: (index: number) => void }
 }
 
 export type Commands = {
@@ -60,6 +60,8 @@ export type Commands = {
   clearSearch(): void
   followLink(href: string): void
   goBack(): void
+  /** Navigate to a specific document in the history chain by its trail index, discarding docs visited after it. */
+  goToDocument(index: number): void
   openEditor(): void
   toggleMouse(): void
   quit(): void
@@ -216,6 +218,7 @@ export function createCommands(deps: CommandDeps): Commands {
 
     followLink: href => nav.follow(href),
     goBack: () => nav.back(),
+    goToDocument: index => nav.backTo(index),
     openEditor: () => onOpenEditor(),
     toggleMouse: () => set.toggleMouse(),
     quit: () => onQuit(),
@@ -281,6 +284,7 @@ export function createNoopCommands(): Commands {
     clearSearch: noop,
     followLink: noop,
     goBack: noop,
+    goToDocument: noop,
     openEditor: noop,
     toggleMouse: noop,
     quit: noop,

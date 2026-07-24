@@ -29,11 +29,11 @@ export function StickyHeader({
       <box key="__trail" height={1} flexDirection="row" overflow="hidden">
         {documentTrail({ labels: trailLabels, maxWidth: Math.max(0, contentWidth - 3) }).flatMap(
           (crumb, i) => {
-            const crumbEl = <TrailCrumb key={i} crumb={crumb} onBack={commands.goBack} />
+            const crumbEl = <TrailCrumb key={i} crumb={crumb} onNavigate={commands.goToDocument} />
             if (i === 0) return [crumbEl]
             return [
               <text key={`sep-${i}`} fg={theme.foregroundMuted}>
-                {' → '}
+                {' › '}
               </text>,
               crumbEl,
             ]
@@ -92,7 +92,7 @@ export function StickyHeader({
   )
 }
 
-function TrailCrumb({ crumb, onBack }: { crumb: Crumb; onBack: () => void }) {
+function TrailCrumb({ crumb, onNavigate }: { crumb: Crumb; onNavigate: (index: number) => void }) {
   if (crumb.kind === 'current') {
     return (
       <text fg={theme.heading}>
@@ -100,12 +100,13 @@ function TrailCrumb({ crumb, onBack }: { crumb: Crumb; onBack: () => void }) {
       </text>
     )
   }
-  if (crumb.kind === 'back') {
-    return (
-      <box overflow="hidden" onMouseDown={onPrimaryClick(onBack)}>
-        <text fg={theme.foregroundMuted}>{crumb.label}</text>
-      </box>
-    )
+  if (crumb.kind === 'ellipsis') {
+    return <text fg={theme.foregroundMuted}>{crumb.label}</text>
   }
-  return <text fg={theme.foregroundMuted}>{crumb.label}</text>
+  // Every prior document in the chain is clickable and navigates straight to it.
+  return (
+    <box overflow="hidden" onMouseDown={onPrimaryClick(() => onNavigate(crumb.index))}>
+      <text fg={theme.foregroundMuted}>{crumb.label}</text>
+    </box>
+  )
 }

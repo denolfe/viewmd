@@ -18,8 +18,8 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     visibleHeadingIds: new Set<string>(),
     contentWidth: 80,
     dir: undefined,
-    // Real Commands surface with an assertable goBack for the trail click test.
-    commands: { ...createNoopCommands(), goBack: mock() },
+    // Real Commands surface with an assertable goToDocument for the trail click tests.
+    commands: { ...createNoopCommands(), goToDocument: mock() },
     historyDepth: 0,
     trailLabels: [],
     contentMaxWidth: 80,
@@ -47,7 +47,7 @@ async function renderHeader(stub: AppState) {
   return { renderer, settle, captureCharFrame }
 }
 
-test('trail renders and clicking the back crumb calls goBack', async () => {
+test('clicking the immediate-previous crumb navigates to its document', async () => {
   const stub = makeStub({ historyDepth: 1, trailLabels: ['README.md', 'docs/guide.md'] })
   const { renderer, settle, captureCharFrame } = await renderHeader(stub)
   const mouse = createMockMouse(renderer)
@@ -64,12 +64,13 @@ test('trail renders and clicking the back crumb calls goBack', async () => {
   await mouse.click(col, row, MouseButtons.LEFT)
   await settle()
 
-  expect(stub.commands.goBack).toHaveBeenCalled()
+  // README is trail index 0 (the previous doc); the current doc is index 1.
+  expect(stub.commands.goToDocument).toHaveBeenCalledWith(0)
 
   renderer.destroy()
 })
 
-test('trail shows the whole chain joined by arrows', async () => {
+test('trail shows the whole chain joined by chevrons', async () => {
   const stub = makeStub({
     historyDepth: 3,
     trailLabels: ['a.md', 'b.md', 'nav/reference.md', 'api.md'],
@@ -78,13 +79,13 @@ test('trail shows the whole chain joined by arrows', async () => {
 
   const frame = captureCharFrame()
   expect(frame).toContain('a.md')
-  expect(frame).toContain('→')
+  expect(frame).toContain('›')
   expect(frame).toContain('api.md')
 
   renderer.destroy()
 })
 
-test('clicking a past crumb does not call goBack', async () => {
+test('clicking an older crumb navigates straight to that document', async () => {
   const stub = makeStub({
     historyDepth: 3,
     trailLabels: ['origin.md', 'mid.md', 'prev.md', 'current.md'],
@@ -99,12 +100,13 @@ test('clicking a past crumb does not call goBack', async () => {
   await mouse.click(col, row, MouseButtons.LEFT)
   await settle()
 
-  expect(stub.commands.goBack).not.toHaveBeenCalled()
+  // origin.md is the first crumb (trail index 0).
+  expect(stub.commands.goToDocument).toHaveBeenCalledWith(0)
 
   renderer.destroy()
 })
 
-test('right-click on the back crumb does not call goBack', async () => {
+test('right-click on a crumb does not navigate', async () => {
   const stub = makeStub({ historyDepth: 1, trailLabels: ['README.md', 'docs/guide.md'] })
   const { renderer, settle, captureCharFrame } = await renderHeader(stub)
   const mouse = createMockMouse(renderer)
@@ -116,7 +118,24 @@ test('right-click on the back crumb does not call goBack', async () => {
   await mouse.click(col, row, MouseButtons.RIGHT)
   await settle()
 
-  expect(stub.commands.goBack).not.toHaveBeenCalled()
+  expect(stub.commands.goToDocument).not.toHaveBeenCalled()
+
+  renderer.destroy()
+})
+
+test('clicking the current-doc crumb does not navigate', async () => {
+  const stub = makeStub({ historyDepth: 1, trailLabels: ['README.md', 'docs/guide.md'] })
+  const { renderer, settle, captureCharFrame } = await renderHeader(stub)
+  const mouse = createMockMouse(renderer)
+
+  const lines = captureCharFrame().split('\n')
+  const row = lines.findIndex(l => l.includes('docs/guide.md'))
+  const col = (lines[row] ?? '').indexOf('docs/guide.md')
+
+  await mouse.click(col, row, MouseButtons.LEFT)
+  await settle()
+
+  expect(stub.commands.goToDocument).not.toHaveBeenCalled()
 
   renderer.destroy()
 })
