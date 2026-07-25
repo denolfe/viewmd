@@ -31,6 +31,27 @@ describe('issueJump', () => {
     const r = pendingReducer(IDLE, { kind: 'issueJump', target: heading, resolution: null })
     expect(r).toEqual({ state: pendingJump(heading), effects: [] })
   })
+
+  test('supersedes an in-flight swap: scrolls, clears, fires repositioned', () => {
+    const r = pendingReducer(pendingSwap(scrollTop), {
+      kind: 'issueJump',
+      target: heading,
+      resolution: { delta: 9, reached: true },
+    })
+    expect(r).toEqual({
+      state: IDLE,
+      effects: [{ kind: 'scrollBy', delta: 9 }, { kind: 'repositioned' }],
+    })
+  })
+
+  test('unmounted jump supersedes an in-flight swap: queues new + fires repositioned', () => {
+    const r = pendingReducer(pendingSwap(scrollTop), {
+      kind: 'issueJump',
+      target: heading,
+      resolution: null,
+    })
+    expect(r).toEqual({ state: pendingJump(heading), effects: [{ kind: 'repositioned' }] })
+  })
 })
 
 describe('pinJump', () => {

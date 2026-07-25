@@ -40,7 +40,7 @@ export const IDLE: PendingState = { pending: null, isSwap: false }
 export function pendingReducer(state: PendingState, event: PendingEvent): Reduced {
   switch (event.kind) {
     case 'issueJump':
-      return issueJump(event.target, event.resolution)
+      return issueJump(state, event.target, event.resolution)
     case 'pinJump':
       return { state: { pending: event.target, isSwap: true }, effects: [] }
     case 'userScroll':
@@ -50,11 +50,15 @@ export function pendingReducer(state: PendingState, event: PendingEvent): Reduce
   }
 }
 
-function issueJump(target: PendingTarget, resolution: Resolution): Reduced {
-  if (resolution?.reached) return { state: IDLE, effects: scrollEffect(resolution.delta) }
+function issueJump(state: PendingState, target: PendingTarget, resolution: Resolution): Reduced {
+  // Superseding an in-flight swap drops its cover: fire repositioned so the shell
+  // doesn't stay covered when a user jump replaces a post-swap pin mid-flight.
+  const carry: PendingEffect[] = state.isSwap ? [{ kind: 'repositioned' }] : []
+  if (resolution?.reached)
+    return { state: IDLE, effects: [...scrollEffect(resolution.delta), ...carry] }
   return {
     state: { pending: target, isSwap: false },
-    effects: resolution ? scrollEffect(resolution.delta) : [],
+    effects: resolution ? [...scrollEffect(resolution.delta), ...carry] : carry,
   }
 }
 
