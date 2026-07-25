@@ -16,9 +16,11 @@ import {
   resolveScrollMarks,
   scrollTopDelta,
 } from '../lib/viewport-geometry'
+import { pendingReducer, IDLE } from '../lib/pending-reducer'
 import { theme } from '../styles/theme'
 import { VIEWER_OVERHEAD } from '../styles/layout'
 import type { BoxGeometry, TextBearer } from '../lib/viewport-geometry'
+import type { PendingState, PendingTarget, PendingEffect, Resolution } from '../lib/pending-reducer'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
 import type { FrontmatterRow } from '../lib/frontmatter'
@@ -67,14 +69,12 @@ export function Viewer({
   onScrollRef.current = onScroll
   const onRepositionedRef = useRef(onRepositioned)
   onRepositionedRef.current = onRepositioned
-  const pendingRef = useRef<PendingTarget | null>(null)
-  // True while the current pending is a post-swap reposition, so its resolution
-  // fires onRepositioned (user-driven jumps reuse pendingRef but must not).
-  const swapPendingRef = useRef(false)
+  const stateRef = useRef<PendingState>(IDLE)
   const notifyRef = useRef<() => void>(() => {})
   const needsNotifyRef = useRef(false)
-  // True only while the frame retry itself scrolls, so watchScroll can tell a
-  // retry's own scroll apart from wheel/drag (which must cancel the pending).
+  // True while the adapter is applying engine-driven scroll effects, so
+  // watchScroll can tell an engine scroll apart from a user wheel/drag/keypress
+  // (only the latter supersedes the pending jump).
   const completingRef = useRef(false)
 
   // Ref'd so the once-mounted handle effect always reads the current map.
@@ -116,63 +116,54 @@ export function Viewer({
         return el ? collectTextBearers(el, []) : []
       },
     }
-    // Apply a queued jump; returns false if the target isn't mounted yet.
-    const applyHeading = (id: string, topOffset: number): boolean => {
-      const delta = childToTopDelta(geom, id, topOffset)
-      if (delta === null) return false
-      if (delta !== 0) box.scrollBy(delta)
-      return true
+    // Resolve a pending target against live geometry into a plain value the pure
+    // reducer can act on. The only place delta fns are called.
+    const resolve = (t: PendingTarget): Resolution => {
+      if (t.kind === 'heading') {
+        const d = childToTopDelta(geom, t.id, t.topOffset)
+        return d === null ? null : { delta: d, reached: true }
+      }
+      if (t.kind === 'match') {
+        const d = matchScrollDelta(geom, projectionsRef.current, t.params)
+        return d === null ? null : { delta: d, reached: true }
+      }
+      const delta = scrollTopDelta(geom, t.top)
+      // Predict "reached" from the current scroll range instead of scrolling and
+      // measuring: progressive mount may not have grown scrollHeight to fit `top`
+      // yet, so the box would clamp short. Once it grows, this resolves true.
+      const maxScroll = Math.max(0, geom.scrollHeight - geom.viewportHeight)
+      const reached = Math.min(t.top, maxScroll) >= t.top - 1
+      return { delta, reached }
     }
-    const applyMatch = (params: Parameters<ScrollboxHandle['jumpToMatch']>[0]): boolean => {
-      const delta = matchScrollDelta(geom, projectionsRef.current, params)
-      if (delta === null) return false
-      if (delta !== 0) box.scrollBy(delta)
-      return true
+    // Apply reducer effects: scrolls run sync under completingRef (so watchScroll
+    // treats them as engine-driven, not user input); repositioned is deferred —
+    // committing parent state inside OpenTUI's frame handler risks a re-entrant
+    // render.
+    const applyEffects = (effects: PendingEffect[]) => {
+      completingRef.current = true
+      for (const e of effects) if (e.kind === 'scrollBy' && e.delta !== 0) box.scrollBy(e.delta)
+      completingRef.current = false
+      for (const e of effects)
+        if (e.kind === 'repositioned') queueMicrotask(() => onRepositionedRef.current?.())
     }
-    const applyScrollTop = (top: number): boolean => {
-      const delta = scrollTopDelta(geom, top)
-      if (delta !== 0) box.scrollBy(delta)
-      // Progressive mount may not have grown scrollHeight yet, clamping short of
-      // `top`; resolved only once actually reached.
-      return Math.abs(box.scrollTop - top) <= 1
+    const send = (event: Parameters<typeof pendingReducer>[1]) => {
+      const { state, effects } = pendingReducer(stateRef.current, event)
+      stateRef.current = state
+      applyEffects(effects)
     }
-    const applyPending = (pending: PendingTarget): boolean => {
-      if (pending.kind === 'heading') return applyHeading(pending.id, pending.topOffset)
-      if (pending.kind === 'match') return applyMatch(pending.params)
-      return applyScrollTop(pending.top)
-    }
-    // Any explicit navigation supersedes a jump still waiting on its chunk —
-    // otherwise a stale pending target would yank the viewport later.
     const handle: ScrollboxHandle = {
-      scrollBy: delta => {
-        pendingRef.current = null
-        box.scrollBy(delta)
-      },
-      scrollTo: y => {
-        pendingRef.current = null
-        box.scrollTo(y)
-      },
-      scrollToBottom: () => {
-        pendingRef.current = null
-        box.scrollTo(box.scrollHeight)
-      },
+      scrollBy: delta => box.scrollBy(delta),
+      scrollTo: y => box.scrollTo(y),
+      scrollToBottom: () => box.scrollTo(box.scrollHeight),
       scrollChildToTop: (id, topOffset) => {
-        pendingRef.current = applyHeading(id, topOffset ?? 0)
-          ? null
-          : { kind: 'heading', id, topOffset: topOffset ?? 0 }
+        const target: PendingTarget = { kind: 'heading', id, topOffset: topOffset ?? 0 }
+        send({ kind: 'issueJump', target, resolution: resolve(target) })
       },
       pinHeadingPostLayout: (id, topOffset) => {
-        // Defer the pin to the post-layout `frame` retry. Right after a doc swap
-        // the target box is committed but not yet laid out (reads y=0), so an
-        // effect-time scroll would land at the top and — because the box *is*
-        // found — falsely report success, leaving the reader stranded above the
-        // anchor. onFrame runs it once geometry is real.
-        pendingRef.current = { kind: 'heading', id, topOffset: topOffset ?? 0 }
-        swapPendingRef.current = true
+        send({ kind: 'pinJump', target: { kind: 'heading', id, topOffset: topOffset ?? 0 } })
       },
       pinScrollTop: top => {
-        pendingRef.current = { kind: 'scrollTop', top }
-        swapPendingRef.current = true
+        send({ kind: 'pinJump', target: { kind: 'scrollTop', top } })
       },
       getGeometry: () => geom,
       getScrollMarks: ({ matches, activeIndex }) =>
@@ -183,7 +174,8 @@ export function Viewer({
           viewportTop: geom.viewportTop,
         }),
       jumpToMatch: params => {
-        pendingRef.current = applyMatch(params) ? null : { kind: 'match', params }
+        const target: PendingTarget = { kind: 'match', params }
+        send({ kind: 'issueJump', target, resolution: resolve(target) })
       },
       subscribeScroll: cb => {
         scrollListeners.add(cb)
@@ -198,44 +190,21 @@ export function Viewer({
       for (const cb of scrollListeners) cb()
     }
     const restoreScroll = watchScroll(box, () => {
-      // A scroll not initiated by the retry means the user moved (wheel/drag
-      // bypass the handle) — their navigation supersedes the pending jump.
-      if (!completingRef.current) {
-        pendingRef.current = null
-        // Drop the cover too: the user placed the viewport themselves, so the
-        // swap reposition is moot and its settle signal would never arrive.
-        if (swapPendingRef.current) {
-          swapPendingRef.current = false
-          queueMicrotask(() => onRepositionedRef.current?.())
-        }
-      }
+      // A scroll not driven by applyEffects means the user moved (wheel/drag/
+      // keyboard bypass the reducer) — their navigation supersedes the pending.
+      if (!completingRef.current) send({ kind: 'userScroll' })
       notifyRef.current()
     })
     // Retries run on the renderer's post-layout `frame` event, not in a React
     // effect: a just-committed chunk's renderables keep y=0 until the next
     // layout pass, so effect-time geometry would land the jump at the top.
     const onFrame = () => {
-      const pending = pendingRef.current
-      if (pending) {
-        // Complete a jump that targeted content unmounted when it was issued.
-        // A completed scroll also triggers watchScroll → notify, keeping the
-        // breadcrumb in sync mid-mount.
-        completingRef.current = true
-        const done = applyPending(pending)
-        completingRef.current = false
-        // Done, or unresolvable (the doc is fully mounted and the target still
-        // isn't there) — either way no stale pending survives.
-        if (done || fullyMountedRef.current) {
-          pendingRef.current = null
-          // A settled post-swap reposition signals the shell to drop the cover.
-          // Deferred: onRepositioned commits parent state, and committing inside
-          // OpenTUI's frame handler risks a re-entrant render.
-          if (swapPendingRef.current) {
-            swapPendingRef.current = false
-            queueMicrotask(() => onRepositionedRef.current?.())
-          }
-        }
-      }
+      if (stateRef.current.pending)
+        send({
+          kind: 'frameTick',
+          resolution: resolve(stateRef.current.pending),
+          fullyMounted: fullyMountedRef.current,
+        })
       if (needsNotifyRef.current) {
         needsNotifyRef.current = false
         notifyRef.current()
@@ -309,11 +278,6 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
     delete sb.scrollPosition
   }
 }
-
-type PendingTarget =
-  | { kind: 'heading'; id: string; topOffset: number }
-  | { kind: 'match'; params: Parameters<ScrollboxHandle['jumpToMatch']>[0] }
-  | { kind: 'scrollTop'; top: number }
 
 function asTextBearer(node: unknown): TextBearer | null {
   if (!node || typeof node !== 'object') return null
