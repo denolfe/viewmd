@@ -170,17 +170,25 @@ an estimated `<box height={estimatedRemaining}>` spacer between the mounted pref
 tail box, standing in for unmounted content so the scrollbar thumb and `G` read
 approximately right until the doc finishes mounting.
 
-Jumps into content that hasn't mounted yet (heading nav, search) can't resolve immediately
-— `scrollChildToTop`/`jumpToMatchNow` return `false` when the target id isn't found, and
-the caller stashes a `PendingTarget` (`{ kind: 'heading' | 'match', ... }`) instead of
-scrolling. The pending target is retried on the renderer's `frame` event (not inside a
-React effect: a just-committed chunk's renderables still read `y=0` until the next layout
-pass, so effect-time geometry would land the jump at the top) and cleared once it resolves
-or the doc is fully mounted with no match. A user-initiated scroll (wheel/drag, or any
-`ScrollboxHandle` call) supersedes a pending jump — otherwise a stale pending would yank the
-viewport back later once its chunk mounts. Once `mountedCount >= nodes.length`, a deferred
-notify (fired on the next `frame`) re-syncs headings/marks so the breadcrumb and scroll
-indicators reflect the now-complete tree.
+Jumps into content that hasn't mounted yet (heading nav, search, post-swap pins) can't
+resolve immediately. That retry/supersede/settle logic is a **pure reducer**,
+`pendingReducer` (`src/app/lib/pending-reducer.ts`), and `Viewer` is a thin adapter over it.
+The reducer state is `{ pending, isSwap }`; it maps events (`issueJump · pinJump · userScroll
+· frameTick`) to effects (`scrollBy · repositioned`) and never touches live geometry. Each
+frame the adapter resolves the current `pending` target against the box into a plain
+`Resolution` (`{ delta, reached } | null`, computed with the delta fns in
+`viewport-geometry.ts`) and feeds it in as a `frameTick`; it applies the returned effects.
+Retries run on the renderer's `frame` event, not inside a React effect: a just-committed
+chunk's renderables still read `y=0` until the next layout pass, so effect-time geometry
+would land the jump at the top. A pending is cleared once its target resolves or the doc is
+fully mounted (`reached || fullyMounted`). A scroll that **actually moves** the viewport
+(wheel/drag/keyboard, surfaced as a `userScroll` event) supersedes a pending jump — otherwise
+a stale pending would yank the viewport back once its chunk mounts; a clamped no-op scroll
+(e.g. pressing down at the bottom) leaves the pending intact. Post-swap pins (`pinJump`) carry
+`isSwap`, so their settle fires `repositioned` exactly once — the signal the shell uses to drop
+the navigation cover. Once `mountedCount >= nodes.length`, a deferred notify (fired on the next
+`frame`) re-syncs headings/marks so the breadcrumb and scroll indicators reflect the
+now-complete tree.
 
 ### Scroll indicators (`src/app/components/ScrollIndicators.tsx`)
 
