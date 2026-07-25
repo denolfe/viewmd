@@ -11,7 +11,8 @@ An interactive terminal markdown viewer
 - **Table-of-contents sidebar** - a collapsible tree of the document's headings.
 - **Sticky headers** - as you scroll past a heading, its ancestors stay pinned at the top so you always know where you are.
 - **Ergonomic navigation** - header navigation, page up/down, half-page up/down, and mouse scrolling.
-- **Search** forward and backward, `less`-style.
+- **Search** the document, `less`-style.
+- **Keyboard help** - press `?` for a panel listing every shortcut.
 - **Link following** - open links to other markdown files in place, with a back stack to return.
 - **Editor integration** - press `e` to open the current document in `$EDITOR` at the current position.
 - **Images** appear as a labeled, clickable link.
@@ -86,8 +87,9 @@ Helix, and TextMate are recognized; unknown editors get the POSIX `+N file` conv
 | `d` / `u`        | Half page down / up                       |
 | `g` / `G`        | Top / bottom                              |
 | `n` / `N`        | Next / previous heading (or search match) |
-| `/` / `?`        | Search forward / backward                 |
+| `/`              | Search                                    |
 | `Esc`            | Clear search                              |
+| `?`              | Toggle the keyboard-shortcuts panel       |
 | `e`              | Open current doc in `$EDITOR`             |
 | `Backspace`      | Go back (after following a link)          |
 | `Tab`            | Focus the table-of-contents sidebar       |

@@ -42,6 +42,7 @@ export function RenderView({
       historyDepth: 0,
       trailLabels: [],
       status: { kind: 'idle' },
+      helpVisible: false,
       commands,
     }),
     [width, contentMaxWidth, commands],

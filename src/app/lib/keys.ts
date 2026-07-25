@@ -20,21 +20,31 @@ export type Action =
   | { kind: 'tocUp' }
   | { kind: 'tocDown' }
   | { kind: 'toggleTocVisible' }
-  | { kind: 'startSearch'; dir: 'forward' | 'backward' }
+  | { kind: 'startSearch' }
   | { kind: 'nextMatch' }
   | { kind: 'prevMatch' }
   | { kind: 'clearSearch' }
   | { kind: 'toggleMouse' }
   | { kind: 'openEditor' }
   | { kind: 'goBack' }
+  | { kind: 'toggleHelp' }
   | { kind: 'noop' }
 
-export type Ctx = { searchActive?: boolean }
+export type Ctx = { searchActive?: boolean; helpOpen?: boolean }
 
 export function mapKey(ev: KeyEvent, focus: Focus, ctx: Ctx = {}): Action {
   if (ev.name === 'c' && ev.ctrl) return { kind: 'quit' }
+  if (ctx.helpOpen) return mapHelpOpen(ev)
   if (focus === 'sidebar') return mapSidebar(ev)
   return mapViewer(ev, ctx)
+}
+
+// While the help panel is modal, only its close keys and quit act; everything
+// else is swallowed so keystrokes don't scroll the masked content behind it.
+function mapHelpOpen(ev: KeyEvent): Action {
+  if (ev.name === '?' || ev.name === 'escape') return { kind: 'toggleHelp' }
+  if (ev.name === 'q') return { kind: 'quit' }
+  return { kind: 'noop' }
 }
 
 function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
@@ -68,9 +78,9 @@ function mapViewer(ev: KeyEvent, ctx: Ctx): Action {
     case 't':
       return { kind: 'toggleTocVisible' }
     case '/':
-      return { kind: 'startSearch', dir: 'forward' }
+      return { kind: 'startSearch' }
     case '?':
-      return { kind: 'startSearch', dir: 'backward' }
+      return { kind: 'toggleHelp' }
     case 'n':
       if (ev.shift) return ctx.searchActive ? { kind: 'prevMatch' } : { kind: 'prevHeading' }
       return ctx.searchActive ? { kind: 'nextMatch' } : { kind: 'nextHeading' }
@@ -103,7 +113,170 @@ function mapSidebar(ev: KeyEvent): Action {
       return { kind: 'toggleTocVisible' }
     case 'escape':
       return { kind: 'focusViewer' }
+    case '?':
+      return { kind: 'toggleHelp' }
     default:
       return { kind: 'noop' }
   }
 }
+
+export type HintGroup = 'Navigation' | 'Search' | 'TOC & Sidebar' | 'General'
+
+export type HintProbe = { ev: Partial<KeyEvent>; ctx?: Ctx; action: Action['kind'] }
+
+/**
+ * One documented shortcut. `probes` lets a test assert that every key in the
+ * displayed `keys` string still maps to the Action the help claims (drift guard):
+ * one probe per key, each a partial KeyEvent the test's `k()` helper completes.
+ */
+export type Hint = {
+  keys: string
+  desc: string
+  group: HintGroup
+  focus: Focus
+  probes: HintProbe[]
+}
+
+export const HINTS: Hint[] = [
+  // Navigation
+  {
+    keys: 'j / k',
+    desc: 'Scroll line',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'j' }, action: 'scrollLine' },
+      { ev: { name: 'k' }, action: 'scrollLine' },
+    ],
+  },
+  {
+    keys: 'd / u',
+    desc: 'Half page',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'd' }, action: 'scrollHalf' },
+      { ev: { name: 'u' }, action: 'scrollHalf' },
+    ],
+  },
+  {
+    keys: 'Space / b',
+    desc: 'Page down / up',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'space' }, action: 'scrollPage' },
+      { ev: { name: 'b' }, action: 'scrollPage' },
+    ],
+  },
+  {
+    keys: 'g / G',
+    desc: 'Top / bottom',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'g' }, action: 'top' },
+      { ev: { name: 'g', shift: true }, action: 'bottom' },
+    ],
+  },
+  {
+    keys: 'n / N',
+    desc: 'Next / prev heading',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'n' }, ctx: { searchActive: false }, action: 'nextHeading' },
+      { ev: { name: 'n', shift: true }, ctx: { searchActive: false }, action: 'prevHeading' },
+    ],
+  },
+  {
+    keys: 'Backspace',
+    desc: 'Back',
+    group: 'Navigation',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'backspace' }, action: 'goBack' }],
+  },
+  // Search
+  {
+    keys: '/',
+    desc: 'Search',
+    group: 'Search',
+    focus: 'viewer',
+    probes: [{ ev: { name: '/' }, action: 'startSearch' }],
+  },
+  {
+    keys: 'n / N',
+    desc: 'Next / prev match',
+    group: 'Search',
+    focus: 'viewer',
+    probes: [
+      { ev: { name: 'n' }, ctx: { searchActive: true }, action: 'nextMatch' },
+      { ev: { name: 'n', shift: true }, ctx: { searchActive: true }, action: 'prevMatch' },
+    ],
+  },
+  {
+    keys: 'Esc',
+    desc: 'Clear search',
+    group: 'Search',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'escape' }, action: 'clearSearch' }],
+  },
+  // TOC & Sidebar
+  {
+    keys: 'Tab',
+    desc: 'Focus sidebar',
+    group: 'TOC & Sidebar',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'tab' }, action: 'focusSidebar' }],
+  },
+  {
+    keys: 't',
+    desc: 'Show / hide sidebar',
+    group: 'TOC & Sidebar',
+    focus: 'viewer',
+    probes: [{ ev: { name: 't' }, action: 'toggleTocVisible' }],
+  },
+  {
+    keys: 'Space',
+    desc: 'Expand / collapse',
+    group: 'TOC & Sidebar',
+    focus: 'sidebar',
+    probes: [{ ev: { name: 'space' }, action: 'tocToggle' }],
+  },
+  {
+    keys: 'Enter',
+    desc: 'Jump to heading',
+    group: 'TOC & Sidebar',
+    focus: 'sidebar',
+    probes: [{ ev: { name: 'return' }, action: 'tocSelect' }],
+  },
+  // General
+  {
+    keys: '?',
+    desc: 'Toggle this help',
+    group: 'General',
+    focus: 'viewer',
+    probes: [{ ev: { name: '?' }, action: 'toggleHelp' }],
+  },
+  {
+    keys: 'e',
+    desc: 'Open in editor',
+    group: 'General',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'e' }, action: 'openEditor' }],
+  },
+  {
+    keys: 'm',
+    desc: 'Toggle mouse',
+    group: 'General',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'm' }, action: 'toggleMouse' }],
+  },
+  {
+    keys: 'q',
+    desc: 'Quit',
+    group: 'General',
+    focus: 'viewer',
+    probes: [{ ev: { name: 'q' }, action: 'quit' }],
+  },
+]

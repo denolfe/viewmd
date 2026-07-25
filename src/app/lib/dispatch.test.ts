@@ -19,6 +19,7 @@ function makeCommands(): Commands {
     toggleCursorExpanded: mock(),
     toggleExpanded: mock(),
     toggleTocVisible: mock(),
+    toggleHelp: mock(),
     startSearch: mock(),
     applySearchPattern: mock(),
     stepMatch: mock(),
@@ -108,10 +109,10 @@ describe('dispatch routing', () => {
     dispatch({ kind: 'quit' }, c)
     expect(c.quit).toHaveBeenCalled()
   })
-  test('startSearch → startSearch(dir)', () => {
+  test('startSearch → startSearch()', () => {
     const c = makeCommands()
-    dispatch({ kind: 'startSearch', dir: 'forward' }, c)
-    expect(c.startSearch).toHaveBeenCalledWith('forward')
+    dispatch({ kind: 'startSearch' }, c)
+    expect(c.startSearch).toHaveBeenCalled()
   })
   test('nextMatch/prevMatch → stepMatch(±1)', () => {
     const c = makeCommands()
@@ -144,6 +145,11 @@ describe('dispatch routing', () => {
     const c = makeCommands()
     dispatch({ kind: 'toggleTocVisible' }, c)
     expect(c.toggleTocVisible).toHaveBeenCalled()
+  })
+  test('toggleHelp → toggleHelp()', () => {
+    const c = makeCommands()
+    dispatch({ kind: 'toggleHelp' }, c)
+    expect(c.toggleHelp).toHaveBeenCalled()
   })
   test('noop → nothing', () => {
     const c = makeCommands()

@@ -24,6 +24,7 @@ function makeStub(overrides: Partial<AppState> = {}): AppState {
     trailLabels: [],
     contentMaxWidth: 80,
     status: { kind: 'idle' },
+    helpVisible: false,
     ...overrides,
   }
 }

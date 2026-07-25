@@ -36,7 +36,7 @@ export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: str
     }).length > 0
   const surfaceBg = breadcrumbShowing ? theme.stickyBg : theme.background
   const bg = isMiss ? theme.searchBarNoMatchBg : surfaceBg
-  const label = search.dir === 'forward' ? '/' : '?'
+  const label = '/'
   const counter = hasPattern
     ? `${search.matches.length ? search.index + 1 : 0} of ${search.matches.length}`
     : ''

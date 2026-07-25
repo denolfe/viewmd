@@ -16,6 +16,7 @@ import { tocVisibleContentWidth, toggleTocExpanded, FILE_ROW_ID } from './lib/to
 import { foldOffset } from './lib/heading-resolution'
 import { findVisibleHeadingIds } from './lib/viewport-geometry'
 import { SearchBar } from './components/SearchBar'
+import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
@@ -71,6 +72,7 @@ export function App({
   const [search, setSearch] = useState<SearchState | null>(null)
   const [mouseEnabled, setMouseEnabled] = useState(false)
   const [tocVisible, setTocVisible] = useState(true)
+  const [helpVisible, setHelpVisible] = useState(false)
   // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
   // so the reader never sees it painted at scrollTop 0 before the jump lands.
   const [covering, setCovering] = useState(false)
@@ -121,6 +123,7 @@ export function App({
   )
   const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
   const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
+  const toggleHelp = useCallback(() => setHelpVisible(v => !v), [])
 
   const isTocShown = toc.length > 0 && tocVisible
   const { width: termWidth } = useTerminalDimensions()
@@ -261,6 +264,7 @@ export function App({
           expanded: setExpanded,
           toggleMouse,
           toggleTocVisible,
+          toggleHelp,
           toggleExpanded,
         },
         onQuit: () => {
@@ -295,6 +299,7 @@ export function App({
       nav.backTo,
       toggleMouse,
       toggleTocVisible,
+      toggleHelp,
       toggleExpanded,
       onOpenEditor,
     ],
@@ -315,6 +320,7 @@ export function App({
       historyDepth: nav.historyDepth,
       trailLabels,
       status,
+      helpVisible,
       commands,
     }),
     [
@@ -330,6 +336,7 @@ export function App({
       nav.historyDepth,
       trailLabels,
       status,
+      helpVisible,
       commands,
     ],
   )
@@ -350,7 +357,7 @@ export function App({
 
   useKeyboard(ev => {
     if (focus === 'search') return // SearchBar handles its own keys while typing
-    run(mapKey(ev, focus, { searchActive: !!search }))
+    run(mapKey(ev, focus, { searchActive: !!search, helpOpen: helpVisible }))
   })
 
   const dispatchTocAction = (action: Action) => run(action)
@@ -367,6 +374,7 @@ export function App({
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />
           <SearchBar toc={toc} fileLabel={fileLabel} />
+          <HelpPanel />
           <Viewer
             nodes={nodes}
             frontmatter={frontmatter}

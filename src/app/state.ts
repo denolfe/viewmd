@@ -57,10 +57,10 @@ export type ScrollboxHandle = {
     topOffset?: number
   }) => void
   /**
-   * Seed index for a freshly committed search: the nearest match in the search
-   * direction relative to the viewport top (wrapping). See `seedMatchIndex`.
+   * Seed index for a freshly committed search: the first match at or below the
+   * viewport top, wrapping to the first. See `seedMatchIndex`.
    */
-  seedMatchIndex: (params: { matches: Match[]; dir: 'forward' | 'backward' }) => number
+  seedMatchIndex: (params: { matches: Match[] }) => number
   /** Registers a callback fired after every vertical scroll change. Returns an unsubscribe. */
   subscribeScroll: (cb: () => void) => () => void
   /** Current vertical scroll offset (content-space top), for history snapshots. */
@@ -71,7 +71,6 @@ export type SearchState = {
   pattern: string
   matches: Match[]
   index: number
-  dir: 'forward' | 'backward'
   /** False while the pattern is being typed; true once Enter commits. Only a committed search may scroll the viewer. */
   committed: boolean
 }
@@ -112,6 +111,9 @@ export type AppState = {
 
   /** Bottom statusline state; idle shows the viewmd badge + filename. */
   status: Status
+
+  /** Whether the keyboard-shortcuts help panel is open. */
+  helpVisible: boolean
 
   commands: Commands
 }

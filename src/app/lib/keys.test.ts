@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { mapKey } from './keys'
+import { mapKey, HINTS } from './keys'
 import type { KeyEvent } from '@opentui/core'
 
 const k = (over: Partial<KeyEvent> = {}): KeyEvent =>
@@ -31,8 +31,8 @@ describe('mapKey (viewer focus)', () => {
   test('tab -> focusSidebar', () => {
     expect(mapKey(k({ name: 'tab' }), 'viewer')).toEqual({ kind: 'focusSidebar' })
   })
-  test('/ -> startSearch forward', () => {
-    expect(mapKey(k({ name: '/' }), 'viewer')).toEqual({ kind: 'startSearch', dir: 'forward' })
+  test('/ -> startSearch', () => {
+    expect(mapKey(k({ name: '/' }), 'viewer')).toEqual({ kind: 'startSearch' })
   })
   test('n -> nextMatch when search active, nextHeading otherwise', () => {
     expect(mapKey(k({ name: 'n' }), 'viewer', { searchActive: true })).toEqual({
@@ -65,6 +65,9 @@ describe('mapKey (viewer focus)', () => {
   test('backspace -> goBack', () => {
     expect(mapKey(k({ name: 'backspace' }), 'viewer')).toEqual({ kind: 'goBack' })
   })
+  test('? -> toggleHelp (viewer)', () => {
+    expect(mapKey(k({ name: '?' }), 'viewer')).toEqual({ kind: 'toggleHelp' })
+  })
 })
 
 describe('mapKey (sidebar focus)', () => {
@@ -83,4 +86,39 @@ describe('mapKey (sidebar focus)', () => {
   test('e -> noop (not bound in sidebar)', () => {
     expect(mapKey(k({ name: 'e' }), 'sidebar')).toEqual({ kind: 'noop' })
   })
+  test('? -> toggleHelp (sidebar)', () => {
+    expect(mapKey(k({ name: '?' }), 'sidebar')).toEqual({ kind: 'toggleHelp' })
+  })
+})
+
+describe('mapKey (help open)', () => {
+  test('arbitrary key -> noop', () => {
+    expect(mapKey(k({ name: 'j' }), 'viewer', { helpOpen: true })).toEqual({ kind: 'noop' })
+  })
+  test('escape -> toggleHelp', () => {
+    expect(mapKey(k({ name: 'escape' }), 'viewer', { helpOpen: true })).toEqual({
+      kind: 'toggleHelp',
+    })
+  })
+  test('? -> toggleHelp', () => {
+    expect(mapKey(k({ name: '?' }), 'viewer', { helpOpen: true })).toEqual({ kind: 'toggleHelp' })
+  })
+  test('ctrl-c -> quit even when help open', () => {
+    expect(mapKey(k({ name: 'c', ctrl: true }), 'viewer', { helpOpen: true })).toEqual({
+      kind: 'quit',
+    })
+  })
+  test('q -> quit when help open', () => {
+    expect(mapKey(k({ name: 'q' }), 'viewer', { helpOpen: true })).toEqual({ kind: 'quit' })
+  })
+})
+
+describe('HINTS stay in sync with mapKey', () => {
+  for (const h of HINTS) {
+    for (const p of h.probes) {
+      test(`"${h.keys}" (${h.group}/${h.focus}) ${JSON.stringify(p.ev)} maps to ${p.action}`, () => {
+        expect(mapKey(k(p.ev), h.focus, p.ctx).kind).toBe(p.action)
+      })
+    }
+  }
 })
