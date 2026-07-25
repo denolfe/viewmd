@@ -13,8 +13,7 @@ import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import { tocVisibleContentWidth, toggleTocExpanded, FILE_ROW_ID } from './lib/toc-util'
-import { foldOffset } from './lib/heading-resolution'
-import { findVisibleHeadingIds } from './lib/viewport-geometry'
+import { createFold, findVisibleHeadingIds } from './lib/fold'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
@@ -142,13 +141,14 @@ export function App({
   )
   const contentWidth = Math.min(contentMaxWidth, viewerColumnWidth)
 
+  // Stable across nav; rebuilt only when the doc (toc/fileLabel) changes.
+  const fold = useMemo(() => createFold({ toc, fileLabel }), [toc, fileLabel])
+
   // At the bottom the last heading is current, so its ancestor crumbs occlude the
   // top rows. Reserve that height in the scrollbox tail so the final content lands
   // just below the overlay instead of sliding up behind it.
   const lastHeadingId = headingIds.at(-1)
-  const tailReserve = lastHeadingId
-    ? foldOffset({ toc, id: lastHeadingId, fileLabel, historyDepth: nav.historyDepth })
-    : 0
+  const tailReserve = fold.tailReserve(lastHeadingId ?? null, nav.historyDepth)
 
   const trailLabels = nav.trailLabels
 
@@ -162,7 +162,7 @@ export function App({
     // below the breadcrumb overlay. The scroll listener re-syncs breadcrumb
     // state, so no heading bookkeeping here. Uncommitted (live-typing) search
     // updates must never scroll — only Enter commits.
-    const target = matchScrollTarget({ nodes, toc, match: m, fileLabel })
+    const target = matchScrollTarget({ nodes, match: m, fold })
     v.jumpToMatch({
       match: m,
       matches: search.matches,
@@ -244,6 +244,7 @@ export function App({
       createCommands({
         viewerRef,
         doc: { nodes, toc, headingIds, fileLabel },
+        fold,
         viewportHeight: renderer.height,
         read: {
           currentHeadingId,
@@ -281,6 +282,7 @@ export function App({
       toc,
       headingIds,
       fileLabel,
+      fold,
       renderer,
       // `useRenderer` is a stable singleton whose `.height` mutates in place on
       // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the

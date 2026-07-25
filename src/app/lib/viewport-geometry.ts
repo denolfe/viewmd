@@ -4,8 +4,6 @@ import type { BlockProjection } from './visible-text'
 import type { Match } from './search'
 import type { ResolvedMark } from './scroll-marks'
 
-export const PIN_TOP_OFFSET = 1
-
 export type ChildGeometry = { y: number; height: number }
 
 /** Minimal structural view of the text-bearing renderable inside a block box. */
@@ -23,68 +21,9 @@ export type BoxGeometry = {
 
 type MatchJumpParams = { match: Match; topOffset?: number }
 
-export function findHeadingNearTop(
-  geom: BoxGeometry,
-  ids: string[],
-  topOffset: number,
-): string | null {
-  // `childToTopDelta` pins a jumped/anchored heading PIN_TOP_OFFSET rows below the
-  // overlay fold (a small gap so it isn't flush behind the crumbs). Allow the same
-  // slack here so a freshly pinned heading resolves as current instead of its
-  // predecessor — otherwise a post-nav re-resolve would snap the breadcrumb back.
-  const viewportTop = geom.viewportTop + topOffset + PIN_TOP_OFFSET
-  let bestId: string | null = null
-  let bestY = -Infinity
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    if (child.y <= viewportTop && child.y > bestY) {
-      bestY = child.y
-      bestId = id
-    }
-  }
-  if (bestId) return bestId
-  let firstBelowId: string | null = null
-  let firstBelowY = Infinity
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    if (child.y < firstBelowY) {
-      firstBelowY = child.y
-      firstBelowId = id
-    }
-  }
-  return firstBelowId
-}
-
-export function findVisibleHeadingIds(
-  geom: BoxGeometry,
-  ids: string[],
-  topOffset: number,
-): Set<string> {
-  const top = geom.viewportTop + topOffset
-  const bottom = geom.viewportTop + geom.viewportHeight
-  const out = new Set<string>()
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    const childTop = child.y
-    const childBottom = child.y + child.height
-    if (childBottom > top && childTop < bottom) out.add(id)
-  }
-  return out
-}
-
 /** Rows to scroll so the content top sits at `targetTop`. The box clamps on apply. */
 export function scrollTopDelta(geom: BoxGeometry, targetTop: number): number {
   return targetTop - geom.scrollTop
-}
-
-/** Rows to scroll so `id` sits at the viewport top (offset `topOffset` down). Null if unmounted. */
-export function childToTopDelta(geom: BoxGeometry, id: string, topOffset: number): number | null {
-  const child = geom.findChild(id)
-  if (!child) return null
-  return child.y - geom.viewportTop - PIN_TOP_OFFSET - topOffset
 }
 
 /** Rows to scroll to bring a match into view. Null if its block isn't mounted yet. */

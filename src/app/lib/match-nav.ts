@@ -1,6 +1,6 @@
-import type { Node, TocEntry } from './ast'
+import type { Node } from './ast'
 import type { Match } from './search'
-import { aboveOffset } from './heading-resolution'
+import type { Fold } from './fold'
 
 /**
  * Where to scroll a search match: the nearest preceding heading, plus the
@@ -10,14 +10,13 @@ import { aboveOffset } from './heading-resolution'
  */
 export function matchScrollTarget(params: {
   nodes: Node[]
-  toc: TocEntry[]
   match: Match
-  fileLabel?: string
+  fold: Fold
 }): { headingId: string; topOffset: number } | null {
-  const { nodes, toc, match, fileLabel } = params
+  const { nodes, match, fold } = params
   const headingId = nearestPrecedingHeadingId(nodes, match)
   if (!headingId) return null
-  return { headingId, topOffset: aboveOffset({ toc, id: headingId, fileLabel }) }
+  return { headingId, topOffset: fold.aboveOffsetFor(headingId) }
 }
 
 /** Context rows shown above a jumped-to match (like less's -j jump target). */

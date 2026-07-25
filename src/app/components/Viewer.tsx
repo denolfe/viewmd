@@ -9,8 +9,8 @@ import { useAppState } from '../state'
 import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { seedMatchIndex } from '../lib/match-nav'
 import { projectionMap } from '../lib/visible-text'
+import { childToTopDelta } from '../lib/fold'
 import {
-  childToTopDelta,
   matchScrollDelta,
   resolveMatchY,
   resolveScrollMarks,
