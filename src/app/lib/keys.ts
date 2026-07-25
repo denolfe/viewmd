@@ -39,10 +39,11 @@ export function mapKey(ev: KeyEvent, focus: Focus, ctx: Ctx = {}): Action {
   return mapViewer(ev, ctx)
 }
 
-// While the help panel is modal, only its close keys act; everything else is
-// swallowed so keystrokes don't scroll the masked content behind it.
+// While the help panel is modal, only its close keys and quit act; everything
+// else is swallowed so keystrokes don't scroll the masked content behind it.
 function mapHelpOpen(ev: KeyEvent): Action {
   if (ev.name === '?' || ev.name === 'escape') return { kind: 'toggleHelp' }
+  if (ev.name === 'q') return { kind: 'quit' }
   return { kind: 'noop' }
 }
 

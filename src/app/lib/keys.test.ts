@@ -108,6 +108,9 @@ describe('mapKey (help open)', () => {
       kind: 'quit',
     })
   })
+  test('q -> quit when help open', () => {
+    expect(mapKey(k({ name: 'q' }), 'viewer', { helpOpen: true })).toEqual({ kind: 'quit' })
+  })
 })
 
 describe('HINTS stay in sync with mapKey', () => {
