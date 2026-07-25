@@ -28,22 +28,26 @@ Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@o
 Quick orientation:
 
 - Entry: `src/index.tsx` → `preprocess` → `buildTree` (AST + TOC + headingIds) → `createRoot(renderer).render(<App />)`.
-- `App` (`src/app/App.tsx`) owns all reactive state via `AppStateContext`; imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
-- Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (effectful, `src/app/lib/dispatch.ts`).
+- `App` (`src/app/App.tsx`) holds the shared view state in one `useViewState` store (`{ state, actions }`, `src/app/lib/view-state.ts`) plus a `useLatest` ref over it (`stateRef`); it assembles both into `AppState` for `AppStateContext`. Imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
+- Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (pure, `src/app/lib/dispatch.ts`) → `Commands` (effectful, built by `createCommands` in `src/app/lib/commands.ts`, which reads `stateRef.current.*` and writes via `actions.*`).
 - Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
 
 ## Testing features
 
-The `mapKey → Action → dispatch` split is the testable seam — lean on it for any new
-keyboard-driven feature:
+The `mapKey → Action → dispatch → Commands` split is the testable seam — lean on it for any
+new keyboard-driven feature:
 
 - **`mapKey` (`keys.ts`) is pure** — assert `mapKey(k({ name: 'x' }), focus)` returns the
   expected `Action`. Use the existing `k()` helper in `keys.test.ts`. One test per focus the
   key is bound in.
-- **`dispatch` (`dispatch.ts`) is effectful but unit-testable** — drive it with the
-  `makeState` (mock `AppState`) and `makeViewerRef` helpers in `dispatch.test.ts`. Assert on
-  the mocked setters / recorded scroll calls. `makeState` casts `as AppState`, so adding a new
-  `AppState` field doesn't break existing tests — add a default there when you extend the type.
+- **`dispatch` (`dispatch.ts`) is a pure `Action → Commands` method-call map** — `dispatch.test.ts`
+  drives it with a `makeCommands()` helper that returns a `Commands` object of `mock()` stubs, then
+  asserts the right method was called with the right args.
+- **`createCommands` (`commands.ts`) is where the effects live, and it's unit-testable** — drive
+  it with the `makeDeps({ state, viewerRef, doc })` helper in `commands.test.ts`. `state` is a
+  `Partial<ViewState>` overlaid on defaults; `makeDeps` returns `{ deps, actions }` where `actions`
+  is a `ViewActions` of `mock()` stubs — assert on `actions.*` calls and on the recorded calls from
+  the fake `ScrollboxHandle`.
 - **Layout / interactive behavior can be tested headlessly** — `createTestRenderer` from
   `@opentui/core/testing` mounts the real `App` without a TTY: mock keyboard input, capture
   char frames, assert on rendered rows/columns. See `ScrollIndicators.test.tsx` for the

@@ -68,7 +68,8 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
 
 `App` is the only stateful component. It:
 
-- Holds `useState` for `focus`, `currentHeadingId`, `expanded`, `tocCursorId`, `search`, `mouseEnabled`, and `visibleHeadingIds`.
+- Holds the nine view-state fields (`focus`, `currentHeadingId`, `visibleHeadingIds`, `expanded`, `tocCursorId`, `search`, `tocVisible`, `helpVisible`, `mouseEnabled`) in one `useViewState({ seedVisible })` store (`src/app/lib/view-state.ts`): a single `useState<ViewState>` plus a stable `useCallback` writer per field, memoised into a `ViewActions` object. `status` (status-line state) and `covering` (nav-swap cover) stay as their own local `useState` — they're App-local UI flags, not part of the shared view-state read model.
+- Derives `stateRef = useLatest(view)` (`src/app/lib/useLatest.ts`) — a ref updated to the latest `ViewState` on every render — so effectful code can read current state without becoming a render dependency.
 - Holds a `useRef<ScrollboxHandle>` (`viewerRef`) for imperative scroll calls — see [Imperative scroll](#imperative-scroll).
 - Computes layout each render from `useTerminalDimensions`:
   - `tocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer).
@@ -99,7 +100,7 @@ out of flex flow — only the `StatusLine` (height 1) sits below the viewport, a
 
 ## 5. State (`src/app/state.ts`)
 
-`AppState` is the context value. Notable fields:
+`AppState` is the context value `App` memoises into `AppStateContext` — a read model assembled each render from the `useViewState` store's `view` plus `status`/`commands`/layout fields computed in `App`. Components only ever read it via `useAppState()`; they never see `ViewState`, `stateRef`, or `actions` directly. Notable fields:
 
 - `focus: 'viewer' | 'sidebar' | 'search'` — drives `mapKey` dispatch and the TOC cursor highlight.
 - `currentHeadingId: string | null` — heading at/just-above the visible content top, or last-jumped-to. Re-synced after every scroll.
@@ -117,7 +118,7 @@ Both are measured against **the content below the breadcrumb overlay**, not the 
 
 ## 6. Key dispatch
 
-Two pure modules, one driver.
+Pure key mapping, an effectful command layer, and a pure dispatcher between them.
 
 ### `src/app/lib/keys.ts`
 
@@ -128,15 +129,19 @@ Two pure modules, one driver.
 
 `mapKey` returns `{ kind: 'noop' }` for unknown keys — never throws, never reads state.
 
-### `src/app/lib/dispatch.ts`
+### `src/app/lib/commands.ts`
 
-`dispatch(action, state, toc, headingIds, viewportHeight, onQuit)` is the only place that touches state setters and the viewer ref. Three internal helpers:
+`createCommands(deps: CommandDeps)` builds the `Commands` object — the only place that touches the viewer ref and writes view state. `CommandDeps` carries `stateRef: RefObject<ViewState>` (from `useLatest`, see [App shell](#4-app-shell-srcappapptsx)) and `actions: ViewActions` (from `useViewState`) instead of per-field state/setters, plus `doc`, `fold`, `viewportHeight`, `historyDepth`, `nav`, `onQuit`, `onOpenEditor`. Each command reads current state via `stateRef.current.*` and writes via `actions.*`. Because commands close over the ref rather than the state values themselves, `createCommands` has no per-field dependency — `App`'s `useMemo` only rebuilds it on doc/nav swap and viewport resize, not on every keystroke or scroll. Internal helpers:
 
-- `syncCurrentHeading` — after any scroll, asks the viewer for the heading nearest the viewport top; updates `currentHeadingId` and `visibleHeadingIds` when they change.
-- `jumpHeading` — n/N. Seeds the cursor from the near-top heading if the user has been scrolling with j/k, then walks `headingIds`, scroll-pins the target to the top, and refreshes `visibleHeadingIds`.
+- `resolveHeadings` — after any scroll, asks the viewer for the heading nearest the viewport top (via `Fold.resolveCurrent`); applies `actions.currentHeadingId`/`actions.visibleHeadingIds` only when they change.
+- `jumpTo` / `jumpHeadingBy` — n/N and TOC jumps. Seeds the cursor from the near-top heading if the user has been scrolling with j/k, then walks `headingIds`, scroll-pins the target to the top (offset by `Fold.offsetFor`), and refreshes `visibleHeadingIds`.
 - `refreshVisible` — recomputes `visibleHeadingIds` from the viewer, diff-skips with `setsEqual` to avoid spurious re-renders.
 
-Match nav delegates to the index arithmetic in `dispatch` (`((index + delta) % total + total) % total`) and lets the `App` effect handle scrolling the new match into view.
+`createNoopCommands()` returns an all-no-op `Commands` for the non-interactive render path, where no key/mouse input is ever dispatched.
+
+### `src/app/lib/dispatch.ts`
+
+`dispatch(action, commands)` is a pure `switch` mapping each `Action['kind']` to the matching `Commands` method — it holds no state and touches nothing effectful itself. Match nav delegates to the index arithmetic inside `commands.stepMatch` (`((index + delta) % total + total) % total`) and lets the `App` effect handle scrolling the new match into view.
 
 ## 7. Viewer & imperative scroll (`src/app/components/Viewer.tsx`)
 
@@ -256,17 +261,20 @@ Width-aware components read `contentWidth` from `useAppState()`.
 ## Data-flow summary
 
 ```
-keypress ──▶ mapKey ──▶ Action ──▶ dispatch ──┬──▶ state setters (re-render)
-                                              │
-                                              └──▶ viewerRef.current (imperative scroll)
-                                                       │
-                                                       └──▶ syncCurrentHeading / refreshVisible
-                                                                  │
-                                                                  └──▶ state setters (re-render)
+keypress ──▶ mapKey ──▶ Action ──▶ dispatch ──▶ Commands (createCommands)
+                                                     │
+                                    ┌────────────────┴────────────────┐
+                                    ▼                                 ▼
+                          actions.* (ViewActions)          viewerRef.current (imperative scroll)
+                                    │                                 │
+                                    ▼                                 ▼
+                       useViewState setState               resolveHeadings / refreshVisible
+                                    │                                 │
+                                    └─────────── re-render ◀──────────┘
 ```
 
-The only mutable cross-boundary surface is `ScrollboxHandle`. Everything else flows through React state, and the AST itself is immutable for the lifetime of the process.
+The only mutable cross-boundary surface is `ScrollboxHandle`. Commands read/write view state through `stateRef`/`actions` rather than closing over React state directly, but the state itself still lives in `useViewState`'s React state and every update still re-renders through it. The AST itself is immutable for the lifetime of the process.
 
 ## Testing
 
-`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`. Mocks via `mock()` from `bun:test`. The Viewer/imperative-scroll surface is not unit-tested directly — it's exercised by integration through `dispatch.test.ts` against a fake `ScrollboxHandle`.
+`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `commands.test.ts`, `view-state.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`. Mocks via `mock()` from `bun:test`. `commands.test.ts` builds `CommandDeps` via a `makeDeps({ state })` helper (`state` is a `Partial<ViewState>` overlaid on defaults) and asserts on the returned `actions.*` mock calls. `dispatch.test.ts` instead mocks the whole `Commands` object and asserts `dispatch` calls the right method. The Viewer/imperative-scroll surface is not unit-tested directly — it's exercised by integration through `commands.test.ts` against a fake `ScrollboxHandle`.
