@@ -36,7 +36,7 @@ test('? opens the help panel and ? closes it', async () => {
   await mockInput.typeText('?')
   await settle()
   let frame = captureCharFrame()
-  expect(frame).toContain('Keyboard shortcuts')
+  expect(frame).toContain('Keyboard Shortcuts')
   expect(frame).toContain('Scroll line')
 
   await mockInput.typeText('?')

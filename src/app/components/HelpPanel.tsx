@@ -12,7 +12,7 @@ const KEY_COL = 12
 const MIN_TWO_COLUMN_WIDTH = 72
 // Labeled top rule: a run of RULE_GLYPH fills the width around the title.
 const RULE_GLYPH = '━'
-const HELP_TITLE = 'Keyboard shortcuts'
+const HELP_TITLE = 'Keyboard Shortcuts'
 
 export function HelpPanel() {
   const { helpVisible } = useAppState()
