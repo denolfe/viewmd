@@ -11,7 +11,8 @@ const KEY_COL = 12
 // wraps, so the panel stays single-column (and taller) instead.
 const MIN_TWO_COLUMN_WIDTH = 72
 // Labeled top rule; the trailing run of this glyph fills the rest of the width.
-const HELP_HEADING = '─ Keyboard shortcuts '
+const HELP_HEADING = '━ Keyboard shortcuts '
+const RULE_GLYPH = '━'
 
 export function HelpPanel() {
   const { helpVisible } = useAppState()
@@ -20,7 +21,7 @@ export function HelpPanel() {
 
   const sections = groupHints(HINTS)
   const columns = layoutColumns(sections, width >= MIN_TWO_COLUMN_WIDTH)
-  const rule = '─'.repeat(Math.max(0, width - HELP_HEADING.length))
+  const rule = RULE_GLYPH.repeat(Math.max(0, width - HELP_HEADING.length))
 
   // A drawer sliding up from the bottom: no box border, just a labeled top rule.
   // The opaque background masks the document behind it, so the rule alone reads as
@@ -35,6 +36,7 @@ export function HelpPanel() {
       zIndex={20}
       flexDirection="column"
       backgroundColor={theme.background}
+      paddingBottom={1}
     >
       <box flexDirection="row">
         <text fg={theme.foregroundMuted} attributes={TextAttributes.BOLD}>

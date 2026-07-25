@@ -1,6 +1,6 @@
 import type { Hint, HintGroup } from './keys'
 
-export const GROUP_ORDER: HintGroup[] = ['Navigation', 'Search', 'TOC & Sidebar', 'General']
+export const GROUP_ORDER: HintGroup[] = ['General', 'Navigation', 'Search', 'TOC & Sidebar']
 
 export type HintSection = { group: HintGroup; hints: Hint[] }
 
