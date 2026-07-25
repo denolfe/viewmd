@@ -187,6 +187,20 @@ test('a direct scroll while a jump is pending supersedes the pending jump', asyn
   expect(frame).not.toContain('Last Heading')
 })
 
+test('a clamped no-op handle scroll does not supersede a pending jump', async () => {
+  const { headingIds, setup, settle, viewerRef } = await mountViewerOnly(bigFixture())
+  const lastId = headingIds.at(-1)
+  if (lastId === undefined) throw new Error('fixture must have headings')
+  viewerRef.current?.scrollChildToTop(lastId) // miss → pending recorded
+  // Scrolling up while already at the top moves nothing, so the scrollbox
+  // setter never fires and no supersede is issued — the pending jump must
+  // survive and still complete once its chunk mounts. Only a scroll that
+  // actually moves the viewport cancels a pending jump.
+  viewerRef.current?.scrollBy(-4)
+  for (let i = 0; i < 40; i++) await settle()
+  expect(setup.captureCharFrame()).toContain('Last Heading')
+})
+
 /**
  * Wraps Viewer in its own `nodes` state and exposes the setter via
  * `controller.current` — swapping via this setter re-renders the SAME
