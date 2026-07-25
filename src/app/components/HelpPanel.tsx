@@ -10,9 +10,9 @@ const KEY_COL = 12
 // Below this terminal width a second column would cramp descriptions into ragged
 // wraps, so the panel stays single-column (and taller) instead.
 const MIN_TWO_COLUMN_WIDTH = 72
-// Labeled top rule; the trailing run of this glyph fills the rest of the width.
-const HELP_HEADING = '━ Keyboard shortcuts '
+// Labeled top rule: a run of RULE_GLYPH fills the width around the title.
 const RULE_GLYPH = '━'
+const HELP_TITLE = 'Keyboard shortcuts'
 
 export function HelpPanel() {
   const { helpVisible } = useAppState()
@@ -21,7 +21,8 @@ export function HelpPanel() {
 
   const sections = groupHints(HINTS)
   const columns = layoutColumns(sections, width >= MIN_TWO_COLUMN_WIDTH)
-  const rule = RULE_GLYPH.repeat(Math.max(0, width - HELP_HEADING.length))
+  // 3 = the leading "━ " lead-in plus one space before the trailing rule.
+  const rule = RULE_GLYPH.repeat(Math.max(0, width - HELP_TITLE.length - 3))
 
   // A drawer sliding up from the bottom: no box border, just a labeled top rule.
   // The opaque background masks the document behind it, so the rule alone reads as
@@ -39,10 +40,11 @@ export function HelpPanel() {
       paddingBottom={1}
     >
       <box flexDirection="row">
-        <text fg={theme.foregroundMuted} attributes={TextAttributes.BOLD}>
-          {HELP_HEADING}
+        <text fg={theme.border}>{`${RULE_GLYPH} `}</text>
+        <text fg={theme.heading} attributes={TextAttributes.BOLD}>
+          {HELP_TITLE}
         </text>
-        <text fg={theme.border}>{rule}</text>
+        <text fg={theme.border}>{` ${rule}`}</text>
       </box>
       <box flexDirection="row" paddingTop={1}>
         {columns.map(col => (
