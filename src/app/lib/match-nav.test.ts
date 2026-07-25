@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { buildTree } from './ast'
+import { createFold } from './fold'
 import { findMatches } from './search'
 import {
   matchJumpDelta,
@@ -77,7 +78,10 @@ describe('matchScrollTarget', () => {
     if (!m) throw new Error('expected a match')
     // Match sits under `## B`; after the jump both `# A` and the offscreen
     // `## B` render as crumbs — two overlay rows the scroll must clear.
-    expect(matchScrollTarget({ nodes, toc, match: m })).toEqual({ headingId: 'b', topOffset: 2 })
+    expect(matchScrollTarget({ nodes, match: m, fold: createFold({ toc }) })).toEqual({
+      headingId: 'b',
+      topOffset: 2,
+    })
   })
 
   test('returns null when no heading precedes the match', () => {
@@ -85,6 +89,6 @@ describe('matchScrollTarget', () => {
     const { nodes, toc } = buildTree(md)
     const [m] = findMatches(nodes, 'target')
     if (!m) throw new Error('expected a match')
-    expect(matchScrollTarget({ nodes, toc, match: m })).toBe(null)
+    expect(matchScrollTarget({ nodes, match: m, fold: createFold({ toc }) })).toBe(null)
   })
 })

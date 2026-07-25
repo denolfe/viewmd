@@ -1,5 +1,6 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { createCommands, createNoopCommands } from './commands'
+import { createFold } from './fold'
 import type { CommandDeps } from './commands'
 import type { ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
@@ -81,9 +82,11 @@ function makeDeps(
     toggleHelp: mock(),
     toggleExpanded: mock(),
   }
+  const doc = { nodes: [], toc, headingIds, ...overrides.doc }
   const deps: CommandDeps = {
     viewerRef: overrides.viewerRef ?? makePositionalViewerRef({}).ref,
-    doc: { nodes: [], toc, headingIds, ...overrides.doc },
+    doc,
+    fold: createFold({ toc: doc.toc, fileLabel: doc.fileLabel }),
     viewportHeight: 24,
     read: {
       currentHeadingId: null,

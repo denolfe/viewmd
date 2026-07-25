@@ -4,13 +4,14 @@ import type { Node, TocEntry } from './ast'
 import type { Focus } from './keys'
 import type { DocReset } from './documentNavigation'
 import { flattenVisible } from './toc-util'
-import { foldOffset, resolveHeadings as resolveHeadingsPure } from './heading-resolution'
-import { findHeadingNearTop, findVisibleHeadingIds } from './viewport-geometry'
+import { findHeadingNearTop, findVisibleHeadingIds } from './fold'
 import { findMatches } from './search'
+import type { Fold } from './fold'
 
 export type CommandDeps = {
   viewerRef: RefObject<ScrollboxHandle | null>
   doc: { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
+  fold: Fold
   viewportHeight: number
   read: {
     currentHeadingId: string | null
@@ -74,15 +75,14 @@ export type Commands = {
 }
 
 export function createCommands(deps: CommandDeps): Commands {
-  const { viewerRef, doc, viewportHeight, read, set, onQuit, onOpenEditor, nav } = deps
+  const { viewerRef, doc, fold, viewportHeight, read, set, onQuit, onOpenEditor, nav } = deps
 
   // Rows the breadcrumb will show once `id` is pinned as the current heading: `id`
   // itself lands below the overlay (visible, so filtered out); its ancestors stack
   // above, plus the back badge when a history exists. Used as the pin/visibility
   // offset so a jump lands the target just below its crumbs rather than hidden
-  // behind them. See `foldOffset` for the offset-convention rationale.
-  const offsetFor = (id: string): number =>
-    foldOffset({ toc: doc.toc, id, fileLabel: doc.fileLabel, historyDepth: read.historyDepth })
+  // behind them. See `Fold.offsetFor` for the offset-convention rationale.
+  const offsetFor = (id: string): number => fold.offsetFor(id, read.historyDepth)
 
   const refreshVisible = (topOffset: number): void => {
     const v = viewerRef.current
@@ -93,17 +93,15 @@ export function createCommands(deps: CommandDeps): Commands {
 
   // Resolve current + visible headings against live geometry and apply the setters
   // only on change. The breadcrumb overlay occludes the top rows, so resolution
-  // measures against the content below the fold (see `resolveHeadings`).
+  // measures against the content below the fold (see `Fold.resolveCurrent`).
   const resolveHeadings = (): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
-    const { currentHeadingId, visibleHeadingIds } = resolveHeadingsPure({
-      geom: v.getGeometry(),
-      toc: doc.toc,
-      headingIds: doc.headingIds,
-      fileLabel: doc.fileLabel,
-      historyDepth: read.historyDepth,
-    })
+    const { currentHeadingId, visibleHeadingIds } = fold.resolveCurrent(
+      v.getGeometry(),
+      doc.headingIds,
+      read.historyDepth,
+    )
     if (currentHeadingId && currentHeadingId !== read.currentHeadingId) {
       set.currentHeadingId(currentHeadingId)
     }
