@@ -2,10 +2,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { dirname, resolve } from 'node:path'
 import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { AppStateContext } from './state'
-import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
-import type { Action, Focus } from './lib/keys'
+import type { AppState, ScrollboxHandle, Status } from './state'
+import type { Action } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
+import { useViewState } from './lib/view-state'
+import { useLatest } from './lib/useLatest'
 import { applyScrollIntent } from './lib/applyScrollIntent'
 import { dispatch } from './lib/dispatch'
 import { createCommands } from './lib/commands'
@@ -13,7 +15,7 @@ import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import { tocVisibleContentWidth, toggleTocExpanded, FILE_ROW_ID } from './lib/toc-util'
+import { tocVisibleContentWidth, FILE_ROW_ID } from './lib/toc-util'
 import { createFold, findVisibleHeadingIds } from './lib/fold'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
@@ -65,27 +67,26 @@ export function App({
   const viewerRef = useRef<ScrollboxHandle | null>(null)
 
   const [status, setStatus] = useState<Status>({ kind: 'idle' })
-  const [currentHeadingId, setCurrentHeadingId] = useState<string | null>(null)
-  const [focus, setFocus] = useState<Focus>('viewer')
-  const [expanded, setExpanded] = useState<Map<string, boolean>>(() => new Map())
-  const [tocCursorId, setTocCursorId] = useState<string | null>(null)
-  const [search, setSearch] = useState<SearchState | null>(null)
-  const [mouseEnabled, setMouseEnabled] = useState(false)
-  const [tocVisible, setTocVisible] = useState(true)
-  const [helpVisible, setHelpVisible] = useState(false)
   // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
   // so the reader never sees it painted at scrollTop 0 before the jump lands.
   const [covering, setCovering] = useState(false)
-  const [visibleHeadingIds, setVisibleHeadingIds] = useState<Set<string>>(() =>
-    // At startup the H1 (if any) sits at the top of the viewport — seed it so
-    // the breadcrumb's hide-when-visible rule fires on the first paint.
-    initialToc[0]?.level === 1 ? new Set([initialToc[0].id]) : new Set(),
+
+  // At startup the H1 (if any) sits at the top of the viewport — seed it so
+  // the breadcrumb's hide-when-visible rule fires on the first paint.
+  const seedVisible = useMemo<Set<string>>(
+    () => (initialToc[0]?.level === 1 ? new Set([initialToc[0].id]) : new Set()),
+    [initialToc],
   )
+  const { state: view, actions } = useViewState({ seedVisible })
+  const stateRef = useLatest(view)
 
   const onError = useCallback((text: string) => setStatus({ kind: 'error', text }), [])
   const captureScroll = useCallback(
-    () => ({ scrollTop: viewerRef.current?.getScrollTop() ?? 0, currentHeadingId }),
-    [currentHeadingId],
+    () => ({
+      scrollTop: viewerRef.current?.getScrollTop() ?? 0,
+      currentHeadingId: view.currentHeadingId,
+    }),
+    [view.currentHeadingId],
   )
   const initialDoc = useMemo(
     () =>
@@ -115,17 +116,7 @@ export function App({
     if (!covering) setCovering(true)
   }
 
-  const toggleExpanded = useCallback(
-    (id: string) => {
-      setExpanded(prev => toggleTocExpanded({ toc, expanded: prev, id }))
-    },
-    [toc],
-  )
-  const toggleMouse = useCallback(() => setMouseEnabled(m => !m), [])
-  const toggleTocVisible = useCallback(() => setTocVisible(v => !v), [])
-  const toggleHelp = useCallback(() => setHelpVisible(v => !v), [])
-
-  const isTocShown = toc.length > 0 && tocVisible
+  const isTocShown = toc.length > 0 && view.tocVisible
   const { width: termWidth } = useTerminalDimensions()
   // The scrollbox inside the TOC consumes paddingX={1} (1 col each side = 2), + 1 buffer.
   const TOC_PADDING = 3
@@ -134,7 +125,7 @@ export function App({
   // shrink the sidebar so the viewer reclaims the freed columns.
   const tocWidth = Math.min(
     Math.floor(termWidth * 0.4),
-    Math.max(16, tocVisibleContentWidth(toc, expanded) + TOC_PADDING),
+    Math.max(16, tocVisibleContentWidth(toc, view.expanded) + TOC_PADDING),
   )
   const viewerColumnWidth = Math.max(
     1,
@@ -154,8 +145,8 @@ export function App({
   const trailLabels = nav.trailLabels
 
   useEffect(() => {
-    if (!search?.committed || search.index < 0) return
-    const m = search.matches[search.index]
+    if (!view.search?.committed || view.search.index < 0) return
+    const m = view.search.matches[view.search.index]
     if (!m) return
     const v = viewerRef.current
     if (!v) return
@@ -166,11 +157,11 @@ export function App({
     const target = matchScrollTarget({ nodes, match: m, fold })
     v.jumpToMatch({
       match: m,
-      matches: search.matches,
-      index: search.index,
+      matches: view.search.matches,
+      index: view.search.index,
       topOffset: target?.topOffset ?? 0,
     })
-  }, [search?.index, search?.pattern, search?.committed])
+  }, [view.search?.index, view.search?.pattern, view.search?.committed])
 
   // Populate visibleHeadingIds once after first layout so the breadcrumb's
   // hide-when-visible rule fires before the user touches a key.
@@ -179,7 +170,7 @@ export function App({
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      setVisibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), headingIds, 0))
+      actions.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), headingIds, 0))
     }, 0)
     return () => clearTimeout(tid)
   }, [headingIds])
@@ -213,7 +204,7 @@ export function App({
       setStatus({ kind: 'error', text: 'Cannot edit: reading from stdin' })
       return
     }
-    const line = currentHeadingId ? headingLines[currentHeadingId] : undefined
+    const line = view.currentHeadingId ? headingLines[view.currentHeadingId] : undefined
     const argv = buildEditorArgv({
       command: resolveEditorCommand(process.env),
       filePath: activePath,
@@ -225,7 +216,7 @@ export function App({
       return
     }
     nav.reload()
-  }, [nav, currentHeadingId, renderer, headingLines])
+  }, [nav, view.currentHeadingId, renderer, headingLines])
 
   const commands = useMemo(
     () =>
@@ -234,28 +225,9 @@ export function App({
         doc: { nodes, toc, headingIds, fileLabel },
         fold,
         viewportHeight: renderer.height,
-        read: {
-          currentHeadingId,
-          visibleHeadingIds,
-          expanded,
-          tocCursorId,
-          search,
-          focus,
-          tocVisible,
-          historyDepth: nav.historyDepth,
-        },
-        set: {
-          focus: setFocus,
-          currentHeadingId: setCurrentHeadingId,
-          visibleHeadingIds: setVisibleHeadingIds,
-          tocCursorId: setTocCursorId,
-          search: setSearch,
-          expanded: setExpanded,
-          toggleMouse,
-          toggleTocVisible,
-          toggleHelp,
-          toggleExpanded,
-        },
+        stateRef,
+        actions,
+        historyDepth: nav.historyDepth,
         onQuit: () => {
           // Silence the highlight-failed warning tree-sitter logs when
           // destroyTreeSitterClient rejects in-flight requests during shutdown.
@@ -276,57 +248,42 @@ export function App({
       // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the
       // new page size instead of the pre-resize one.
       renderer.height,
-      currentHeadingId,
-      visibleHeadingIds,
-      expanded,
-      tocCursorId,
-      search,
-      focus,
-      tocVisible,
       nav.historyDepth,
       nav.follow,
       nav.back,
       nav.backTo,
-      toggleMouse,
-      toggleTocVisible,
-      toggleHelp,
-      toggleExpanded,
+      stateRef,
+      actions,
       onOpenEditor,
     ],
   )
 
-  const state = useMemo<AppState>(
+  const appState = useMemo<AppState>(
     () => ({
-      focus,
-      currentHeadingId,
+      focus: view.focus,
+      currentHeadingId: view.currentHeadingId,
       viewerRef,
-      expanded,
-      tocCursorId,
-      search,
-      visibleHeadingIds,
+      expanded: view.expanded,
+      tocCursorId: view.tocCursorId,
+      search: view.search,
+      visibleHeadingIds: view.visibleHeadingIds,
       contentWidth,
       contentMaxWidth,
       dir: nav.doc.dir,
       historyDepth: nav.historyDepth,
       trailLabels,
       status,
-      helpVisible,
+      helpVisible: view.helpVisible,
       commands,
     }),
     [
-      focus,
-      currentHeadingId,
-      tocCursorId,
-      search,
-      expanded,
-      visibleHeadingIds,
+      view,
       contentWidth,
       contentMaxWidth,
       nav.doc.dir,
       nav.historyDepth,
       trailLabels,
       status,
-      helpVisible,
       commands,
     ],
   )
@@ -346,8 +303,8 @@ export function App({
       : dispatch(action, commands)
 
   useKeyboard(ev => {
-    if (focus === 'search') return // SearchBar handles its own keys while typing
-    run(mapKey(ev, focus, { searchActive: !!search, helpOpen: helpVisible }))
+    if (view.focus === 'search') return // SearchBar handles its own keys while typing
+    run(mapKey(ev, view.focus, { searchActive: !!view.search, helpOpen: view.helpVisible }))
   })
 
   const dispatchTocAction = (action: Action) => run(action)
@@ -359,7 +316,7 @@ export function App({
     id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
   return (
-    <AppStateContext.Provider value={state}>
+    <AppStateContext.Provider value={appState}>
       <box flexDirection="column" height="100%">
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
           <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />

@@ -2,6 +2,7 @@ import { describe, expect, test, mock } from 'bun:test'
 import { createCommands, createNoopCommands } from './commands'
 import { createFold } from './fold'
 import type { CommandDeps } from './commands'
+import type { ViewActions, ViewState } from './view-state'
 import type { ScrollboxHandle } from '../state'
 import type { TocEntry } from './ast'
 import type { Match } from './search'
@@ -66,45 +67,48 @@ const headingIds = ['a', 'a1', 'b']
 function makeDeps(
   overrides: {
     viewerRef?: RefObject<ScrollboxHandle | null>
-    read?: Partial<CommandDeps['read']>
+    state?: Partial<ViewState>
     doc?: Partial<CommandDeps['doc']>
   } = {},
-): { deps: CommandDeps; set: CommandDeps['set'] } {
-  const set: CommandDeps['set'] = {
+): { deps: CommandDeps; actions: ViewActions } {
+  const actions: ViewActions = {
     focus: mock(),
     currentHeadingId: mock(),
     visibleHeadingIds: mock(),
     tocCursorId: mock(),
     search: mock(),
-    expanded: mock(),
+    setExpanded: mock(),
+    toggleExpanded: mock(),
     toggleMouse: mock(),
     toggleTocVisible: mock(),
     toggleHelp: mock(),
-    toggleExpanded: mock(),
   }
   const doc = { nodes: [], toc, headingIds, ...overrides.doc }
+  const viewState: ViewState = {
+    focus: 'viewer',
+    currentHeadingId: null,
+    visibleHeadingIds: new Set(),
+    expanded: new Map(),
+    tocCursorId: null,
+    search: null,
+    tocVisible: true,
+    helpVisible: false,
+    mouseEnabled: false,
+    ...overrides.state,
+  }
   const deps: CommandDeps = {
     viewerRef: overrides.viewerRef ?? makePositionalViewerRef({}).ref,
     doc,
     fold: createFold({ toc: doc.toc, fileLabel: doc.fileLabel }),
     viewportHeight: 24,
-    read: {
-      currentHeadingId: null,
-      visibleHeadingIds: new Set(),
-      expanded: new Map(),
-      tocCursorId: null,
-      search: null,
-      focus: 'viewer',
-      tocVisible: true,
-      historyDepth: 0,
-      ...overrides.read,
-    },
-    set,
+    stateRef: { current: viewState },
+    actions,
+    historyDepth: 0,
     onQuit: mock(),
     onOpenEditor: mock(),
     nav: { follow: mock(), back: mock(), backTo: mock() },
   }
-  return { deps, set }
+  return { deps, actions }
 }
 
 describe('createCommands.jumpToHeading', () => {
@@ -118,26 +122,26 @@ describe('createCommands.jumpToHeading', () => {
       calls.push(`pin(${id},${off ?? 0})`)
       orig(id, off)
     }
-    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    const { deps, actions } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).jumpToHeading('a1')
     expect(calls.some(c => c.startsWith('pin(a1'))).toBe(true)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
-    expect(set.visibleHeadingIds).toHaveBeenCalled()
-    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(actions.visibleHeadingIds).toHaveBeenCalled()
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
   })
 })
 
 describe('createCommands.jumpHeadingBy', () => {
   test('seeds from getHeadingNearTop when current is null, then advances', () => {
     const ref = makePositionalViewerRef({ a: -2, a1: 5, b: 40 }).ref
-    const { deps, set } = makeDeps({ viewerRef: ref, read: { currentHeadingId: null } })
+    const { deps, actions } = makeDeps({ viewerRef: ref, state: { currentHeadingId: null } })
     createCommands(deps).jumpHeadingBy(1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
   })
   test('walks headingIds from the current heading', () => {
-    const { deps, set } = makeDeps({ read: { currentHeadingId: 'a1' } })
+    const { deps, actions } = makeDeps({ state: { currentHeadingId: 'a1' } })
     createCommands(deps).jumpHeadingBy(1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('b')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('b')
   })
 })
 
@@ -148,9 +152,9 @@ describe('createCommands.syncFromScroll', () => {
     // is `a`, and `a`'s own H1 crumb is filtered out (offset 0), so the loop
     // terminates on the first pass.
     const ref = makePositionalViewerRef({ a: -10, a1: 2, b: 40 }).ref
-    const { deps, set } = makeDeps({ viewerRef: ref })
+    const { deps, actions } = makeDeps({ viewerRef: ref })
     createCommands(deps).syncFromScroll()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a')
   })
 
   test('terminates via the seen-set bailout when the offset oscillates', () => {
@@ -158,153 +162,153 @@ describe('createCommands.syncFromScroll', () => {
     // is a1 → offset 1; at offset 1 near-top is a → offset 0. The cycle would loop
     // forever without the `seen` guard; it must bail deterministically on `a`.
     const ref = makePositionalViewerRef({ a: 1, a1: 0, b: 40 }).ref
-    const { deps, set } = makeDeps({ viewerRef: ref })
+    const { deps, actions } = makeDeps({ viewerRef: ref })
     createCommands(deps).syncFromScroll()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a')
   })
 })
 
 describe('createCommands.jumpHeadingBy boundaries', () => {
   test('clamps at the last heading', () => {
-    const { deps, set } = makeDeps({ read: { currentHeadingId: 'b' } })
+    const { deps, actions } = makeDeps({ state: { currentHeadingId: 'b' } })
     createCommands(deps).jumpHeadingBy(1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('b')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('b')
   })
   test('clamps at the first heading', () => {
-    const { deps, set } = makeDeps({ read: { currentHeadingId: 'a' } })
+    const { deps, actions } = makeDeps({ state: { currentHeadingId: 'a' } })
     createCommands(deps).jumpHeadingBy(-1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a')
   })
   test('backward from null with no viewport heading goes to last', () => {
     const ref = makePositionalViewerRef({}).ref
-    const { deps, set } = makeDeps({ viewerRef: ref, read: { currentHeadingId: null } })
+    const { deps, actions } = makeDeps({ viewerRef: ref, state: { currentHeadingId: null } })
     createCommands(deps).jumpHeadingBy(-1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('b')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('b')
   })
 })
 
 describe('createCommands.jumpToCursor', () => {
   test('jumps to the cursor and focuses viewer', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: 'a1' } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: 'a1' } })
     createCommands(deps).jumpToCursor()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
-    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
   })
   test('no-op when there is no cursor', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: null } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: null } })
     createCommands(deps).jumpToCursor()
-    expect(set.currentHeadingId).not.toHaveBeenCalled()
-    expect(set.focus).not.toHaveBeenCalled()
+    expect(actions.currentHeadingId).not.toHaveBeenCalled()
+    expect(actions.focus).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.focusSidebar', () => {
   test('no-op when toc hidden', () => {
-    const { deps, set } = makeDeps({ read: { tocVisible: false } })
+    const { deps, actions } = makeDeps({ state: { tocVisible: false } })
     createCommands(deps).focusSidebar()
-    expect(set.focus).not.toHaveBeenCalled()
+    expect(actions.focus).not.toHaveBeenCalled()
   })
   test('no-op when toc empty', () => {
-    const { deps, set } = makeDeps({ doc: { toc: [], headingIds: [] } })
+    const { deps, actions } = makeDeps({ doc: { toc: [], headingIds: [] } })
     createCommands(deps).focusSidebar()
-    expect(set.focus).not.toHaveBeenCalled()
+    expect(actions.focus).not.toHaveBeenCalled()
   })
   test('seeds cursor to first entry and focuses sidebar', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: null, tocVisible: true } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: null, tocVisible: true } })
     createCommands(deps).focusSidebar()
-    expect(set.tocCursorId).toHaveBeenCalledWith('a')
-    expect(set.focus).toHaveBeenCalledWith('sidebar')
+    expect(actions.tocCursorId).toHaveBeenCalledWith('a')
+    expect(actions.focus).toHaveBeenCalledWith('sidebar')
   })
   test('keeps an existing cursor', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: 'b' } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: 'b' } })
     createCommands(deps).focusSidebar()
-    expect(set.tocCursorId).not.toHaveBeenCalled()
-    expect(set.focus).toHaveBeenCalledWith('sidebar')
+    expect(actions.tocCursorId).not.toHaveBeenCalled()
+    expect(actions.focus).toHaveBeenCalledWith('sidebar')
   })
 })
 
 describe('createCommands.tocMove', () => {
   const expanded = new Map([['a', true]])
   test('advances cursor to the next visible entry', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: 'a', expanded } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: 'a', expanded } })
     createCommands(deps).tocMove(1)
-    expect(set.tocCursorId).toHaveBeenCalledWith('a1')
+    expect(actions.tocCursorId).toHaveBeenCalledWith('a1')
   })
   test('moves cursor to the previous visible entry', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: 'a1', expanded } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: 'a1', expanded } })
     createCommands(deps).tocMove(-1)
-    expect(set.tocCursorId).toHaveBeenCalledWith('a')
+    expect(actions.tocCursorId).toHaveBeenCalledWith('a')
   })
 })
 
 describe('createCommands.toggleTocVisible', () => {
   test('hiding from sidebar returns focus to viewer', () => {
-    const { deps, set } = makeDeps({ read: { focus: 'sidebar', tocVisible: true } })
+    const { deps, actions } = makeDeps({ state: { focus: 'sidebar', tocVisible: true } })
     createCommands(deps).toggleTocVisible()
-    expect(set.focus).toHaveBeenCalledWith('viewer')
-    expect(set.toggleTocVisible).toHaveBeenCalled()
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.toggleTocVisible).toHaveBeenCalled()
   })
   test('toggling from viewer does not change focus', () => {
-    const { deps, set } = makeDeps({ read: { focus: 'viewer' } })
+    const { deps, actions } = makeDeps({ state: { focus: 'viewer' } })
     createCommands(deps).toggleTocVisible()
-    expect(set.toggleTocVisible).toHaveBeenCalled()
-    expect(set.focus).not.toHaveBeenCalled()
+    expect(actions.toggleTocVisible).toHaveBeenCalled()
+    expect(actions.focus).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.toggleCursorExpanded', () => {
   test('toggles the cursor id', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: 'a' } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: 'a' } })
     createCommands(deps).toggleCursorExpanded()
-    expect(set.toggleExpanded).toHaveBeenCalledWith('a')
+    expect(actions.toggleExpanded).toHaveBeenCalledWith({ toc, id: 'a' })
   })
   test('no-op when there is no cursor', () => {
-    const { deps, set } = makeDeps({ read: { tocCursorId: null } })
+    const { deps, actions } = makeDeps({ state: { tocCursorId: null } })
     createCommands(deps).toggleCursorExpanded()
-    expect(set.toggleExpanded).not.toHaveBeenCalled()
+    expect(actions.toggleExpanded).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.clearSearch', () => {
   test('clears and returns to viewer when in search focus', () => {
-    const { deps, set } = makeDeps({
-      read: {
+    const { deps, actions } = makeDeps({
+      state: {
         focus: 'search',
         search: { pattern: 'x', matches: [], index: -1, committed: true },
       },
     })
     createCommands(deps).clearSearch()
-    expect(set.search).toHaveBeenCalledWith(null)
-    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.search).toHaveBeenCalledWith(null)
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
   })
   test('does not refocus when already in viewer', () => {
-    const { deps, set } = makeDeps({
-      read: {
+    const { deps, actions } = makeDeps({
+      state: {
         focus: 'viewer',
         search: { pattern: 'x', matches: [], index: -1, committed: true },
       },
     })
     createCommands(deps).clearSearch()
-    expect(set.search).toHaveBeenCalledWith(null)
-    expect(set.focus).not.toHaveBeenCalled()
+    expect(actions.search).toHaveBeenCalledWith(null)
+    expect(actions.focus).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.startSearch', () => {
   test('opens an empty uncommitted search and focuses the input', () => {
-    const { deps, set } = makeDeps()
+    const { deps, actions } = makeDeps()
     createCommands(deps).startSearch()
-    expect(set.search).toHaveBeenCalledWith(
+    expect(actions.search).toHaveBeenCalledWith(
       expect.objectContaining({ committed: false, pattern: '', index: -1 }),
     )
-    expect(set.focus).toHaveBeenCalledWith('search')
+    expect(actions.focus).toHaveBeenCalledWith('search')
   })
 })
 
 describe('createCommands.stepMatch', () => {
   test('wraps forward from the last match to the first', () => {
-    const { deps, set } = makeDeps({
-      read: {
+    const { deps, actions } = makeDeps({
+      state: {
         search: {
           pattern: 'x',
           matches: [m(), m(), m()],
@@ -314,11 +318,11 @@ describe('createCommands.stepMatch', () => {
       },
     })
     createCommands(deps).stepMatch(1)
-    expect(set.search).toHaveBeenCalledWith(expect.objectContaining({ index: 0 }))
+    expect(actions.search).toHaveBeenCalledWith(expect.objectContaining({ index: 0 }))
   })
   test('wraps backward from the first match to the last', () => {
-    const { deps, set } = makeDeps({
-      read: {
+    const { deps, actions } = makeDeps({
+      state: {
         search: {
           pattern: 'x',
           matches: [m(), m(), m()],
@@ -328,23 +332,23 @@ describe('createCommands.stepMatch', () => {
       },
     })
     createCommands(deps).stepMatch(-1)
-    expect(set.search).toHaveBeenCalledWith(expect.objectContaining({ index: 2 }))
+    expect(actions.search).toHaveBeenCalledWith(expect.objectContaining({ index: 2 }))
   })
 })
 
 describe('createCommands.applySearchPattern', () => {
   test('sets matches + seeds index; commit moves focus to viewer', () => {
-    const { deps, set } = makeDeps({
-      read: { search: { pattern: '', matches: [], index: -1, committed: false } },
+    const { deps, actions } = makeDeps({
+      state: { search: { pattern: '', matches: [], index: -1, committed: false } },
     })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: true })
-    expect(set.search).toHaveBeenCalled()
-    expect(set.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.search).toHaveBeenCalled()
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
   })
   test('no-op when there is no active search', () => {
-    const { deps, set } = makeDeps({ read: { search: null } })
+    const { deps, actions } = makeDeps({ state: { search: null } })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: false })
-    expect(set.search).not.toHaveBeenCalled()
+    expect(actions.search).not.toHaveBeenCalled()
   })
 })
 
@@ -367,26 +371,26 @@ describe('createCommands.syncFromScroll sibling handoff (blip fix)', () => {
     // sa scrolled above; sb still sits below the fold plus the near-top slack
     // (row 3). The handoff must NOT fire early — current resolves to sa.
     const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 3 }).ref
-    const { deps, set } = makeDeps({
+    const { deps, actions } = makeDeps({
       viewerRef: ref,
       doc: { toc: siblingToc, headingIds: siblingIds },
-      read: { currentHeadingId: null },
+      state: { currentHeadingId: null },
     })
     createCommands(deps).syncFromScroll()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('sa')
-    expect(set.currentHeadingId).not.toHaveBeenCalledWith('sb')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('sa')
+    expect(actions.currentHeadingId).not.toHaveBeenCalledWith('sb')
   })
 
   test('handoff fires exactly when the new header reaches the fold', () => {
     // sb now at the fold (row 1, = ancestor-stack height of 1). Current flips to sb.
     const ref = makePositionalViewerRef({ h1: -100, sa: -5, sb: 1 }).ref
-    const { deps, set } = makeDeps({
+    const { deps, actions } = makeDeps({
       viewerRef: ref,
       doc: { toc: siblingToc, headingIds: siblingIds },
-      read: { currentHeadingId: 'sa' },
+      state: { currentHeadingId: 'sa' },
     })
     createCommands(deps).syncFromScroll()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('sb')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('sb')
   })
 })
 
@@ -398,13 +402,15 @@ describe('createCommands.syncFromScroll breadcrumb-overlay offset', () => {
     // behind the overlay — it would vanish. The fixed point must instead make a1
     // current and exclude it from the visible set so it shows as a crumb.
     const ref = makePositionalViewerRef({ a: -3, a1: 0, b: 50 }).ref
-    const { deps, set } = makeDeps({
+    const { deps, actions } = makeDeps({
       viewerRef: ref,
-      read: { currentHeadingId: null, visibleHeadingIds: new Set(['a1']) },
+      state: { currentHeadingId: null, visibleHeadingIds: new Set(['a1']) },
     })
     createCommands(deps).syncFromScroll()
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
-    const lastVisible = (set.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
+    const lastVisible = (actions.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(
+      -1,
+    )?.[0]
     expect(lastVisible?.has('a1')).toBe(false)
   })
 })
@@ -413,21 +419,21 @@ describe('createCommands.jumpHeadingBy frontmatter boundary', () => {
   const fmIds = ['\x00frontmatter', 'a', 'a1', 'b']
 
   test('prev from the first real heading stops on the frontmatter id', () => {
-    const { deps, set } = makeDeps({
+    const { deps, actions } = makeDeps({
       doc: { headingIds: fmIds },
-      read: { currentHeadingId: 'a' },
+      state: { currentHeadingId: 'a' },
     })
     createCommands(deps).jumpHeadingBy(-1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('\x00frontmatter')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('\x00frontmatter')
   })
 
   test('next leaves the frontmatter for the first real heading', () => {
-    const { deps, set } = makeDeps({
+    const { deps, actions } = makeDeps({
       doc: { headingIds: fmIds },
-      read: { currentHeadingId: '\x00frontmatter' },
+      state: { currentHeadingId: '\x00frontmatter' },
     })
     createCommands(deps).jumpHeadingBy(1)
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a')
   })
 })
 
@@ -449,69 +455,69 @@ describe('createCommands.scrollPage / scrollHalf', () => {
 
 describe('createCommands.resetForNewDoc', () => {
   test('full reset clears every per-doc slice', () => {
-    const { deps, set } = makeDeps()
+    const { deps, actions } = makeDeps()
     createCommands(deps).resetForNewDoc('full')
-    expect(set.focus).toHaveBeenCalledWith('viewer')
-    expect(set.currentHeadingId).toHaveBeenCalledWith(null)
-    expect(set.search).toHaveBeenCalledWith(null)
-    expect(set.tocCursorId).toHaveBeenCalledWith(null)
-    const expandedArg = (set.expanded as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    expect(actions.focus).toHaveBeenCalledWith('viewer')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith(null)
+    expect(actions.search).toHaveBeenCalledWith(null)
+    expect(actions.tocCursorId).toHaveBeenCalledWith(null)
+    const expandedArg = (actions.setExpanded as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
     expect(expandedArg).toBeInstanceOf(Map)
     expect(expandedArg?.size).toBe(0)
-    const visibleArg = (set.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
+    const visibleArg = (actions.visibleHeadingIds as ReturnType<typeof mock>).mock.calls.at(-1)?.[0]
     expect(visibleArg).toBeInstanceOf(Set)
     expect(visibleArg?.size).toBe(0)
   })
 
   test('searchOnly reset clears only the search slice', () => {
-    const { deps, set } = makeDeps()
+    const { deps, actions } = makeDeps()
     createCommands(deps).resetForNewDoc('searchOnly')
-    expect(set.search).toHaveBeenCalledWith(null)
-    expect(set.focus).not.toHaveBeenCalled()
-    expect(set.currentHeadingId).not.toHaveBeenCalled()
-    expect(set.tocCursorId).not.toHaveBeenCalled()
-    expect(set.expanded).not.toHaveBeenCalled()
-    expect(set.visibleHeadingIds).not.toHaveBeenCalled()
+    expect(actions.search).toHaveBeenCalledWith(null)
+    expect(actions.focus).not.toHaveBeenCalled()
+    expect(actions.currentHeadingId).not.toHaveBeenCalled()
+    expect(actions.tocCursorId).not.toHaveBeenCalled()
+    expect(actions.setExpanded).not.toHaveBeenCalled()
+    expect(actions.visibleHeadingIds).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.pinHeadingPostSwap', () => {
   test('pins the heading post-layout at its overlay offset and sets it current', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
-    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    const { deps, actions } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).pinHeadingPostSwap('a1')
     // a1's ancestor stack is the H1 pill (1 row), so it pins one row below the fold.
     expect(built.calls).toContain('pinHeadingPostLayout(a1,1)')
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
   })
 })
 
 describe('createCommands.restoreScroll', () => {
   test('pins the saved scroll top and current heading', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
-    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    const { deps, actions } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: 'a1' })
     expect(built.calls).toContain('pinScrollTop(42)')
-    expect(set.currentHeadingId).toHaveBeenCalledWith('a1')
+    expect(actions.currentHeadingId).toHaveBeenCalledWith('a1')
   })
 
   test('skips setting current heading when the snapshot has none', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
-    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    const { deps, actions } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).restoreScroll({ scrollTop: 42, currentHeadingId: null })
     expect(built.calls).toContain('pinScrollTop(42)')
-    expect(set.currentHeadingId).not.toHaveBeenCalled()
+    expect(actions.currentHeadingId).not.toHaveBeenCalled()
   })
 })
 
 describe('createCommands.resetToTop', () => {
   test('pins the top and clears heading state', () => {
     const built = makePositionalViewerRef({ a: 0, a1: 5, b: 40 })
-    const { deps, set } = makeDeps({ viewerRef: built.ref })
+    const { deps, actions } = makeDeps({ viewerRef: built.ref })
     createCommands(deps).resetToTop()
     expect(built.calls).toContain('pinScrollTop(0)')
-    expect(set.currentHeadingId).toHaveBeenCalledWith(null)
-    expect(set.visibleHeadingIds).toHaveBeenCalled()
+    expect(actions.currentHeadingId).toHaveBeenCalledWith(null)
+    expect(actions.visibleHeadingIds).toHaveBeenCalled()
   })
 })
 

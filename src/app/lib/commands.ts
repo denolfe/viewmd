@@ -1,40 +1,21 @@
 import type { RefObject } from 'react'
-import type { ScrollboxHandle, SearchState } from '../state'
+import type { ScrollboxHandle } from '../state'
 import type { Node, TocEntry } from './ast'
-import type { Focus } from './keys'
 import type { DocReset } from './documentNavigation'
 import { flattenVisible } from './toc-util'
 import { findHeadingNearTop, findVisibleHeadingIds } from './fold'
 import { findMatches } from './search'
 import type { Fold } from './fold'
+import type { ViewActions, ViewState } from './view-state'
 
 export type CommandDeps = {
   viewerRef: RefObject<ScrollboxHandle | null>
   doc: { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
   fold: Fold
   viewportHeight: number
-  read: {
-    currentHeadingId: string | null
-    visibleHeadingIds: Set<string>
-    expanded: Map<string, boolean>
-    tocCursorId: string | null
-    search: SearchState | null
-    focus: Focus
-    tocVisible: boolean
-    historyDepth: number
-  }
-  set: {
-    focus: (f: Focus) => void
-    currentHeadingId: (id: string | null) => void
-    visibleHeadingIds: (s: Set<string>) => void
-    tocCursorId: (id: string | null) => void
-    search: (s: SearchState | null) => void
-    expanded: (m: Map<string, boolean>) => void
-    toggleMouse: () => void
-    toggleTocVisible: () => void
-    toggleHelp: () => void
-    toggleExpanded: (id: string) => void
-  }
+  stateRef: RefObject<ViewState>
+  actions: ViewActions
+  historyDepth: number
   onQuit: () => void
   onOpenEditor: () => void
   nav: { follow: (href: string) => void; back: () => void; backTo: (index: number) => void }
@@ -75,20 +56,31 @@ export type Commands = {
 }
 
 export function createCommands(deps: CommandDeps): Commands {
-  const { viewerRef, doc, fold, viewportHeight, read, set, onQuit, onOpenEditor, nav } = deps
+  const {
+    viewerRef,
+    doc,
+    fold,
+    viewportHeight,
+    stateRef,
+    actions,
+    historyDepth,
+    onQuit,
+    onOpenEditor,
+    nav,
+  } = deps
 
   // Rows the breadcrumb will show once `id` is pinned as the current heading: `id`
   // itself lands below the overlay (visible, so filtered out); its ancestors stack
   // above, plus the back badge when a history exists. Used as the pin/visibility
   // offset so a jump lands the target just below its crumbs rather than hidden
   // behind them. See `Fold.offsetFor` for the offset-convention rationale.
-  const offsetFor = (id: string): number => fold.offsetFor(id, read.historyDepth)
+  const offsetFor = (id: string): number => fold.offsetFor(id, historyDepth)
 
   const refreshVisible = (topOffset: number): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
     const next = findVisibleHeadingIds(v.getGeometry(), doc.headingIds, topOffset)
-    if (!setsEqual(read.visibleHeadingIds, next)) set.visibleHeadingIds(next)
+    if (!setsEqual(stateRef.current.visibleHeadingIds, next)) actions.visibleHeadingIds(next)
   }
 
   // Resolve current + visible headings against live geometry and apply the setters
@@ -100,20 +92,20 @@ export function createCommands(deps: CommandDeps): Commands {
     const { currentHeadingId, visibleHeadingIds } = fold.resolveCurrent(
       v.getGeometry(),
       doc.headingIds,
-      read.historyDepth,
+      historyDepth,
     )
-    if (currentHeadingId && currentHeadingId !== read.currentHeadingId) {
-      set.currentHeadingId(currentHeadingId)
+    if (currentHeadingId && currentHeadingId !== stateRef.current.currentHeadingId) {
+      actions.currentHeadingId(currentHeadingId)
     }
-    if (!setsEqual(read.visibleHeadingIds, visibleHeadingIds)) {
-      set.visibleHeadingIds(visibleHeadingIds)
+    if (!setsEqual(stateRef.current.visibleHeadingIds, visibleHeadingIds)) {
+      actions.visibleHeadingIds(visibleHeadingIds)
     }
   }
 
   const jumpTo = (id: string): void => {
     const height = offsetFor(id)
     viewerRef.current?.scrollChildToTop(id, height)
-    set.currentHeadingId(id)
+    actions.currentHeadingId(id)
     refreshVisible(height)
   }
 
@@ -139,7 +131,8 @@ export function createCommands(deps: CommandDeps): Commands {
       // viewport when the user scrolled with j/k rather than via heading nav.
       const geom = viewerRef.current?.getGeometry()
       const cur =
-        read.currentHeadingId ?? (geom ? findHeadingNearTop(geom, doc.headingIds, 0) : null)
+        stateRef.current.currentHeadingId ??
+        (geom ? findHeadingNearTop(geom, doc.headingIds, 0) : null)
       const idx = cur ? doc.headingIds.indexOf(cur) : -1
       let nextIdx: number
       if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(doc.headingIds.length - 1, idx + 1)
@@ -150,94 +143,96 @@ export function createCommands(deps: CommandDeps): Commands {
     },
     jumpToHeading: id => {
       jumpTo(id)
-      set.focus('viewer')
+      actions.focus('viewer')
     },
     jumpToCursor: () => {
-      const id = read.tocCursorId
+      const id = stateRef.current.tocCursorId
       if (id) {
         jumpTo(id)
-        set.focus('viewer')
+        actions.focus('viewer')
       }
     },
 
     focusSidebar: () => {
-      if (doc.toc.length === 0 || !read.tocVisible) return
+      if (doc.toc.length === 0 || !stateRef.current.tocVisible) return
       const first = doc.toc[0]
-      if (!read.tocCursorId && first) set.tocCursorId(first.id)
-      set.focus('sidebar')
+      if (!stateRef.current.tocCursorId && first) actions.tocCursorId(first.id)
+      actions.focus('sidebar')
     },
-    focusViewer: () => set.focus('viewer'),
+    focusViewer: () => actions.focus('viewer'),
     tocMove: dir => {
-      const visible = flattenVisible(doc.toc, read.expanded)
+      const visible = flattenVisible(doc.toc, stateRef.current.expanded)
       if (visible.length === 0) return
       const idx = Math.max(
         0,
-        visible.findIndex(e => e.id === read.tocCursorId),
+        visible.findIndex(e => e.id === stateRef.current.tocCursorId),
       )
       const ni = dir === 1 ? Math.min(visible.length - 1, idx + 1) : Math.max(0, idx - 1)
       const next = visible[ni]
-      if (next) set.tocCursorId(next.id)
+      if (next) actions.tocCursorId(next.id)
     },
     toggleCursorExpanded: () => {
-      if (read.tocCursorId) set.toggleExpanded(read.tocCursorId)
+      if (stateRef.current.tocCursorId)
+        actions.toggleExpanded({ toc: doc.toc, id: stateRef.current.tocCursorId })
     },
-    toggleExpanded: id => set.toggleExpanded(id),
+    toggleExpanded: id => actions.toggleExpanded({ toc: doc.toc, id }),
     toggleTocVisible: () => {
-      if (read.tocVisible && read.focus === 'sidebar') set.focus('viewer')
-      set.toggleTocVisible()
+      if (stateRef.current.tocVisible && stateRef.current.focus === 'sidebar')
+        actions.focus('viewer')
+      actions.toggleTocVisible()
     },
-    toggleHelp: () => set.toggleHelp(),
+    toggleHelp: () => actions.toggleHelp(),
 
     startSearch: () => {
-      set.search({ pattern: '', matches: [], index: -1, committed: false })
-      set.focus('search')
+      actions.search({ pattern: '', matches: [], index: -1, committed: false })
+      actions.focus('search')
     },
-    // Recompute matches from the passed `pattern`, not `read.search.pattern`: the
+    // Recompute matches from the passed `pattern`, not the committed search state: the
     // input's Enter can arrive before React re-renders, so committing a stale
     // snapshot would search a truncated/empty string.
     applySearchPattern: ({ pattern, commit }) => {
-      const s = read.search
+      const s = stateRef.current.search
       if (!s) return
       const matches = findMatches(doc.nodes, pattern)
       const index = matches.length ? (viewerRef.current?.seedMatchIndex({ matches }) ?? 0) : -1
-      set.search({ ...s, pattern, matches, index, committed: commit })
-      if (commit) set.focus('viewer')
+      actions.search({ ...s, pattern, matches, index, committed: commit })
+      if (commit) actions.focus('viewer')
     },
     stepMatch: dir => {
-      const s = read.search
+      const s = stateRef.current.search
       if (!s || s.matches.length === 0) return
       const total = s.matches.length
       const index = (((s.index + dir) % total) + total) % total
-      set.search({ ...s, index })
+      actions.search({ ...s, index })
     },
     clearSearch: () => {
-      set.search(null)
-      if (read.focus === 'search') set.focus('viewer')
+      actions.search(null)
+      if (stateRef.current.focus === 'search') actions.focus('viewer')
     },
 
     followLink: href => nav.follow(href),
     goBack: () => nav.back(),
     goToDocument: index => nav.backTo(index),
     openEditor: () => onOpenEditor(),
-    toggleMouse: () => set.toggleMouse(),
+    toggleMouse: () => actions.toggleMouse(),
     quit: () => onQuit(),
 
     resetForNewDoc: reset => {
       if (reset === 'full') {
-        set.focus('viewer')
-        set.currentHeadingId(null)
-        set.search(null)
-        set.expanded(new Map())
-        set.tocCursorId(null)
-        set.visibleHeadingIds(new Set())
+        actions.focus('viewer')
+        actions.currentHeadingId(null)
+        actions.search(null)
+        actions.setExpanded(new Map())
+        actions.tocCursorId(null)
+        actions.visibleHeadingIds(new Set())
       } else if (reset === 'searchOnly') {
-        set.search(null)
+        actions.search(null)
       }
     },
     // Caller must ensure `id ∈ doc.headingIds` (the includes-guard/fallback lives at the call site).
     pinHeadingPostSwap: id => {
       viewerRef.current?.pinHeadingPostLayout(id, offsetFor(id))
-      set.currentHeadingId(id)
+      actions.currentHeadingId(id)
     },
     restoreScroll: ({ scrollTop, currentHeadingId }) => {
       const v = viewerRef.current
@@ -246,14 +241,14 @@ export function createCommands(deps: CommandDeps): Commands {
       // one-shot scrollTo would clamp short of a deep saved offset. The final
       // breadcrumb state is re-resolved when the reposition settles (onRepositioned).
       v.pinScrollTop(scrollTop)
-      if (currentHeadingId) set.currentHeadingId(currentHeadingId)
+      if (currentHeadingId) actions.currentHeadingId(currentHeadingId)
     },
     resetToTop: () => {
       const v = viewerRef.current
       if (!v) return
       v.pinScrollTop(0)
-      set.currentHeadingId(null)
-      set.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
+      actions.currentHeadingId(null)
+      actions.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
     },
   }
 }
