@@ -105,7 +105,7 @@ out of flex flow — only the `StatusLine` (height 1) sits below the viewport, a
 - `currentHeadingId: string | null` — heading at/just-above the visible content top, or last-jumped-to. Re-synced after every scroll.
 - `visibleHeadingIds: Set<string>` — every heading whose box vertically intersects the visible content region. Used by `StickyHeader` to blank crumbs while their heading is on-screen.
 
-Both are measured against **the content below the breadcrumb overlay**, not the raw viewport top: `getHeadingNearTop`/`getVisibleHeadingIds` take a `topOffset`. The offset is the current heading's **ancestor-stack height** (`breadcrumbHeightAfterJump` — ancestors + synth root, excluding the heading itself), the same value a jump uses, so scrolling to a heading resolves identically to navigating to it. `resolveHeadings` (in `dispatch.ts`) finds it as a fixed point over the current heading, bailing if an offset repeats (a shallow heading at a deeper one's fold can cycle). Excluding the heading's own crumb from the offset is deliberate: including it (an earlier approach) made the offset self-referential, so at a boundary both "crumb shown" and "crumb hidden" were consistent and the breadcrumb flickered a frame as you scrolled past a header. Without any offset, a heading scrolling behind the overlay would count as "visible" (dropped from the breadcrumb) yet be hidden behind it — vanishing instead of becoming a crumb.
+Both are measured against **the content below the breadcrumb overlay**, not the raw viewport top: `src/app/lib/fold.ts`'s `findHeadingNearTop`/`findVisibleHeadingIds` take a `topOffset`. The offset is the current heading's **ancestor-stack height** (`Fold.offsetFor` — ancestors + synth root, excluding the heading itself), the same value a jump uses, so scrolling to a heading resolves identically to navigating to it. `Fold.resolveCurrent` finds it as a fixed point over the current heading, bailing if an offset repeats (a shallow heading at a deeper one's fold can cycle). Excluding the heading's own crumb from the offset is deliberate: including it (an earlier approach) made the offset self-referential, so at a boundary both "crumb shown" and "crumb hidden" were consistent and the breadcrumb flickered a frame as you scrolled past a header. Without any offset, a heading scrolling behind the overlay would count as "visible" (dropped from the breadcrumb) yet be hidden behind it — vanishing instead of becoming a crumb.
 
 - `expanded: Map<string, boolean>` — per-id TOC fold state. Default per entry is `level <= 2` (see `defaultExpanded`).
 - `tocCursorId: string | null` — TOC keyboard cursor (independent of `currentHeadingId`).
@@ -144,14 +144,13 @@ The viewer is a `<scrollbox>` wrapping `<NodeList>` plus a trailing `<box height
 
 On mount, it constructs a `ScrollboxHandle` from the raw `ScrollBoxRenderable` ref:
 
-| Method                        | Implementation                                                                         |
-| ----------------------------- | -------------------------------------------------------------------------------------- |
-| `scrollBy(d)` / `scrollTo(y)` | `box.scrollBy` / `box.scrollTo`                                                        |
-| `scrollToBottom()`            | `box.scrollTo(box.scrollHeight)` (polyfill)                                            |
-| `scrollChildIntoView(id)`     | `box.scrollChildIntoView(id)`                                                          |
-| `scrollChildToTop(id)`        | Find child by id, `scrollBy(child.y - viewport.y - PIN_TOP_OFFSET)`                    |
-| `getHeadingNearTop(ids)`      | Heading id with the largest `child.y <= viewport.y`, else the first below the viewport |
-| `getVisibleHeadingIds(ids)`   | Headings where `childBottom > viewport.y && childTop < viewport.y + viewport.height`   |
+| Method                            | Implementation                                                                                                                                     |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scrollBy(d)` / `scrollTo(y)`     | `box.scrollBy` / `box.scrollTo`                                                                                                                    |
+| `scrollToBottom()`                | `box.scrollTo(box.scrollHeight)` (polyfill)                                                                                                        |
+| `scrollChildIntoView(id)`         | `box.scrollChildIntoView(id)`                                                                                                                      |
+| `scrollChildToTop(id, topOffset)` | Find child by id, `scrollBy(childToTopDelta(geom, id, topOffset))` (`fold.ts`)                                                                     |
+| `getGeometry()`                   | Returns the live `BoxGeometry` port; callers pass it into `Fold` methods (`src/app/lib/fold.ts`) for heading-near-top / visible-heading resolution |
 
 It also installs `installRealisticThumb`, which patches the scrollbar slider's `viewPortSize` to exclude the synthetic tail spacer so the thumb reflects real content size.
 
