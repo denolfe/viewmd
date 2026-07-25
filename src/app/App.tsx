@@ -6,6 +6,7 @@ import type { AppState, ScrollboxHandle, SearchState, Status } from './state'
 import type { Action, Focus } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
+import { applyScrollIntent } from './lib/applyScrollIntent'
 import { dispatch } from './lib/dispatch'
 import { createCommands } from './lib/commands'
 import { matchScrollTarget } from './lib/match-nav'
@@ -199,20 +200,7 @@ export function App({
     if (!it) return
     commands.resetForNewDoc(it.reset)
     const tid = setTimeout(() => {
-      const s = it.scroll
-      if (s.kind === 'restore') {
-        commands.restoreScroll({ scrollTop: s.scrollTop, currentHeadingId: s.currentHeadingId })
-      } else if (s.kind === 'anchor' && !s.postSwap) {
-        // Same-doc anchor. A real heading gets the breadcrumb-aware jump (lands below the
-        // overlay, updates current heading). An unknown/non-heading slug (e.g. a broken
-        // #fragment) is a no-op: scrolling to it would find no box and setting it current
-        // would blank the breadcrumb and break n/N nav.
-        if (headingIds.includes(s.headingId)) commands.jumpToHeading(s.headingId)
-      } else if (s.kind === 'anchor' && headingIds.includes(s.headingId)) {
-        commands.pinHeadingPostSwap(s.headingId)
-      } else {
-        commands.resetToTop()
-      }
+      applyScrollIntent({ scroll: it.scroll, commands, headingIds })
     }, 0)
     return () => clearTimeout(tid)
     // eslint-disable-next-line react-hooks/exhaustive-deps
