@@ -8,7 +8,7 @@ const UNTITLED = '<untitled>'
 
 /**
  * Maps an ordered list of document labels (origin first, current doc last) into
- * tagged breadcrumb crumbs. When the chain joined by " › " exceeds `maxWidth`,
+ * tagged crumbs. When the chain joined by " › " exceeds `maxWidth`,
  * the middle collapses to a single ellipsis crumb, always keeping the first
  * crumb and the last two (the immediate-previous `back` crumb and the `current` doc).
  */

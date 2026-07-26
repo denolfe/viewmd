@@ -1,8 +1,8 @@
-import { ancestorChain, breadcrumbRows, documentHasH1, trailRowsForDepth } from './toc-util'
+import { ancestorChain, ancestorRows, documentHasH1, trailRowsForDepth } from './overlay-rows'
 import type { TocEntry } from './ast'
 import type { BoxGeometry } from './viewport-geometry'
 
-/** Small gap (rows) so a pinned heading isn't flush behind the breadcrumb crumbs. */
+/** Small gap (rows) so a pinned heading isn't flush behind its ancestor rows. */
 export const PIN_TOP_OFFSET = 1
 
 /**
@@ -73,7 +73,7 @@ export type HeadingResolution = {
 }
 
 export type Fold = {
-  /** Rows the overlay occludes once `id` is the current heading (ancestor crumbs + trail row; self excluded). */
+  /** Rows the overlay occludes once `id` is the current heading (ancestor rows + trail row; self excluded). */
   offsetFor(id: string, historyDepth: number): number
   /** Overlay rows while `id` sits above the viewport (search jump): full chain incl. self, no trail row. */
   aboveOffsetFor(id: string): number
@@ -84,7 +84,7 @@ export type Fold = {
 }
 
 /**
- * Owns the fold offset convention: how far below the breadcrumb overlay content
+ * Owns the fold offset convention: how far below the sticky overlay content
  * sits, and which heading is current given that offset. Constructed once per
  * document; `historyDepth` and geometry are passed per call because they change
  * as the user navigates and scrolls.
@@ -95,7 +95,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
 
   const offsetFor = (id: string, historyDepth: number): number =>
     trailRowsForDepth(historyDepth) +
-    breadcrumbRows({
+    ancestorRows({
       chain: ancestorChain(toc, id),
       visibleHeadingIds: new Set([id]),
       hasH1,
@@ -103,7 +103,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     }).length
 
   const aboveOffsetFor = (id: string): number =>
-    breadcrumbRows({
+    ancestorRows({
       chain: ancestorChain(toc, id),
       visibleHeadingIds: new Set(),
       hasH1,

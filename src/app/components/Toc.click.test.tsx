@@ -156,7 +156,7 @@ test('clicking a parent label jumps to that heading', async () => {
 
   const afterLines = captureCharFrame().split('\n')
   // A jump scrolls the target heading to the top of the viewport (below any
-  // breadcrumb overlay rows), so it now shows up within the first few rows.
+  // sticky overlay rows), so it now shows up within the first few rows.
   const parentRow = afterLines.findIndex(l => l.includes('## Parent'))
   expect(parentRow).toBeGreaterThanOrEqual(0)
   expect(parentRow).toBeLessThanOrEqual(3)

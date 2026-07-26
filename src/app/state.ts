@@ -48,7 +48,7 @@ export type ScrollboxHandle = {
   }
   /**
    * Less-style jump to a search match: scrolls its line to a few context rows
-   * below the breadcrumb overlay (`topOffset` rows). See `matchJumpDelta`.
+   * below the sticky overlay (`topOffset` rows). See `matchJumpDelta`.
    */
   jumpToMatch: (params: {
     match: Match
@@ -103,7 +103,7 @@ export type AppState = {
   dir?: string
   /** Number of entries on the back stack (drives the back affordance). */
   historyDepth: number
-  /** Full navigation label chain, origin first and current doc last; drives the breadcrumb trail. */
+  /** Full navigation label chain, origin first and current doc last; drives the Trail. */
   trailLabels: (string | undefined)[]
 
   /** Max content column width (configurable; defaults to CONTENT_MAX_WIDTH). */

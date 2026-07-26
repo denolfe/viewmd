@@ -41,7 +41,7 @@ async function renderHeader(stub: AppState) {
   }
   createRoot(renderer).render(
     <AppStateContext.Provider value={stub}>
-      <StickyHeader toc={[]} onCrumbClick={mock()} />
+      <StickyHeader toc={[]} onAncestorClick={mock()} />
     </AppStateContext.Provider>,
   )
   await settle()
@@ -141,7 +141,7 @@ test('clicking the current-doc crumb does not navigate', async () => {
   renderer.destroy()
 })
 
-test('no history and no breadcrumb rows renders nothing', async () => {
+test('no history and no ancestor rows renders nothing', async () => {
   const stub = makeStub({ historyDepth: 0, trailLabels: ['README.md'] })
   const { renderer, captureCharFrame } = await renderHeader(stub)
 

@@ -1,7 +1,7 @@
 import { TextAttributes } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
 import { useAppState } from '../state'
-import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
+import { ancestorChain, ancestorRows, documentHasH1 } from '../lib/overlay-rows'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
 
@@ -25,16 +25,16 @@ export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: str
   const isTyping = focus === 'search'
   const hasPattern = search.pattern.length > 0
   const isMiss = hasPattern && search.matches.length === 0
-  // Blend into whatever surface sits under the top row: the breadcrumb when it
-  // has rows, the plain viewer background otherwise. Miss keeps the red tint.
-  const breadcrumbShowing =
-    breadcrumbRows({
+  // Blend into whatever surface sits under the top row: the sticky overlay when
+  // it has ancestor rows, the plain viewer background otherwise. Miss keeps the red tint.
+  const hasAncestorRows =
+    ancestorRows({
       chain: ancestorChain(toc, currentHeadingId),
       visibleHeadingIds,
       hasH1: documentHasH1(toc),
       fileLabel,
     }).length > 0
-  const surfaceBg = breadcrumbShowing ? theme.stickyBg : theme.background
+  const surfaceBg = hasAncestorRows ? theme.stickyBg : theme.background
   const bg = isMiss ? theme.searchBarNoMatchBg : surfaceBg
   const label = '/'
   const counter = hasPattern
@@ -43,7 +43,7 @@ export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: str
   // Muted counter reads fine on the dark surfaces; on the red miss bar it
   // would be illegible, so fall back to the regular bar fg there.
   const counterFg = isMiss ? theme.searchBarFg : theme.foregroundMuted
-  // Right-align the bar with the breadcrumb's right edge (contentWidth + 1),
+  // Right-align the bar with the overlay's right edge (contentWidth + 1),
   // leaving the scrollbar column uncovered.
   const barWidth = Math.min(BAR_WIDTH, contentWidth + 1)
   const barLeft = Math.max(0, contentWidth + 1 - barWidth)

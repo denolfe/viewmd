@@ -15,7 +15,8 @@ import { matchScrollTarget } from './lib/match-nav'
 import { Viewer } from './components/Viewer'
 import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
-import { tocVisibleContentWidth, FILE_ROW_ID } from './lib/toc-util'
+import { tocVisibleContentWidth } from './lib/toc-util'
+import { FILE_ROW_ID } from './lib/overlay-rows'
 import { createFold, findVisibleHeadingIds } from './lib/fold'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
@@ -27,7 +28,7 @@ import type { LoadedDocument } from './lib/loadDocument'
 import { resolveEditorCommand, buildEditorArgv, openInEditor } from './lib/editor'
 import { useDocumentNavigation } from './lib/documentNavigation'
 
-// Actions whose imperative scroll must commit its breadcrumb state in the same
+// Actions whose imperative scroll must commit its heading state in the same
 // frame (see `run`). Every action that both scrolls and re-resolves the current
 // heading belongs here.
 const SCROLL_ACTIONS = new Set<Action['kind']>([
@@ -72,7 +73,7 @@ export function App({
   const [covering, setCovering] = useState(false)
 
   // At startup the H1 (if any) sits at the top of the viewport — seed it so
-  // the breadcrumb's hide-when-visible rule fires on the first paint.
+  // the overlay's hide-when-visible rule fires on the first paint.
   const seedVisible = useMemo<Set<string>>(
     () => (initialToc[0]?.level === 1 ? new Set([initialToc[0].id]) : new Set()),
     [initialToc],
@@ -136,7 +137,7 @@ export function App({
   // Stable across nav; rebuilt only when the doc (toc/fileLabel) changes.
   const fold = useMemo(() => createFold({ toc, fileLabel }), [toc, fileLabel])
 
-  // At the bottom the last heading is current, so its ancestor crumbs occlude the
+  // At the bottom the last heading is current, so its ancestor rows occlude the
   // top rows. Reserve that height in the scrollbox tail so the final content lands
   // just below the overlay instead of sliding up behind it.
   const lastHeadingId = headingIds.at(-1)
@@ -151,7 +152,7 @@ export function App({
     const v = viewerRef.current
     if (!v) return
     // Less-style jump: the match line scrolls to the top of the viewport,
-    // below the breadcrumb overlay. The scroll listener re-syncs breadcrumb
+    // below the sticky overlay. The scroll listener re-syncs heading
     // state, so no heading bookkeeping here. Uncommitted (live-typing) search
     // updates must never scroll — only Enter commits.
     const target = matchScrollTarget({ nodes, match: m, fold })
@@ -163,7 +164,7 @@ export function App({
     })
   }, [view.search?.index, view.search?.pattern, view.search?.committed])
 
-  // Populate visibleHeadingIds once after first layout so the breadcrumb's
+  // Populate visibleHeadingIds once after first layout so the overlay's
   // hide-when-visible rule fires before the user touches a key.
   useEffect(() => {
     if (headingIds.length === 0) return
@@ -289,7 +290,7 @@ export function App({
   )
 
   // A scroll/jump action mutates the scrollbox synchronously, but the
-  // breadcrumb-driving state it also sets (currentHeadingId/visibleHeadingIds)
+  // overlay-driving state it also sets (currentHeadingId/visibleHeadingIds)
   // is React state that would otherwise commit in a later microtask. The live
   // render loop can paint the scrolled content before that commit lands,
   // flashing the sticky-header overlay a frame behind the scroll. flushSync
@@ -312,14 +313,14 @@ export function App({
   const onEntryToggle = (id: string) => dispatchTocAction({ kind: 'tocToggleId', id })
   // The synth-root pill (no-H1 docs) is not a heading — scroll to the top via the
   // same `top` action g/gg use, so heading resolution stays on the canonical path.
-  const onCrumbClick = (id: string) =>
+  const onAncestorClick = (id: string) =>
     id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
   return (
     <AppStateContext.Provider value={appState}>
       <box flexDirection="column" height="100%">
         <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
-          <StickyHeader toc={toc} fileLabel={fileLabel} onCrumbClick={onCrumbClick} />
+          <StickyHeader toc={toc} fileLabel={fileLabel} onAncestorClick={onAncestorClick} />
           <SearchBar toc={toc} fileLabel={fileLabel} />
           <HelpPanel />
           <Viewer

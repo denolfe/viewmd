@@ -21,7 +21,7 @@ VIEWMD_CONFIG=/path/config.toml ./src/index.tsx --render README.md   # test with
 
 ## Architecture
 
-Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@opentui/react`). Markdown is parsed once into a typed AST, rendered as React components inside a scrollable viewport with a TOC sidebar, sticky breadcrumb header, and status line.
+Interactive terminal markdown viewer built on **OpenTUI** (`@opentui/core` + `@opentui/react`). Markdown is parsed once into a typed AST, rendered as React components inside a scrollable viewport with a TOC sidebar, sticky overlay header, and status line.
 
 **Full architecture: see [ARCHITECTURE.md](./docs/ARCHITECTURE.md).** Read it before non-trivial changes touching the AST, dispatcher, viewer scroll surface, or sticky-header rules.
 
@@ -31,6 +31,7 @@ Quick orientation:
 - `App` (`src/app/App.tsx`) holds the shared view state in one `useViewState` store (`{ state, actions }`, `src/app/lib/view-state.ts`) plus a `useLatest` ref over it (`stateRef`); it assembles both into `AppState` for `AppStateContext`. Imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
 - Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (pure, `src/app/lib/dispatch.ts`) → `Commands` (effectful, built by `createCommands` in `src/app/lib/commands.ts`, which reads `stateRef.current.*` and writes via `actions.*`).
 - Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
+- Two modules project the `TocEntry` tree, and they share nothing but the type: `toc-util.ts` serves the TOC sidebar (flatten/expand/width), `overlay-rows.ts` serves the sticky overlay (`ancestorChain` → `ancestorRows`). `fold.ts` consumes the latter for its offsets, so shown rows and occluded rows can't drift apart.
 
 ## Testing features
 
@@ -80,15 +81,69 @@ CI derives the npm dist-tag from the version string alone: a prerelease (hyphen)
 
 ## Ubiquitous Language
 
-| Term             | Definition                                                                                  |
-| ---------------- | ------------------------------------------------------------------------------------------- |
-| Viewer           | The scrollable content area (`<scrollbox>`)                                                 |
-| Viewport         | The currently visible region of the Viewer (`box.viewport.{y,height}`)                      |
-| TOC              | Table-of-contents sidebar; collapsible tree of `TocEntry`                                   |
-| Current heading  | `currentHeadingId` — heading at/just-above viewport top, or last-jumped-to                  |
-| Visible headings | `visibleHeadingIds` — set of heading ids whose box intersects the viewport                  |
-| Breadcrumb       | Ancestor chain of `currentHeadingId`, rendered in `StickyHeader`                            |
-| Synth root       | Filename label substituted as the first breadcrumb when the doc has no H1                   |
-| Crumb            | One row in the breadcrumb; `{ id, inline, indent }`. Hidden while `id ∈ visibleHeadingIds`. |
-| Focus            | `'viewer' \| 'sidebar' \| 'search'` — drives key dispatch                                   |
-| Scrollbox tail   | Empty `<box height={tailSpace}>` after content so the last heading can scroll to top        |
+### Document & navigation
+
+| Term          | Definition                                                                                                           |
+| ------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Document      | `LoadedDocument` — one parsed file: `{ nodes, toc, headingIds, headingLines, frontmatter, fileLabel, absPath, dir }` |
+| File label    | Display name of a Document (basename, or `<stdin>`); also feeds the Synth root                                       |
+| Doc swap      | Replacing the active Document (link nav, back, reload). Contrast an **in-doc jump**, which only scrolls.             |
+| Back stack    | `HistoryEntry[]` — `{ document, scrollTop, currentHeadingId }` per visited doc. `historyDepth` is its size.          |
+| Nav intent    | `{ scroll, reset, seq }` emitted by `navReducer`; consumed once by `applyScrollIntent`. `seq` disambiguates repeats. |
+| Scroll intent | Where a transition wants the Viewer positioned: top / anchor / restored `scrollTop`                                  |
+| Doc reset     | `'full' \| 'searchOnly' \| 'none'` — how much App-local UI state a transition clears                                 |
+| Link target   | Classified href (`classifyHref`): in-doc anchor, local doc, or external                                              |
+
+### Viewer & scroll
+
+| Term                | Definition                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------ |
+| Viewer              | The scrollable content area (`<scrollbox>`)                                                            |
+| Viewport            | The currently visible region of the Viewer (`box.viewport.{y,height}`)                                 |
+| Geometry            | `BoxGeometry` — the narrow structural port over the scrollbox that all pure scroll math reads          |
+| Overlay             | The sticky region painted over the top of the Viewport (Trail row + Ancestor rows)                     |
+| Fold                | Line `topOffset + PIN_TOP_OFFSET` below the viewport top that decides which heading is current         |
+| Fold offset         | Rows the Overlay occludes for a given heading; `Fold.offsetFor` / `aboveOffsetFor`                     |
+| Pin                 | A scroll that parks a heading at the Fold (`scrollChildToTop`, `pinHeadingPostLayout`)                 |
+| Pending target      | Queued scroll (heading / top / match) retried each post-layout frame until reached; `pendingReducer`   |
+| Swap reposition     | A Pending target flagged `isSwap`; resolving it fires `onRepositioned`, which drops the Cover          |
+| Cover               | Opaque box masking the Viewer while a Doc swap repositions, so the reader never sees the top-then-jump |
+| Progressive mount   | Mounting top-level nodes in chunks (`CHUNK_SIZE`) after a viewport-sized first paint                   |
+| Scrollbox tail      | Empty `<box height={tailSpace}>` after content so the last heading can scroll to the Fold              |
+| Tail reserve        | Fold offset withheld from the tail so the last heading pins correctly                                  |
+| Real content height | `scrollHeight` minus the tail — the height used for scrollability and thumb-size math                  |
+| Scroll marks        | Search matches resolved to document-space `y` and painted onto scrollbar track rows (`TrackCell`)      |
+
+### Headings & overlay
+
+| Term             | Definition                                                                                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TOC              | Table-of-contents sidebar; collapsible tree of `TocEntry`                                                                                                               |
+| TOC cursor       | `tocCursorId` — the sidebar's selected row, independent of the Current heading                                                                                          |
+| Current heading  | `currentHeadingId` — last heading at/above the Fold, or last-jumped-to                                                                                                  |
+| Visible headings | `visibleHeadingIds` — heading ids whose box intersects the Viewport below the Fold offset                                                                               |
+| Ancestor stack   | Ancestor chain of `currentHeadingId`, rendered in `StickyHeader` below the Trail row                                                                                    |
+| Ancestor row     | One row of the stack; `{ id, variant: 'pill' \| 'muted', level?, inline }`. Hidden while `id ∈ visibleHeadingIds`.                                                      |
+| Synth root       | File label substituted as the first Ancestor row when the doc has no H1                                                                                                 |
+| Breadcrumb/Trail | The cross-document label chain (origin first, current doc last), one row atop the Overlay. **"Crumb" and "breadcrumb" only ever mean this** — never the Ancestor stack. |
+| Crumb            | One segment of the Trail; `{ label, kind: 'current' \| 'back' \| 'past' \| 'ellipsis', index }`                                                                         |
+
+### Search & text
+
+| Term       | Definition                                                                                                                                                   |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Projection | `BlockProjection` — the document projected into exactly the text the renderer prints; single source of truth for search, highlighting, and match→row mapping |
+| Run        | A keyed text stretch within a Projection, made of `Segment`s tagged with an element ordinal and `searchable`                                                 |
+| Match      | A hit inside a Run: `{ blockPath, blockElementId, runKey, start, length }`                                                                                   |
+| Committed  | `search.committed` — false while typing, true after Enter. Only a committed search may scroll the Viewer.                                                    |
+| Bearer     | `TextBearer` — a text-bearing renderable inside a block box; the unit geometry and hit-testing walk                                                          |
+
+### Surfaces & modes
+
+| Term        | Definition                                                                                   |
+| ----------- | -------------------------------------------------------------------------------------------- |
+| Focus       | `'viewer' \| 'sidebar' \| 'search'` — drives key dispatch                                    |
+| Status line | Bottom row; `Status` is `idle` (badge + filename) / `info` / `error`                         |
+| Help panel  | Keyboard-shortcut drawer built from `HINTS`; each `Hint` carries `probes` as drift guards    |
+| Mouse mode  | `mouseEnabled` — flag toggled by `m`. Currently written by `view-state` and read by nothing. |
+| Render mode | One-shot ANSI dump to stdout (`--render`, or auto when stdout is not a TTY)                  |

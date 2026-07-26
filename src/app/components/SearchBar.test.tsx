@@ -137,10 +137,10 @@ test('escape while typing dismisses the overlay and highlights', async () => {
   renderer.destroy()
 })
 
-test('overlay adopts the breadcrumb bg when the breadcrumb is showing', async () => {
+test('overlay adopts the sticky bg when ancestor rows are showing', async () => {
   const long = ['# Title', '', ...Array.from({ length: 40 }, (_, i) => `filler ${i}\n`)].join('\n')
   const { renderer, mockInput, settle, captureCharFrame, captureSpans } = await setup(long)
-  // Scroll to the bottom so the H1 leaves the viewport and the breadcrumb shows.
+  // Scroll to the bottom so the H1 leaves the viewport and the ancestor rows show.
   await mockInput.typeText('G')
   await settle()
   expect(topRowHasBg(captureSpans, STICKY_BG)).toBe(true)
