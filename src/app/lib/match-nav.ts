@@ -4,9 +4,9 @@ import type { Fold } from './fold'
 
 /**
  * Where to scroll a search match: the nearest preceding heading, plus the
- * breadcrumb overlay height to clear so the match lands below the sticky header
+ * sticky overlay height to clear so the match lands below the overlay
  * rather than behind it. The jump leaves that heading above the viewport, so
- * its own crumb counts too. Returns null when no heading precedes the match.
+ * its own ancestor row counts too. Returns null when no heading precedes the match.
  */
 export function matchScrollTarget(params: {
   nodes: Node[]
@@ -24,7 +24,7 @@ export const JUMP_CONTEXT_ROWS = 5
 
 /**
  * Less-style jump: rows to scroll so the match line lands `JUMP_CONTEXT_ROWS`
- * below the breadcrumb overlay (`topOffset` rows), leaving a little context
+ * below the sticky overlay (`topOffset` rows), leaving a little context
  * above. Every navigation repositions; there is no already-visible exception.
  */
 export function matchJumpDelta(params: {

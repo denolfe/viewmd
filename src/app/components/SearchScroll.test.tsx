@@ -56,7 +56,7 @@ function rowOf(frame: string, needle: string): number {
 }
 
 // Row where a jumped-to match lands: JUMP_CONTEXT_ROWS (5) below the two-row
-// breadcrumb overlay ('# Title' pill + the H2's own crumb, offscreen above).
+// sticky overlay ('# Title' pill + the H2's own ancestor row, offscreen above).
 const JUMP_ROW = 7
 
 test('committing a search on a visible match jumps it to the top of the view', async () => {

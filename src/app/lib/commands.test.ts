@@ -11,7 +11,7 @@ import type { RefObject } from 'react'
 const m = (): Match => ({ blockPath: [0], blockElementId: 'x', runKey: 'x', start: 0, length: 1 })
 
 // Viewer mock driven by absolute heading y-positions (viewport top = 0), so
-// `topOffset` (the breadcrumb overlay height) actually changes what counts as
+// `topOffset` (the sticky overlay height) actually changes what counts as
 // "near top" / "visible" — the raw-position mock ignores it.
 function makePositionalViewerRef(
   positions: Record<string, number>,
@@ -146,10 +146,10 @@ describe('createCommands.jumpHeadingBy', () => {
 })
 
 describe('createCommands.syncFromScroll', () => {
-  test('resolves current heading against the breadcrumb-overlay offset', () => {
+  test('resolves current heading against the sticky-overlay offset', () => {
     // a (H1) sits above the fold, a1 below it (row 2, clear of the near-top
     // slack), b far down. The fixed point resolves to `a`: near-top at offset 0
-    // is `a`, and `a`'s own H1 crumb is filtered out (offset 0), so the loop
+    // is `a`, and `a`'s own H1 ancestor row is filtered out (offset 0), so the loop
     // terminates on the first pass.
     const ref = makePositionalViewerRef({ a: -10, a1: 2, b: 40 }).ref
     const { deps, actions } = makeDeps({ viewerRef: ref })
@@ -394,13 +394,13 @@ describe('createCommands.syncFromScroll sibling handoff (blip fix)', () => {
   })
 })
 
-describe('createCommands.syncFromScroll breadcrumb-overlay offset', () => {
+describe('createCommands.syncFromScroll sticky-overlay offset', () => {
   test('a heading behind the overlay becomes current and is excluded from visible', () => {
     // a (H1) is scrolled off above; a1 (H2 under a) sits at row 0, behind the
-    // breadcrumb overlay; b is far below the fold. Without offset resolution a1
-    // would count as "visible" (filtered from the breadcrumb) yet be hidden
+    // sticky overlay; b is far below the fold. Without offset resolution a1
+    // would count as "visible" (filtered from the overlay) yet be hidden
     // behind the overlay — it would vanish. The fixed point must instead make a1
-    // current and exclude it from the visible set so it shows as a crumb.
+    // current and exclude it from the visible set so it shows as an ancestor row.
     const ref = makePositionalViewerRef({ a: -3, a1: 0, b: 50 }).ref
     const { deps, actions } = makeDeps({
       viewerRef: ref,

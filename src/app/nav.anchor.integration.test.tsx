@@ -20,10 +20,10 @@ type Renderable = { getChildren(): unknown[]; findDescendantById(id: string): un
  * Both docs open with the SAME H1 slug (`# App` → `app`), mirroring the real
  * repro (both viewmd docs start `# viewmd`). On the native renderer that
  * collision made the swap reuse the shared heading renderable with stale layout
- * (frozen y=0), hijacking the breadcrumb — fixed by keying the content subtree
+ * (frozen y=0), hijacking the sticky overlay — fixed by keying the content subtree
  * on the doc path so each doc mounts fresh. NOTE: the headless test renderer
  * re-lays-out on `flush`, so it does not reproduce that stale-reconcile artifact;
- * this test guards the surrounding post-nav breadcrumb behavior, not the native
+ * this test guards the surrounding post-nav overlay behavior, not the native
  * layout bug itself (verified by hand under a real terminal).
  */
 function makeFixtures(leadingSections: number) {
@@ -93,7 +93,7 @@ async function navigateToUsage(leadingSections: number) {
   }
 }
 
-test('anchor nav lands in the target section (not stranded at top) and its breadcrumb sticks on scroll', async () => {
+test('anchor nav lands in the target section (not stranded at top) and its ancestor row sticks on scroll', async () => {
   const { renderer, mockInput, settle, captureCharFrame, root } = await navigateToUsage(1)
 
   expect(root.findDescendantById('usage')).toBeTruthy()
@@ -104,18 +104,18 @@ test('anchor nav lands in the target section (not stranded at top) and its bread
   // the reader at row 0.)
   expect(afterNav).toContain('This is the usage section body.')
   // Usage is current (visible → filtered to the H1 pill); the previous sibling
-  // must not leak in as a crumb (the back-badge + pin-gap off-by-one).
+  // must not leak in as an ancestor row (the back-badge + pin-gap off-by-one).
   expect(afterNav.split('\n').slice(0, 4).join('\n')).not.toContain('## Lead 0')
 
-  // Scroll until Usage itself scrolls behind the overlay — its crumb must appear
-  // and stick, proving the breadcrumb keeps updating after an anchored nav.
+  // Scroll until Usage itself scrolls behind the overlay — its ancestor row must appear
+  // and stick, proving the overlay keeps updating after an anchored nav.
   for (let i = 0; i < 8; i++) await mockInput.typeText('j')
   await settle()
   await settle()
   expect(captureCharFrame().split('\n').slice(0, 4).join('\n')).toContain('## Usage')
 
-  // Keep scrolling deep past Usage into the Trail sections. The breadcrumb must
-  // track the section you're actually in — its crumb (`## Trail N`) present in
+  // Keep scrolling deep past Usage into the Trail sections. The overlay must
+  // track the section you're actually in — its ancestor row (`## Trail N`) present in
   // the overlay — rather than collapsing to just the H1 pill.
   for (let i = 0; i < 20; i++) await mockInput.typeText('j')
   await settle()

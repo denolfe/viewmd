@@ -5,7 +5,7 @@ import { StickyHeader } from './StickyHeader'
 import { AppStateContext } from '../state'
 import type { AppState } from '../state'
 import { createNoopCommands } from '../lib/commands'
-import { FILE_ROW_ID } from '../lib/toc-util'
+import { FILE_ROW_ID } from '../lib/overlay-rows'
 import type { TocEntry } from '../lib/ast'
 
 function makeStub(overrides: Partial<AppState> = {}): AppState {
@@ -41,7 +41,7 @@ async function renderHeader(params: {
   stub: AppState
   toc: TocEntry[]
   fileLabel?: string
-  onCrumbClick: (id: string) => void
+  onAncestorClick: (id: string) => void
 }) {
   const { renderer, flush, renderOnce, captureCharFrame } = await createTestRenderer({
     width: 80,
@@ -57,7 +57,7 @@ async function renderHeader(params: {
       <StickyHeader
         toc={params.toc}
         fileLabel={params.fileLabel}
-        onCrumbClick={params.onCrumbClick}
+        onAncestorClick={params.onAncestorClick}
       />
     </AppStateContext.Provider>,
   )
@@ -92,47 +92,47 @@ const h1Toc: TocEntry[] = [
   }),
 ]
 
-test('clicking a muted ancestor crumb calls onCrumbClick with its heading id', async () => {
-  const onCrumbClick = mock()
+test('clicking a muted ancestor row calls onAncestorClick with its heading id', async () => {
+  const onAncestorClick = mock()
   const stub = makeStub({ currentHeadingId: 'beta' })
-  const h = await renderHeader({ stub, toc: h1Toc, onCrumbClick })
+  const h = await renderHeader({ stub, toc: h1Toc, onAncestorClick })
 
   await clickText(h, '## Beta')
 
-  expect(onCrumbClick).toHaveBeenCalledWith('beta')
+  expect(onAncestorClick).toHaveBeenCalledWith('beta')
   h.renderer.destroy()
 })
 
-test('clicking the H1 pill crumb calls onCrumbClick with the H1 id', async () => {
-  const onCrumbClick = mock()
+test('clicking the H1 pill row calls onAncestorClick with the H1 id', async () => {
+  const onAncestorClick = mock()
   const stub = makeStub({ currentHeadingId: 'beta' })
-  const h = await renderHeader({ stub, toc: h1Toc, onCrumbClick })
+  const h = await renderHeader({ stub, toc: h1Toc, onAncestorClick })
 
   await clickText(h, 'Alpha')
 
-  expect(onCrumbClick).toHaveBeenCalledWith('alpha')
+  expect(onAncestorClick).toHaveBeenCalledWith('alpha')
   h.renderer.destroy()
 })
 
-test('clicking the file-label pill calls onCrumbClick with FILE_ROW_ID', async () => {
-  const onCrumbClick = mock()
+test('clicking the file-label pill calls onAncestorClick with FILE_ROW_ID', async () => {
+  const onAncestorClick = mock()
   const noH1Toc: TocEntry[] = [tocEntry({ id: 'beta', level: 2, text: 'Beta' })]
   const stub = makeStub({ currentHeadingId: 'beta' })
-  const h = await renderHeader({ stub, toc: noH1Toc, fileLabel: 'docs/readme.md', onCrumbClick })
+  const h = await renderHeader({ stub, toc: noH1Toc, fileLabel: 'docs/readme.md', onAncestorClick })
 
   await clickText(h, 'docs/readme.md')
 
-  expect(onCrumbClick).toHaveBeenCalledWith(FILE_ROW_ID)
+  expect(onAncestorClick).toHaveBeenCalledWith(FILE_ROW_ID)
   h.renderer.destroy()
 })
 
-test('right-click on a crumb does not call onCrumbClick', async () => {
-  const onCrumbClick = mock()
+test('right-click on an ancestor row does not call onAncestorClick', async () => {
+  const onAncestorClick = mock()
   const stub = makeStub({ currentHeadingId: 'beta' })
-  const h = await renderHeader({ stub, toc: h1Toc, onCrumbClick })
+  const h = await renderHeader({ stub, toc: h1Toc, onAncestorClick })
 
   await clickText(h, '## Beta', MouseButtons.RIGHT)
 
-  expect(onCrumbClick).not.toHaveBeenCalled()
+  expect(onAncestorClick).not.toHaveBeenCalled()
   h.renderer.destroy()
 })

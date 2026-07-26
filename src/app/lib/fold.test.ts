@@ -31,7 +31,7 @@ const toc: TocEntry[] = [
 describe('createFold offsetFor', () => {
   const fold = createFold({ toc })
 
-  test('deepest heading: ancestor crumbs, self excluded', () => {
+  test('deepest heading: ancestor rows, self excluded', () => {
     // c(L3) under b(L2) under a(L1): a pill + b muted = 2 rows, c filtered.
     expect(fold.offsetFor('c', 0)).toBe(2)
   })
@@ -61,12 +61,12 @@ describe('createFold offsetFor', () => {
 describe('createFold aboveOffsetFor', () => {
   const fold = createFold({ toc })
 
-  test('includes the heading own crumb (differs from offsetFor by 1)', () => {
+  test('includes the heading own ancestor row (differs from offsetFor by 1)', () => {
     expect(fold.aboveOffsetFor('c')).toBe(3)
     expect(fold.aboveOffsetFor('c') - fold.offsetFor('c', 0)).toBe(1)
   })
 
-  test('top-level H1: only its own crumb -> 1', () => {
+  test('top-level H1: only its own ancestor row -> 1', () => {
     expect(fold.aboveOffsetFor('a')).toBe(1)
   })
 })

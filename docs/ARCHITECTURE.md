@@ -78,7 +78,7 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
 - Memoises an `AppState` object into `AppStateContext` so descendants read state via `useAppState()`.
 - Wires `useKeyboard` → `mapKey(ev, focus, { searchActive, helpOpen })` → `dispatch(action, commands)`. When `focus === 'search'`, `App` skips dispatch entirely — `SearchInput` owns its own `useKeyboard`.
 - Runs two effects:
-  - When the search index/pattern changes, jump less-style: scroll the match line to a few context rows (`JUMP_CONTEXT_ROWS`) below the breadcrumb overlay of its nearest preceding heading (`matchScrollTarget` + `jumpToMatch`).
+  - When the search index/pattern changes, jump less-style: scroll the match line to a few context rows (`JUMP_CONTEXT_ROWS`) below the sticky overlay of its nearest preceding heading (`matchScrollTarget` + `jumpToMatch`).
   - On first paint (and whenever `headingIds` changes), populate `visibleHeadingIds` once via the viewer handle so the sticky header's hide-when-visible rule fires before any keypress.
 
 Layout (rendered tree):
@@ -104,9 +104,9 @@ out of flex flow — only the `StatusLine` (height 1) sits below the viewport, a
 
 - `focus: 'viewer' | 'sidebar' | 'search'` — drives `mapKey` dispatch and the TOC cursor highlight.
 - `currentHeadingId: string | null` — heading at/just-above the visible content top, or last-jumped-to. Re-synced after every scroll.
-- `visibleHeadingIds: Set<string>` — every heading whose box vertically intersects the visible content region. Used by `StickyHeader` to blank crumbs while their heading is on-screen.
+- `visibleHeadingIds: Set<string>` — every heading whose box vertically intersects the visible content region. Used by `StickyHeader` to blank ancestor rows while their heading is on-screen.
 
-Both are measured against **the content below the breadcrumb overlay**, not the raw viewport top: `src/app/lib/fold.ts`'s `findHeadingNearTop`/`findVisibleHeadingIds` take a `topOffset`. The offset is the current heading's **ancestor-stack height** (`Fold.offsetFor` — ancestors + synth root, excluding the heading itself), the same value a jump uses, so scrolling to a heading resolves identically to navigating to it. `Fold.resolveCurrent` finds it as a fixed point over the current heading, bailing if an offset repeats (a shallow heading at a deeper one's fold can cycle). Excluding the heading's own crumb from the offset is deliberate: including it (an earlier approach) made the offset self-referential, so at a boundary both "crumb shown" and "crumb hidden" were consistent and the breadcrumb flickered a frame as you scrolled past a header. Without any offset, a heading scrolling behind the overlay would count as "visible" (dropped from the breadcrumb) yet be hidden behind it — vanishing instead of becoming a crumb.
+Both are measured against **the content below the sticky overlay**, not the raw viewport top: `src/app/lib/fold.ts`'s `findHeadingNearTop`/`findVisibleHeadingIds` take a `topOffset`. The offset is the current heading's **ancestor-stack height** (`Fold.offsetFor` — ancestors + synth root, excluding the heading itself), the same value a jump uses, so scrolling to a heading resolves identically to navigating to it. `Fold.resolveCurrent` finds it as a fixed point over the current heading, bailing if an offset repeats (a shallow heading at a deeper one's fold can cycle). Excluding the heading's own ancestor row from the offset is deliberate: including it (an earlier approach) made the offset self-referential, so at a boundary both "row shown" and "row hidden" were consistent and the overlay flickered a frame as you scrolled past a header. Without any offset, a heading scrolling behind the overlay would count as "visible" (dropped from the overlay) yet be hidden behind it — vanishing instead of becoming an ancestor row.
 
 - `expanded: Map<string, boolean>` — per-id TOC fold state. Default per entry is `level <= 2` (see `defaultExpanded`).
 - `tocCursorId: string | null` — TOC keyboard cursor (independent of `currentHeadingId`).
@@ -191,7 +191,7 @@ a stale pending would yank the viewport back once its chunk mounts; a clamped no
 (e.g. pressing down at the bottom) leaves the pending intact. Post-swap pins (`pinJump`) carry
 `isSwap`, so their settle fires `repositioned` exactly once — the signal the shell uses to drop
 the navigation cover. Once `mountedCount >= nodes.length`, a deferred notify (fired on the next
-`frame`) re-syncs headings/marks so the breadcrumb and scroll indicators reflect the
+`frame`) re-syncs headings/marks so the overlay and scroll indicators reflect the
 now-complete tree.
 
 ### Scroll indicators (`src/app/components/ScrollIndicators.tsx`)
@@ -202,17 +202,17 @@ Block boxes carry a stable id via `blockId(path)` (`src/app/lib/scroll-marks.ts`
 
 `computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`round(y / scrollHeight * viewportHeight)`), independent of scroll position. It maps over the **full `scrollHeight`** (tail included) — the exact scale OpenTUI positions the thumb with (`thumbTop = scrollPosition / scrollHeight * trackHeight`), so a mark for a match lands inside the thumb once you navigate to it; `realContentHeight` (scrollHeight minus tail) is used only to suppress the overlay when the whole document already fits the viewport. Marks recompute on **reflow** (resize, TOC toggle via `contentWidth` change, search pattern/index change), not on every scroll tick. `ScrollIndicators` debounces recomputation into a microtask (`setTimeout(…, 0)`) after those dependencies change and reads the current layout off `viewerRef`. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match`), painted with `theme.scrollMarkActive` / `scrollMarkMatch`. With no active search or on a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
 
-## 8. Sticky breadcrumb (`src/app/components/StickyHeader.tsx`)
+## 8. Sticky overlay (`src/app/components/StickyHeader.tsx`)
 
-An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `contentWidth`, `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — crumbs paint _over_ the top content lines rather than pushing content down, so the breadcrumb can grow from zero without the content region reflowing.
+An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `contentWidth`, `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — the rows paint _over_ the top content lines rather than pushing content down, so the overlay can grow from zero without the content region reflowing.
 
-Content is `breadcrumbRows({ chain, visibleHeadingIds, hasH1, fileLabel })` (in `toc-util.ts`), where `chain = ancestorChain(toc, currentHeadingId)` is the root→current lineage:
+Content is `ancestorRows({ chain, visibleHeadingIds, hasH1, fileLabel })` (in `overlay-rows.ts`), where `chain = ancestorChain(toc, currentHeadingId)` is the root→current lineage:
 
-- Every crumb whose `id ∈ visibleHeadingIds` is dropped. At the top of the doc the H1 is on-screen, so the chain filters to empty and **nothing** is drawn — the breadcrumb starts empty and accumulates as headings scroll off the top.
-- **Row 1** is the H1 rendered as a bold pill (`theme.h1Bg`/`h1Fg`), or the `fileLabel` synth root when the doc has no H1 (shown only once a real crumb survives the filter).
+- Every ancestor row whose `id ∈ visibleHeadingIds` is dropped. At the top of the doc the H1 is on-screen, so the chain filters to empty and **nothing** is drawn — the overlay starts empty and accumulates as headings scroll off the top.
+- **Row 1** is the H1 rendered as a bold pill (`theme.h1Bg`/`h1Fg`), or the `fileLabel` synth root when the doc has no H1 (shown only once a real ancestor row survives the filter).
 - **Deeper rows** render muted (`theme.headingMuted`) with a `#…#` level prefix.
 
-Jumps (`tocSelect`, `nextHeading`/`prevHeading`) call `scrollChildToTop(id, ancestorChain(toc, id).length - 1)` so the target lands just _below_ its ancestor crumb stack instead of hidden underneath it.
+Jumps (`tocSelect`, `nextHeading`/`prevHeading`) call `scrollChildToTop(id, ancestorChain(toc, id).length - 1)` so the target lands just _below_ its ancestor stack instead of hidden underneath it.
 
 ## 9. TOC (`src/app/components/Toc.tsx`)
 
@@ -277,4 +277,4 @@ The only mutable cross-boundary surface is `ScrollboxHandle`. Commands read/writ
 
 ## Testing
 
-`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `commands.test.ts`, `view-state.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`. Mocks via `mock()` from `bun:test`. `commands.test.ts` builds `CommandDeps` via a `makeDeps({ state })` helper (`state` is a `Partial<ViewState>` overlaid on defaults) and asserts on the returned `actions.*` mock calls. `dispatch.test.ts` instead mocks the whole `Commands` object and asserts `dispatch` calls the right method. The Viewer/imperative-scroll surface is not unit-tested directly — it's exercised by integration through `commands.test.ts` against a fake `ScrollboxHandle`.
+`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `commands.test.ts`, `view-state.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`, `overlay-rows.test.ts`. Mocks via `mock()` from `bun:test`. `commands.test.ts` builds `CommandDeps` via a `makeDeps({ state })` helper (`state` is a `Partial<ViewState>` overlaid on defaults) and asserts on the returned `actions.*` mock calls. `dispatch.test.ts` instead mocks the whole `Commands` object and asserts `dispatch` calls the right method. The Viewer/imperative-scroll surface is not unit-tested directly — it's exercised by integration through `commands.test.ts` against a fake `ScrollboxHandle`.

@@ -28,7 +28,7 @@ describe('nearestPrecedingHeadingId', () => {
 })
 
 describe('matchJumpDelta', () => {
-  // Viewport top row 100; breadcrumb occludes rows 100-101; the match lands
+  // Viewport top row 100; the overlay occludes rows 100-101; the match lands
   // JUMP_CONTEXT_ROWS (5) below that, at row 107.
   const viewport = { viewportTop: 100, topOffset: 2 }
 
@@ -48,7 +48,7 @@ describe('matchJumpDelta', () => {
     expect(matchJumpDelta({ ...viewport, matchY: 10 })).toBe(-97)
   })
 
-  test('no breadcrumb: only the context rows sit above the match', () => {
+  test('no ancestor rows: only the context rows sit above the match', () => {
     expect(matchJumpDelta({ viewportTop: 100, topOffset: 0, matchY: 130 })).toBe(25)
   })
 })
@@ -71,13 +71,13 @@ describe('seedMatchIndex', () => {
 })
 
 describe('matchScrollTarget', () => {
-  test('offset reserves the breadcrumb height so the match lands below the overlay', () => {
+  test('offset reserves the overlay height so the match lands below the overlay', () => {
     const md = '# A\n\n## B\n\nfoo target\n\n# C'
     const { nodes, toc } = buildTree(md)
     const [m] = findMatches(nodes, 'target')
     if (!m) throw new Error('expected a match')
     // Match sits under `## B`; after the jump both `# A` and the offscreen
-    // `## B` render as crumbs — two overlay rows the scroll must clear.
+    // `## B` render as ancestor rows — two overlay rows the scroll must clear.
     expect(matchScrollTarget({ nodes, match: m, fold: createFold({ toc }) })).toEqual({
       headingId: 'b',
       topOffset: 2,

@@ -48,7 +48,7 @@ export function Viewer({
    * subtree on it forces a full remount on navigation instead of reconciling:
    * two docs that share a heading slug (e.g. both start `# viewmd`) would
    * otherwise reuse the same heading renderable across the swap, leaving its
-   * layout stale (NaN height, frozen y=0) so it hijacks the sticky breadcrumb.
+   * layout stale (NaN height, frozen y=0) so it hijacks the sticky overlay.
    */
   docKey?: string
 }) {
@@ -56,10 +56,10 @@ export function Viewer({
   const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
-  // Nothing sits below the viewport (the search bar and breadcrumb overlay
+  // Nothing sits below the viewport (the search bar and sticky overlay
   // the viewer instead of consuming column rows). Tail = viewport - 1 so the
   // last heading can still
-  // scroll to the top, minus `tailReserve` (the last heading's crumb height)
+  // scroll to the top, minus `tailReserve` (the last heading's ancestor-stack height)
   // so its content stops just below the overlay rather than sliding up
   // behind it.
   const tailSpace = Math.max(0, height - 1 - tailReserve)
@@ -219,7 +219,7 @@ export function Viewer({
     }
   }, [viewerRef, renderer])
 
-  // Refresh breadcrumb/marks once the whole doc is mounted — deferred to the
+  // Refresh headings/marks once the whole doc is mounted — deferred to the
   // next frame so listeners read post-layout geometry.
   useEffect(() => {
     if (fullyMounted) needsNotifyRef.current = true
@@ -257,7 +257,7 @@ export function Viewer({
  * funnel into `verticalScrollBar.scrollPosition`'s setter. Patch it so we
  * notify after every change — keyboard goes through dispatch's own sync, but
  * mouse wheel / drag mutate scrollTop directly and would otherwise leave the
- * breadcrumb stale.
+ * sticky overlay stale.
  */
 function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
   const sb = box.verticalScrollBar as unknown as { scrollPosition: number }

@@ -1,6 +1,6 @@
 import { useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
-import { truncateLabelLeft } from '../lib/toc-util'
+import { truncateLabelLeft } from '../lib/label'
 import { theme } from '../styles/theme'
 
 const BADGE = ' viewmd '

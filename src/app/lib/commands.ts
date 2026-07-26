@@ -69,10 +69,10 @@ export function createCommands(deps: CommandDeps): Commands {
     nav,
   } = deps
 
-  // Rows the breadcrumb will show once `id` is pinned as the current heading: `id`
+  // Rows the overlay will show once `id` is pinned as the current heading: `id`
   // itself lands below the overlay (visible, so filtered out); its ancestors stack
   // above, plus the back badge when a history exists. Used as the pin/visibility
-  // offset so a jump lands the target just below its crumbs rather than hidden
+  // offset so a jump lands the target just below its ancestor rows rather than hidden
   // behind them. See `Fold.offsetFor` for the offset-convention rationale.
   const offsetFor = (id: string): number => fold.offsetFor(id, historyDepth)
 
@@ -84,7 +84,7 @@ export function createCommands(deps: CommandDeps): Commands {
   }
 
   // Resolve current + visible headings against live geometry and apply the setters
-  // only on change. The breadcrumb overlay occludes the top rows, so resolution
+  // only on change. The sticky overlay occludes the top rows, so resolution
   // measures against the content below the fold (see `Fold.resolveCurrent`).
   const resolveHeadings = (): void => {
     const v = viewerRef.current
@@ -239,7 +239,7 @@ export function createCommands(deps: CommandDeps): Commands {
       if (!v) return
       // Retry-until-reached: a just-swapped doc mounts progressively, so a
       // one-shot scrollTo would clamp short of a deep saved offset. The final
-      // breadcrumb state is re-resolved when the reposition settles (onRepositioned).
+      // heading state is re-resolved when the reposition settles (onRepositioned).
       v.pinScrollTop(scrollTop)
       if (currentHeadingId) actions.currentHeadingId(currentHeadingId)
     },

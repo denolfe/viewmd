@@ -1,5 +1,5 @@
 import { useAppState } from '../state'
-import { ancestorChain, breadcrumbRows, documentHasH1 } from '../lib/toc-util'
+import { ancestorChain, ancestorRows, documentHasH1 } from '../lib/overlay-rows'
 import { theme } from '../styles/theme'
 import { MutedInline } from './blocks/MutedInline'
 import { onPrimaryClick } from '../lib/mouse'
@@ -10,18 +10,18 @@ import type { TocEntry } from '../lib/ast'
 export function StickyHeader({
   toc,
   fileLabel,
-  onCrumbClick,
+  onAncestorClick,
 }: {
   toc: TocEntry[]
   fileLabel?: string
-  onCrumbClick: (id: string) => void
+  onAncestorClick: (id: string) => void
 }) {
   const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, trailLabels, commands } =
     useAppState()
 
   const hasH1 = documentHasH1(toc)
   const chain = ancestorChain(toc, currentHeadingId)
-  const rows = breadcrumbRows({ chain, visibleHeadingIds, hasH1, fileLabel })
+  const rows = ancestorRows({ chain, visibleHeadingIds, hasH1, fileLabel })
   if (rows.length === 0 && historyDepth === 0) return null
 
   const trailRow =
@@ -62,7 +62,7 @@ export function StickyHeader({
             key={row.id}
             height={1}
             overflow="hidden"
-            onMouseDown={onPrimaryClick(() => onCrumbClick(row.id))}
+            onMouseDown={onPrimaryClick(() => onAncestorClick(row.id))}
           >
             <text bg={theme.h1Bg} fg={theme.h1Fg}>
               <strong>
@@ -77,7 +77,7 @@ export function StickyHeader({
             key={row.id}
             height={1}
             overflow="hidden"
-            onMouseDown={onPrimaryClick(() => onCrumbClick(row.id))}
+            onMouseDown={onPrimaryClick(() => onAncestorClick(row.id))}
           >
             <text fg={theme.heading} bg={theme.stickyBg}>
               <strong>
