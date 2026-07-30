@@ -19,7 +19,7 @@ import {
 import { pendingReducer, IDLE } from '../lib/pending-reducer'
 import { theme } from '../styles/theme'
 import { VIEWER_OVERHEAD } from '../styles/layout'
-import type { BoxGeometry, TextBearer } from '../lib/viewport-geometry'
+import type { BoxGeometry, ChildGeometry, TextBearer } from '../lib/viewport-geometry'
 import type { PendingState, PendingTarget, PendingEffect, Resolution } from '../lib/pending-reducer'
 import type { ScrollboxHandle } from '../state'
 import type { Node } from '../lib/ast'
@@ -111,6 +111,7 @@ export function Viewer({
         const c = box.content.findDescendantById(id)
         return c ? { y: c.y, height: c.height } : null
       },
+      findChildren: ids => collectChildGeometry(box.content, new Set(ids), new Map()),
       collectTextBearers: id => {
         const el = box.content.findDescendantById(id)
         return el ? collectTextBearers(el, []) : []
@@ -290,6 +291,40 @@ function asTextBearer(node: unknown): TextBearer | null {
   )
     return null
   return node as unknown as TextBearer
+}
+
+/**
+ * Geometry of every `wanted` id found beneath `node`, in one walk. Prunes as
+ * soon as the set is exhausted, and does not descend into a matched box (ids are
+ * block-level and never nest inside one another).
+ */
+function collectChildGeometry(
+  node: { getChildren(): unknown[] },
+  wanted: Set<string>,
+  out: Map<string, ChildGeometry>,
+): Map<string, ChildGeometry> {
+  for (const child of node.getChildren()) {
+    if (wanted.size === 0) break
+    if (!isTreeNode(child)) continue
+    const id = typeof child.id === 'string' ? child.id : undefined
+    if (id !== undefined && wanted.delete(id)) {
+      out.set(id, { y: child.y ?? 0, height: child.height ?? 0 })
+      continue
+    }
+    collectChildGeometry(child, wanted, out)
+  }
+  return out
+}
+
+function isTreeNode(
+  value: unknown,
+): value is { getChildren(): unknown[]; id?: unknown; y?: number; height?: number } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'getChildren' in value &&
+    typeof value.getChildren === 'function'
+  )
 }
 
 /**

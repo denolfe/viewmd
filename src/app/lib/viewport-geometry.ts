@@ -16,6 +16,12 @@ export type BoxGeometry = {
   scrollTop: number
   scrollHeight: number
   findChild(id: string): ChildGeometry | null
+  /**
+   * Geometry for every requested id in a single tree walk; unmounted ids are
+   * absent. Resolving a whole heading set one id at a time costs
+   * `ids × tree` — this is what keeps per-scroll heading resolution linear.
+   */
+  findChildren(ids: string[]): Map<string, ChildGeometry>
   collectTextBearers(id: string): TextBearer[]
 }
 

@@ -1,6 +1,6 @@
 import { ancestorChain, ancestorRows, documentHasH1, trailRowsForDepth } from './overlay-rows'
 import type { TocEntry } from './ast'
-import type { BoxGeometry } from './viewport-geometry'
+import type { BoxGeometry, ChildGeometry } from './viewport-geometry'
 
 /** Small gap (rows) so a pinned heading isn't flush behind its ancestor rows. */
 export const PIN_TOP_OFFSET = 1
@@ -16,29 +16,7 @@ export function findHeadingNearTop(
   ids: string[],
   topOffset: number,
 ): string | null {
-  const viewportTop = geom.viewportTop + topOffset + PIN_TOP_OFFSET
-  let bestId: string | null = null
-  let bestY = -Infinity
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    if (child.y <= viewportTop && child.y > bestY) {
-      bestY = child.y
-      bestId = id
-    }
-  }
-  if (bestId) return bestId
-  let firstBelowId: string | null = null
-  let firstBelowY = Infinity
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    if (child.y < firstBelowY) {
-      firstBelowY = child.y
-      firstBelowId = id
-    }
-  }
-  return firstBelowId
+  return headingNearTop(geom.findChildren(ids), ids, geom.viewportTop + topOffset)
 }
 
 /** Ids whose box vertically overlaps the viewport below `topOffset`. */
@@ -47,17 +25,12 @@ export function findVisibleHeadingIds(
   ids: string[],
   topOffset: number,
 ): Set<string> {
-  const top = geom.viewportTop + topOffset
-  const bottom = geom.viewportTop + geom.viewportHeight
-  const out = new Set<string>()
-  for (const id of ids) {
-    const child = geom.findChild(id)
-    if (!child) continue
-    const childTop = child.y
-    const childBottom = child.y + child.height
-    if (childBottom > top && childTop < bottom) out.add(id)
-  }
-  return out
+  return visibleHeadingIds({
+    boxes: geom.findChildren(ids),
+    ids,
+    top: geom.viewportTop + topOffset,
+    bottom: geom.viewportTop + geom.viewportHeight,
+  })
 }
 
 /** Rows to scroll so `id` sits `topOffset` (+ PIN_TOP_OFFSET) below the viewport top. Null if unmounted. */
@@ -121,6 +94,9 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     if (headingIds.length === 0) {
       return { currentHeadingId: null, visibleHeadingIds: new Set() }
     }
+    // Every pass and the final visible-set scan read the same heading boxes, so
+    // resolve them once: geometry is fixed for the duration of this call.
+    const boxes = geom.findChildren(headingIds)
     // Heading and offset are mutually recursive (offset depends on which heading
     // is current, which depends on the offset), so iterate to a fixed point. A
     // shallow heading sitting at a deeper one's fold can cycle; bail if an offset repeats.
@@ -128,7 +104,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     let id: string | null = null
     const seen = new Set<number>()
     for (let pass = 0; pass < 8; pass++) {
-      id = findHeadingNearTop(geom, headingIds, offset)
+      id = headingNearTop(boxes, headingIds, geom.viewportTop + offset)
       const next = id ? offsetFor(id, historyDepth) : 0
       if (next === offset || seen.has(next)) break
       seen.add(offset)
@@ -136,9 +112,56 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     }
     return {
       currentHeadingId: id,
-      visibleHeadingIds: findVisibleHeadingIds(geom, headingIds, offset),
+      visibleHeadingIds: visibleHeadingIds({
+        boxes,
+        ids: headingIds,
+        top: geom.viewportTop + offset,
+        bottom: geom.viewportTop + geom.viewportHeight,
+      }),
     }
   }
 
   return { offsetFor, aboveOffsetFor, tailReserve, resolveCurrent }
+}
+
+/** Last heading at/above `top` (plus PIN_TOP_OFFSET slack), else the topmost one. */
+function headingNearTop(
+  boxes: Map<string, ChildGeometry>,
+  ids: string[],
+  top: number,
+): string | null {
+  const fold = top + PIN_TOP_OFFSET
+  let bestId: string | null = null
+  let bestY = -Infinity
+  let firstBelowId: string | null = null
+  let firstBelowY = Infinity
+  for (const id of ids) {
+    const box = boxes.get(id)
+    if (!box) continue
+    if (box.y <= fold && box.y > bestY) {
+      bestY = box.y
+      bestId = id
+    }
+    if (box.y < firstBelowY) {
+      firstBelowY = box.y
+      firstBelowId = id
+    }
+  }
+  return bestId ?? firstBelowId
+}
+
+function visibleHeadingIds(params: {
+  boxes: Map<string, ChildGeometry>
+  ids: string[]
+  top: number
+  bottom: number
+}): Set<string> {
+  const { boxes, ids, top, bottom } = params
+  const out = new Set<string>()
+  for (const id of ids) {
+    const box = boxes.get(id)
+    if (!box) continue
+    if (box.y + box.height > top && box.y < bottom) out.add(id)
+  }
+  return out
 }
