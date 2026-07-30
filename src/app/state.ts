@@ -35,24 +35,12 @@ export type ScrollboxHandle = {
   /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
   getGeometry: () => BoxGeometry
   /**
-   * Resolves search matches to absolute content-y for the scrollbar overlay.
-   * Returns raw geometry for `computeTrackCells`, which tags the active match
-   * itself. Unresolvable marks are omitted (never throws). Costs a tree walk, so
-   * callers resolve only when marks can have moved (see `getTrackGeometry`).
+   * Search matches resolved to document-space marks for the scrollbar overlay, plus
+   * the scroll/track dimensions that position them. Unresolvable marks are omitted
+   * and never throw; `computeTrackCells` tags the active match itself.
    */
   getScrollMarks: (params: { matches: Match[] }) => {
     marks: ResolvedMark[]
-    scrollTop: number
-    scrollHeight: number
-    viewportHeight: number
-    realContentHeight: number
-  }
-  /**
-   * The scroll/track dimensions `getScrollMarks` also returns, without resolving
-   * any match. Lets the thumb, the only part of the overlay that moves with the
-   * scroll, update without paying for mark resolution.
-   */
-  getTrackGeometry: () => {
     scrollTop: number
     scrollHeight: number
     viewportHeight: number

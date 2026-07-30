@@ -53,12 +53,6 @@ function makePositionalViewerRef(
       viewportHeight: 0,
       realContentHeight: 0,
     }),
-    getTrackGeometry: () => ({
-      scrollTop: 0,
-      scrollHeight: 0,
-      viewportHeight: 0,
-      realContentHeight: 0,
-    }),
     jumpToMatch: () => {},
     seedMatchIndex: () => 0,
     subscribeScroll: () => () => {},

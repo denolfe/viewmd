@@ -143,11 +143,11 @@ Pure key mapping, an effectful command layer, and a pure dispatcher between them
 
 `dispatch(action, commands)` is a pure `switch` mapping each `Action['kind']` to the matching `Commands` method — it holds no state and touches nothing effectful itself. Match nav delegates to the index arithmetic inside `commands.stepMatch` (`((index + delta) % total + total) % total`) and lets the `App` effect handle scrolling the new match into view.
 
-## 7. Viewer & imperative scroll (`src/app/components/Viewer.tsx`)
+## 7. Viewer & imperative scroll (`src/app/components/Viewer.tsx`, `src/app/lib/scrollbox-handle.ts`)
 
 The viewer is a `<scrollbox>` wrapping `<NodeList>` plus a trailing `<box height={tailSpace}>` so the _last_ heading can still scroll to the top of the viewport (`tailSpace = max(0, termHeight - 4)`).
 
-On mount, it constructs a `ScrollboxHandle` from the raw `ScrollBoxRenderable` ref:
+On mount it calls `createScrollboxHandle` (`src/app/lib/scrollbox-handle.ts`) with the raw `ScrollBoxRenderable` ref plus a `live` bag of getters (`tail`, `projections`, `isFullyMounted`, `contentWidth`); the seam owns the geometry port, the pending protocol and the scrollbar patches, and hands back `{ handle, onFrame, requestNotify, dispose }`. The handle's methods:
 
 | Method                            | Implementation                                                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -157,7 +157,7 @@ On mount, it constructs a `ScrollboxHandle` from the raw `ScrollBoxRenderable` r
 | `scrollChildToTop(id, topOffset)` | Find child by id, `scrollBy(childToTopDelta(geom, id, topOffset))` (`fold.ts`)                                                                     |
 | `getGeometry()`                   | Returns the live `BoxGeometry` port; callers pass it into `Fold` methods (`src/app/lib/fold.ts`) for heading-near-top / visible-heading resolution |
 
-It also installs `installRealisticThumb`, which patches the scrollbar slider's `viewPortSize` to exclude the synthetic tail spacer so the thumb reflects real content size.
+The seam also installs the two scrollbar patches in `src/app/lib/scrollbar-patch.ts`: `installRealisticThumb` patches the scrollbar slider's `viewPortSize` to exclude the synthetic tail spacer so the thumb reflects real content size, and `watchScroll` patches `scrollPosition` so wheel/drag scrolls notify the same listeners a keyboard scroll does.
 
 `focusable={false}` is intentional — `focused={false}` is a no-op on mount; this avoids click-focus re-enabling OpenTUI's built-in j/k handler that would compete with our dispatcher.
 
@@ -176,7 +176,7 @@ approximately right until the doc finishes mounting.
 
 Jumps into content that hasn't mounted yet (heading nav, search, post-swap pins) can't
 resolve immediately. That retry/supersede/settle logic is a **pure reducer**,
-`pendingReducer` (`src/app/lib/pending-reducer.ts`), and `Viewer` is a thin adapter over it.
+`pendingReducer` (`src/app/lib/pending-reducer.ts`), and the scroll seam is a thin adapter over it.
 The reducer state is `{ pending, isSwap }`; it maps events (`issueJump · pinJump · userScroll
 · frameTick`) to effects (`scrollBy · repositioned`) and never touches live geometry. Each
 frame the adapter resolves the current `pending` target against the box into a plain
@@ -277,4 +277,4 @@ The only mutable cross-boundary surface is `ScrollboxHandle`. Commands read/writ
 
 ## Testing
 
-`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `commands.test.ts`, `view-state.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`, `overlay-rows.test.ts`. Mocks via `mock()` from `bun:test`. `commands.test.ts` builds `CommandDeps` via a `makeDeps({ state })` helper (`state` is a `Partial<ViewState>` overlaid on defaults) and asserts on the returned `actions.*` mock calls. `dispatch.test.ts` instead mocks the whole `Commands` object and asserts `dispatch` calls the right method. The Viewer/imperative-scroll surface is not unit-tested directly — it's exercised by integration through `commands.test.ts` against a fake `ScrollboxHandle`.
+`bun:test` (not vitest/jest). Each pure module has a sibling `*.test.ts`: `ast.test.ts`, `dispatch.test.ts`, `commands.test.ts`, `view-state.test.ts`, `html.test.ts`, `keys.test.ts`, `match-nav.test.ts`, `preprocess.test.ts`, `search.test.ts`, `toc-util.test.ts`, `overlay-rows.test.ts`. Mocks via `mock()` from `bun:test`. `commands.test.ts` builds `CommandDeps` via a `makeDeps({ state })` helper (`state` is a `Partial<ViewState>` overlaid on defaults) and asserts on the returned `actions.*` mock calls. `dispatch.test.ts` instead mocks the whole `Commands` object and asserts `dispatch` calls the right method. The imperative scroll seam is unit-tested through `scrollbox-handle.test.ts`, which drives `createScrollboxHandle` against a fake scrollbox; `commands.test.ts` covers the command layer against a fake `ScrollboxHandle`.

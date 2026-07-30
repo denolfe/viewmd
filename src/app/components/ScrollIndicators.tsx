@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
 import { computeThumbRows, computeTrackCells } from '../lib/scroll-marks'
-import type { MarkKind, ResolvedMark, ThumbRows, TrackCell } from '../lib/scroll-marks'
+import type { MarkKind, ThumbRows, TrackCell } from '../lib/scroll-marks'
 import { theme } from '../styles/theme'
 
 const TICK = '─'
@@ -19,42 +19,17 @@ export function ScrollIndicators() {
   const [thumb, setThumb] = useState<ThumbRows | null>(null)
   const [trackRows, setTrackRows] = useState(0)
 
-  // Cached marks plus the content height they were resolved at, so a scroll can
-  // tell "still valid" from "the content grew under me".
-  const resolved = useRef<{ marks: ResolvedMark[]; contentHeight: number } | null>(null)
-
-  // Everything that can move a mark. `search.index` is absent on purpose: it only
-  // picks which tick paints as active.
-  useEffect(() => {
-    resolved.current = null
-  }, [search?.pattern, contentWidth, height])
-
   useEffect(() => {
     const recompute = () => {
       const v = viewerRef.current
       if (!v) return
-      const track = v.getTrackGeometry()
-      // Marks are document-space, so only a reflow moves them, and every reflow
-      // that matters (progressive mount, resize, reload) changes the real content
-      // height. Gate on that, not `scrollHeight`: the tail shifts on nearly every row.
-      if (resolved.current?.contentHeight !== track.realContentHeight) {
-        const geo = v.getScrollMarks({ matches: search?.matches ?? [] })
-        resolved.current = { marks: geo.marks, contentHeight: geo.realContentHeight }
-      }
-      // Cheap arithmetic, so re-run every time: cell rows scale by `scrollHeight`.
-      setCells(
-        computeTrackCells({
-          ...track,
-          marks: resolved.current.marks,
-          activeIndex: search?.index ?? -1,
-        }),
-      )
-      setThumb(computeThumbRows(track))
-      setTrackRows(track.viewportHeight)
+      const geo = v.getScrollMarks({ matches: search?.matches ?? [] })
+      setCells(computeTrackCells({ ...geo, activeIndex: search?.index ?? -1 }))
+      setThumb(computeThumbRows(geo))
+      setTrackRows(geo.viewportHeight)
     }
     // Defer past the current commit so the scrollbox has laid out.
     const tid = setTimeout(recompute, 0)
-    // Thumb rows shift as the user scrolls; marks are document-space and don't.
     const unsubscribe = viewerRef.current?.subscribeScroll(recompute)
     return () => {
       clearTimeout(tid)

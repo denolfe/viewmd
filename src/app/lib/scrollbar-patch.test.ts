@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { installRealisticThumb } from './scrollbar-thumb'
+import { installRealisticThumb } from './scrollbar-patch'
+import type { ScrollbarHost } from './scrollbar-patch'
 
 /**
  * Minimal stand-in for OpenTUI's ScrollBarRenderable prototype shape:
@@ -14,6 +15,7 @@ import { installRealisticThumb } from './scrollbar-thumb'
  */
 class FakeScrollBar {
   slider = { viewPortSize: 0 }
+  scrollPosition = 0
   _viewportSize = 0
   _scrollSize = 0
 
@@ -33,15 +35,14 @@ class FakeScrollBar {
   }
 }
 
-function makeBox(sb: FakeScrollBar) {
-  return { verticalScrollBar: sb } as unknown as Parameters<typeof installRealisticThumb>[0]
+function makeBox(sb: FakeScrollBar): ScrollbarHost {
+  return { verticalScrollBar: sb }
 }
 
 describe('installRealisticThumb', () => {
   test('inflates the thumb to compensate for the tail spacer while content overflows', () => {
     const sb = new FakeScrollBar()
-    const tailRef = { current: 20 }
-    installRealisticThumb(makeBox(sb), tailRef)
+    installRealisticThumb(makeBox(sb), () => 20)
 
     sb.viewportSize = 10
     sb.scrollSize = 100
@@ -51,8 +52,7 @@ describe('installRealisticThumb', () => {
 
   test('restores the natural thumb size when a scrollSize-only shrink makes content fit', () => {
     const sb = new FakeScrollBar()
-    const tailRef = { current: 20 }
-    installRealisticThumb(makeBox(sb), tailRef)
+    installRealisticThumb(makeBox(sb), () => 20)
 
     sb.viewportSize = 10
     sb.scrollSize = 100
