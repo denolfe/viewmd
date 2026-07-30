@@ -141,18 +141,15 @@ function matchYIn(params: {
   return bearer.y + visualLineForOffset(bearer.lineInfo.lineStartCols, aligned)
 }
 
+/**
+ * Every match resolved to a document-space mark. Unresolvable matches are omitted,
+ * so a mark's `matchIndex` is the index into `matches`, not into the result.
+ */
 export function resolveScrollMarks(
   geom: BoxGeometry,
-  tail: number,
   projections: Map<string, BlockProjection>,
   params: { matches: Match[] },
-): {
-  marks: ResolvedMark[]
-  scrollTop: number
-  scrollHeight: number
-  viewportHeight: number
-  realContentHeight: number
-} {
+): ResolvedMark[] {
   const { matches } = params
   const marks: ResolvedMark[] = []
   // Renderable `.y` is screen-absolute and includes the scroll translation
@@ -165,13 +162,7 @@ export function resolveScrollMarks(
     if (y === null || y === undefined) continue
     marks.push({ y: y + screenToDoc, matchIndex: i })
   }
-  return {
-    marks,
-    scrollTop: geom.scrollTop,
-    scrollHeight: geom.scrollHeight,
-    viewportHeight: geom.viewportHeight,
-    realContentHeight: geom.scrollHeight - tail,
-  }
+  return marks
 }
 
 /**

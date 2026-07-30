@@ -299,7 +299,7 @@ describe('matchScrollDelta', () => {
 })
 
 describe('resolveScrollMarks', () => {
-  test('converts match screen-y to document space and reports geometry', () => {
+  test('converts match screen-y to document space', () => {
     const projections = new Map<string, BlockProjection>([
       [
         'blk',
@@ -325,10 +325,38 @@ describe('resolveScrollMarks', () => {
       start: 0,
       length: 1,
     }
-    const res = resolveScrollMarks(geom, 7, projections, { matches: [match] })
     // screenToDoc = scrollTop(30) - viewportTop(3) = 27; matchY 50 → docY 77.
-    expect(res.marks).toEqual([{ y: 77, matchIndex: 0 }])
-    expect(res.realContentHeight).toBe(500 - 7)
-    expect(res.viewportHeight).toBe(10)
+    expect(resolveScrollMarks(geom, projections, { matches: [match] })).toEqual([
+      { y: 77, matchIndex: 0 },
+    ])
+  })
+
+  test('omits unresolvable matches while keeping matchIndex aligned to the input', () => {
+    const projections = new Map<string, BlockProjection>([
+      [
+        'blk',
+        {
+          blockElementId: 'blk',
+          blockPath: [0],
+          runs: [{ key: 'r0', segments: [{ element: 0, text: 'hi', searchable: true }] }],
+        },
+      ],
+    ])
+    const geom = makeGeometry({
+      scrollTop: 0,
+      positions: { blk: { y: 40 } },
+      bearers: { blk: [{ y: 40, plainText: 'hi', lineInfo: { lineStartCols: [0] } }] },
+    })
+    const mk = (over: Partial<Match>): Match => ({
+      blockPath: [0],
+      blockElementId: 'blk',
+      runKey: 'r0',
+      start: 0,
+      length: 1,
+      ...over,
+    })
+    // Index 0 is unmounted and dropped; index 1 survives and keeps matchIndex 1.
+    const matches = [mk({ blockElementId: 'gone', blockPath: [9] }), mk({})]
+    expect(resolveScrollMarks(geom, projections, { matches })).toEqual([{ y: 40, matchIndex: 1 }])
   })
 })
