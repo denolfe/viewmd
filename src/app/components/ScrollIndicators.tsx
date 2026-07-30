@@ -3,7 +3,11 @@ import { useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
 import { computeThumbRows, computeTrackCells } from '../lib/scroll-marks'
 import type { MarkKind, ThumbRows, TrackCell } from '../lib/scroll-marks'
+import type { Match } from '../lib/search'
 import { theme } from '../styles/theme'
+
+/** Stable empty set, so the mark cache's identity check still hits with no search. */
+const NO_MATCHES: Match[] = []
 
 const TICK = '─'
 const MULTI_TICK = '═'
@@ -23,7 +27,7 @@ export function ScrollIndicators() {
     const recompute = () => {
       const v = viewerRef.current
       if (!v) return
-      const geo = v.getScrollMarks({ matches: search?.matches ?? [] })
+      const geo = v.getScrollMarks({ matches: search?.matches ?? NO_MATCHES })
       setCells(computeTrackCells({ ...geo, activeIndex: search?.index ?? -1 }))
       setThumb(computeThumbRows(geo))
       setTrackRows(geo.viewportHeight)

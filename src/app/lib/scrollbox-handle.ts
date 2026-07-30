@@ -11,6 +11,7 @@ import {
 } from './viewport-geometry'
 import { pendingReducer, IDLE } from './pending-reducer'
 import type { ScrollbarHost } from './scrollbar-patch'
+import type { TreeNode } from './renderable-tree'
 import type { BoxGeometry, ChildGeometry, TextBearer } from './viewport-geometry'
 import type { PendingState, PendingTarget, PendingEffect, Resolution } from './pending-reducer'
 import type { BlockProjection } from './visible-text'
@@ -22,14 +23,12 @@ import type { ScrollboxHandle } from '../state'
  */
 export type ScrollboxLike = ScrollbarHost & {
   readonly viewport: { y: number; height: number }
-  scrollTop: number
+  readonly scrollTop: number
   readonly scrollHeight: number
   scrollBy(delta: number): void
   scrollTo(y: number): void
   readonly content: {
     getChildren(): unknown[]
-    // OpenTUI returns `Renderable | undefined` here, not `| null`.
-    findDescendantById(id: string): { y: number; height: number } | undefined
   }
 }
 
@@ -41,6 +40,9 @@ export type ScrollboxHandleDeps = {
     projections(): Map<string, BlockProjection>
     isFullyMounted(): boolean
     contentWidth(): number
+    /** Top-level nodes mounted so far; grows once per progressive-mount chunk. */
+    mountedCount(): number
+    docKey(): string
   }
   onScroll(): void
   onRepositioned(): void
@@ -67,11 +69,11 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   const scrollListeners = new Set<() => void>()
   const marks = createMarkCache({
     resolve: matches => resolveScrollMarks({ geom, projections: live.projections(), matches }),
-    // Marks are document-space, so only a rewrap or content growth can move one:
-    // width rewraps, the real content height grows per mounted chunk, and the
-    // fully-mounted flag catches a final chunk that lands on the same height.
-    reflowKey: () =>
-      `${live.contentWidth()}:${geom.viewportHeight}:${geom.scrollHeight - live.tail()}:${live.isFullyMounted()}`,
+    // Marks are document-space, so only a rewrap or newly mounted content can move
+    // one: width rewraps, each mounted chunk grows the content, and a doc swap
+    // replaces it wholesale. All three are React-known before layout, so the key
+    // never depends on geometry that lands a frame later.
+    reflowKey: () => `${live.docKey()}:${live.contentWidth()}:${live.mountedCount()}`,
   })
   let state: PendingState = IDLE
   let needsNotify = false
@@ -79,6 +81,9 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   // can tell them from a user wheel/drag/keypress. Only the latter supersedes a pending.
   let isCompleting = false
 
+  // Synchronous even when called from OpenTUI's frame handler: React batches the
+  // resulting state updates, so unlike a `repositioned` commit this cannot re-enter
+  // a render mid-frame.
   const notify = (): void => {
     deps.onScroll()
     for (const cb of scrollListeners) cb()
@@ -106,11 +111,14 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   // Scrolls run sync under `isCompleting`; repositioned defers, because committing
   // parent state inside OpenTUI's frame handler risks a re-entrant render.
   const applyEffects = (effects: PendingEffect[]): void => {
+    // Saved and restored, not cleared: a nested send must leave an outer batch's
+    // remaining scrolls still reading as engine-driven.
+    const wasCompleting = isCompleting
     isCompleting = true
     for (const effect of effects) {
       if (effect.kind === 'scrollBy' && effect.delta !== 0) box.scrollBy(effect.delta)
     }
-    isCompleting = false
+    isCompleting = wasCompleting
     for (const effect of effects) {
       if (effect.kind === 'repositioned') queueMicrotask(() => deps.onRepositioned())
     }
@@ -210,17 +218,10 @@ function createBoxGeometry(box: ScrollboxLike): BoxGeometry {
     get scrollHeight() {
       return box.scrollHeight
     },
-    findChild: id => box.content.findDescendantById(id) ?? null,
+    findChild: id => findOne(box, id, snapshotGeometry),
     findChildren: ids =>
-      collectById({
-        root: box.content,
-        wanted: new Set(ids),
-        collect: (node): ChildGeometry => ({ y: node.y ?? 0, height: node.height ?? 0 }),
-      }),
-    collectTextBearers: id => {
-      const el = findRenderable(box, id)
-      return el ? collectTextBearers(el, []) : []
-    },
+      collectById({ root: box.content, wanted: new Set(ids), collect: snapshotGeometry }),
+    collectTextBearers: id => findOne(box, id, node => collectTextBearers(node, [])) ?? [],
     collectTextBearersFor: ids =>
       collectById({
         root: box.content,
@@ -231,15 +232,14 @@ function createBoxGeometry(box: ScrollboxLike): BoxGeometry {
 }
 
 /**
- * The renderable for `id`, walkable for text bearers. `findDescendantById` on the
- * structural port returns geometry only, so single-id bearer collection reuses the
- * batch walk with a one-element set.
+ * One id through the same walk the batch lookups use, so a single id can never
+ * resolve differently from the same id in a set. `null` when it isn't mounted.
  */
-function findRenderable(box: ScrollboxLike, id: string): { getChildren(): unknown[] } | null {
-  const found = collectById({
-    root: box.content,
-    wanted: new Set([id]),
-    collect: node => node,
-  })
-  return found.get(id) ?? null
+function findOne<T>(box: ScrollboxLike, id: string, collect: (node: TreeNode) => T): T | null {
+  return collectById({ root: box.content, wanted: new Set([id]), collect }).get(id) ?? null
+}
+
+/** Geometry read off a renderable, so callers of the port never hold a live node. */
+function snapshotGeometry(node: TreeNode): ChildGeometry {
+  return { y: node.y ?? 0, height: node.height ?? 0 }
 }

@@ -7,6 +7,7 @@ import { ScrollIndicators } from './ScrollIndicators'
 import { useProgressiveMount } from './useProgressiveMount'
 import { useAppState } from '../state'
 import { createScrollboxHandle } from '../lib/scrollbox-handle'
+import { useLatest } from '../lib/useLatest'
 import { projectionMap } from '../lib/visible-text'
 import { theme } from '../styles/theme'
 import { VIEWER_OVERHEAD } from '../styles/layout'
@@ -51,27 +52,22 @@ export function Viewer({
   // last heading scroll to the top. `tailReserve` (that heading's ancestor-stack
   // height) comes off it so its content stops below the overlay, not behind it.
   const tailSpace = Math.max(0, height - 1 - tailReserve)
-  const tailRef = useRef(tailSpace)
-  tailRef.current = tailSpace
-  const onScrollRef = useRef(onScroll)
-  onScrollRef.current = onScroll
-  const onRepositionedRef = useRef(onRepositioned)
-  onRepositionedRef.current = onRepositioned
-  const contentWidthRef = useRef(contentWidth)
-  contentWidthRef.current = contentWidth
+  const tailRef = useLatest(tailSpace)
+  const onScrollRef = useLatest(onScroll)
+  const onRepositionedRef = useLatest(onRepositioned)
+  const contentWidthRef = useLatest(contentWidth)
+  const docKeyRef = useLatest(docKey ?? '')
 
   // Ref'd so the once-mounted seam effect always reads the current map.
-  const projections = useMemo(() => projectionMap(nodes), [nodes])
-  const projectionsRef = useRef(projections)
-  projectionsRef.current = projections
+  const projectionsRef = useLatest(useMemo(() => projectionMap(nodes), [nodes]))
 
   const { mountedNodes, estimatedRemaining, fullyMounted } = useProgressiveMount({
     nodes,
     contentWidth,
     viewportHeight: height,
   })
-  const fullyMountedRef = useRef(fullyMounted)
-  fullyMountedRef.current = fullyMounted
+  const fullyMountedRef = useLatest(fullyMounted)
+  const mountedCountRef = useLatest(mountedNodes.length)
 
   useEffect(() => {
     const box = localRef.current
@@ -83,6 +79,8 @@ export function Viewer({
         projections: () => projectionsRef.current,
         isFullyMounted: () => fullyMountedRef.current,
         contentWidth: () => contentWidthRef.current,
+        mountedCount: () => mountedCountRef.current,
+        docKey: () => docKeyRef.current,
       },
       onScroll: () => onScrollRef.current?.(),
       onRepositioned: () => onRepositionedRef.current?.(),

@@ -15,9 +15,18 @@ import type { ScrollbarHost } from './scrollbar-patch'
  */
 class FakeScrollBar {
   slider = { viewPortSize: 0 }
-  scrollPosition = 0
   _viewportSize = 0
   _scrollSize = 0
+  // An accessor, like the real one: `watchScroll` only patches over a prototype
+  // accessor, so a plain field here would make it silently install as a no-op.
+  _scrollPosition = 0
+
+  get scrollPosition() {
+    return this._scrollPosition
+  }
+  set scrollPosition(value: number) {
+    this._scrollPosition = value
+  }
 
   get viewportSize() {
     return this._viewportSize

@@ -7,11 +7,11 @@ import type { Commands } from './lib/commands'
 import type { BoxGeometry } from './lib/viewport-geometry'
 
 /**
- * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
+ * Imperative scroll API surface, built by `createScrollboxHandle`
+ * (`src/app/lib/scrollbox-handle.ts`) over the mounted scrollbox.
  *
  * `scrollBy`, `scrollTo` map directly to `ScrollBoxRenderable`.
- * `scrollToBottom` is a polyfill the Viewer provides by wrapping the raw
- * renderable ref:
+ * `scrollToBottom` is a polyfill over the raw renderable:
  *   `{ scrollToBottom: () => box.scrollTo(box.scrollHeight) }`
  */
 export type ScrollboxHandle = {
@@ -37,7 +37,8 @@ export type ScrollboxHandle = {
   /**
    * Search matches resolved to document-space marks for the scrollbar overlay, plus
    * the scroll/track dimensions that position them. Unresolvable marks are omitted
-   * and never throw; `computeTrackCells` tags the active match itself.
+   * and never throw; `computeTrackCells` tags the active match itself. `marks` is a
+   * cached instance shared across calls — callers must treat it as read-only.
    */
   getScrollMarks: (params: { matches: Match[] }) => {
     marks: ResolvedMark[]
