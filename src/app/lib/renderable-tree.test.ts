@@ -28,7 +28,11 @@ function node(
 ): FakeNode {
   const children = props.children ?? []
   return {
-    ...props,
+    id: props.id,
+    y: props.y,
+    height: props.height,
+    plainText: props.plainText,
+    lineInfo: props.lineInfo,
     getChildren: () => {
       props.visits?.push(props.id ?? '<root>')
       return children
@@ -129,6 +133,7 @@ describe('collectTextBearers', () => {
       node({ y: 1, plainText: 'x', lineInfo: { lineStartCols: 'nope' } }),
       node({ y: 1, plainText: 7, lineInfo: { lineStartCols: [0] } }),
       node({ y: 'nope', plainText: 'x', lineInfo: { lineStartCols: [0] } }),
+      node({ y: Number.NaN, plainText: 'x', lineInfo: { lineStartCols: [0] } }),
     ]
     for (const candidate of candidates) {
       expect(collectTextBearers(node({ children: [candidate] }), [])).toEqual([])

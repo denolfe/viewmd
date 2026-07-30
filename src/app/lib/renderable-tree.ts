@@ -7,15 +7,17 @@ export type TreeNode = { getChildren(): unknown[]; id?: unknown; y?: number; hei
  * `collect` applied to every `wanted` id found beneath `root`, in one walk.
  * Prunes as soon as the set is exhausted, and stops at a matched box without
  * descending into it: ids are block-level and never nest inside one another.
+ * Ids are matched only on descendants — `root` itself is just a starting point.
  */
 export function collectById<T>(params: {
-  root: { getChildren(): unknown[] }
+  root: Pick<TreeNode, 'getChildren'>
   wanted: Set<string>
   collect: (node: TreeNode) => T
 }): Map<string, T> {
-  const { wanted, collect } = params
+  const wanted = new Set(params.wanted)
+  const { collect } = params
   const out = new Map<string, T>()
-  const walk = (node: { getChildren(): unknown[] }): void => {
+  const walk = (node: Pick<TreeNode, 'getChildren'>): void => {
     for (const child of node.getChildren()) {
       if (wanted.size === 0) return
       if (!isTreeNode(child)) continue
@@ -37,8 +39,8 @@ export function collectById<T>(params: {
  * indexing must span them all to land on the right one.
  */
 export function collectTextBearers(
-  node: { getChildren(): unknown[] },
-  out: TextBearer[],
+  node: Pick<TreeNode, 'getChildren'>,
+  out: TextBearer[] = [],
 ): TextBearer[] {
   if (isTextBearer(node)) {
     out.push(node)
@@ -66,7 +68,8 @@ function isTreeNode(value: unknown): value is TreeNode {
 function isTextBearer(value: unknown): value is TextBearer {
   if (typeof value !== 'object' || value === null) return false
   if (!('plainText' in value) || !('lineInfo' in value) || !('y' in value)) return false
-  if (typeof value.plainText !== 'string' || typeof value.y !== 'number') return false
+  if (typeof value.plainText !== 'string') return false
+  if (typeof value.y !== 'number' || !Number.isFinite(value.y)) return false
   const info = value.lineInfo
   if (typeof info !== 'object' || info === null || !('lineStartCols' in info)) return false
   return Array.isArray(info.lineStartCols)
