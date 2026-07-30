@@ -17,7 +17,7 @@ const COLOR: Record<MarkKind, string> = {
 }
 
 export function ScrollIndicators() {
-  const { viewerRef, search, contentWidth } = useAppState()
+  const { viewerRef, search } = useAppState()
   const { height } = useTerminalDimensions()
   const [cells, setCells] = useState<TrackCell[]>([])
   const [thumb, setThumb] = useState<ThumbRows | null>(null)
@@ -34,12 +34,15 @@ export function ScrollIndicators() {
     }
     // Defer past the current commit so the scrollbox has laid out.
     const tid = setTimeout(recompute, 0)
+    // Covers scrolls and reflows alike: the seam notifies when a reflow lands, which
+    // is the only moment cached marks stop matching the layout. `height` stays a
+    // dependency because a vertical resize moves the thumb without moving a mark.
     const unsubscribe = viewerRef.current?.subscribeScroll(recompute)
     return () => {
       clearTimeout(tid)
       unsubscribe?.()
     }
-  }, [viewerRef, search?.pattern, search?.index, contentWidth, height])
+  }, [viewerRef, search?.pattern, search?.index, height])
 
   if (cells.length === 0) return null
   const byRow = new Map(cells.map(c => [c.row, c]))

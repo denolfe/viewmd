@@ -112,7 +112,7 @@ export function App({
   // Raise the cover in the same render that swaps in the new doc, keyed on the
   // intent seq. A layout effect would commit the cover one render later, leaving a
   // gap where the incoming doc paints at scrollTop 0 before the jump lands. The
-  // Viewer drops it via onRepositioned once the reposition settles.
+  // scroll seam drops it via onRepositioned once the reposition settles.
   const coverRaisedSeqRef = useRef(-1)
   if (nav.intent && nav.intent.reset !== 'none' && nav.intent.seq !== coverRaisedSeqRef.current) {
     coverRaisedSeqRef.current = nav.intent.seq

@@ -62,7 +62,7 @@ The output (`{ nodes, toc, headingIds }`) is immutable for the life of the proce
 
 ### Node identity convention
 
-Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id={node.id}>`, which lets the Viewer resolve heading boxes through `box.content.findDescendantById(id)`. This single convention powers scroll-into-view, near-top detection, visibility tracking, and TOC selection.
+Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id={node.id}>`, which lets the scroll seam resolve heading boxes through the `BoxGeometry` port, whose lookups walk the renderable tree with `collectById` (`src/app/lib/renderable-tree.ts`). This single convention powers scroll-into-view, near-top detection, visibility tracking, and TOC selection.
 
 ## 4. App shell (`src/app/App.tsx`)
 
@@ -145,15 +145,14 @@ Pure key mapping, an effectful command layer, and a pure dispatcher between them
 
 ## 7. Viewer & imperative scroll (`src/app/components/Viewer.tsx`, `src/app/lib/scrollbox-handle.ts`)
 
-The viewer is a `<scrollbox>` wrapping `<NodeList>` plus a trailing `<box height={tailSpace}>` so the _last_ heading can still scroll to the top of the viewport (`tailSpace = max(0, termHeight - 4)`).
+The viewer is a `<scrollbox>` wrapping `<NodeList>` plus a trailing `<box height={tailSpace}>` so the _last_ heading can still scroll to the top of the viewport (`tailSpace = max(0, termHeight - 1 - tailReserve)`, where `tailReserve` is the last heading's overlay height).
 
-On mount it calls `createScrollboxHandle` (`src/app/lib/scrollbox-handle.ts`) with the raw `ScrollBoxRenderable` ref plus a `live` bag of getters (`tail`, `projections`, `isFullyMounted`, `contentWidth`, `mountedCount`, `docKey`); the seam owns the geometry port, the pending protocol and the scrollbar patches, and hands back `{ handle, onFrame, requestNotify, dispose }`. The handle's methods:
+On mount it calls `createScrollboxHandle` (`src/app/lib/scrollbox-handle.ts`) with the raw `ScrollBoxRenderable` ref plus a `live` bag of getters (`tail`, `projections`, `isFullyMounted`, `contentWidth`, `mountedCount`, `docKey`); the seam owns the geometry port, the pending protocol and the scrollbar patches, and hands back `{ handle, onFrame, requestNotify, dispose }`. The main handle methods:
 
 | Method                            | Implementation                                                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `scrollBy(d)` / `scrollTo(y)`     | `box.scrollBy` / `box.scrollTo`                                                                                                                    |
 | `scrollToBottom()`                | `box.scrollTo(box.scrollHeight)` (polyfill)                                                                                                        |
-| `scrollChildIntoView(id)`         | `box.scrollChildIntoView(id)`                                                                                                                      |
 | `scrollChildToTop(id, topOffset)` | Find child by id, `scrollBy(childToTopDelta(geom, id, topOffset))` (`fold.ts`)                                                                     |
 | `getGeometry()`                   | Returns the live `BoxGeometry` port; callers pass it into `Fold` methods (`src/app/lib/fold.ts`) for heading-near-top / visible-heading resolution |
 
@@ -198,9 +197,9 @@ now-complete tree.
 
 The scrollbox is wrapped in a `position=relative` box; `ScrollIndicators` renders as an **absolute** sibling pinned to the right column (`width={1}`), painting **search-match** tick marks over the scrollbar track. The overlay only appears while a search is active; each marker cell takes `theme.scrollbarThumb` as its background (the same color set on the scrollbox's `verticalScrollbarOptions.trackOptions.foregroundColor`) so a mark reads as part of the bar, while unmarked rows stay transparent so the real track/thumb shows through.
 
-Block boxes carry a stable id via `blockId(path)` (`src/app/lib/scroll-marks.ts`), keyed by the block's index path through the AST — the same convention headings already use via their slug `id`. `Match.blockElementId` (stamped during search) joins a match back to its block box, so `getScrollMarks` can resolve `box.content.findDescendantById(match.blockElementId)` and then locate the exact visual line within it via `plainText`/`lineInfo` (falling back to the block's own `y` if no text-bearing descendant is found).
+Block boxes carry a stable id via `blockId(path)` (`src/app/lib/scroll-marks.ts`), keyed by the block's index path through the AST — the same convention headings already use via their slug `id`. `Match.blockElementId` (stamped during search) joins a match back to its block box, so `getScrollMarks` can resolve the block through the `BoxGeometry` port — `findChildren` / `collectTextBearersFor`, both one `collectById` walk over the renderable tree — and then locate the exact visual line within it via `plainText`/`lineInfo` (falling back to the block's own `y` if no text-bearing descendant is found).
 
-`computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`round(y / scrollHeight * viewportHeight)`), independent of scroll position. It maps over the **full `scrollHeight`** (tail included) — the exact scale OpenTUI positions the thumb with (`thumbTop = scrollPosition / scrollHeight * trackHeight`), so a mark for a match lands inside the thumb once you navigate to it; `realContentHeight` (scrollHeight minus tail) is used only to suppress the overlay when the whole document already fits the viewport. Marks recompute on **reflow** (resize, TOC toggle via `contentWidth` change, search pattern/index change), not on every scroll tick. `ScrollIndicators` debounces recomputation into a microtask (`setTimeout(…, 0)`) after those dependencies change and reads the current layout off `viewerRef`. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match`), painted with `theme.scrollMarkActive` / `scrollMarkMatch`. With no active search or on a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
+`computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`round(y / scrollHeight * viewportHeight)`), independent of scroll position. It maps over the **full `scrollHeight`** (tail included) — the exact scale OpenTUI positions the thumb with (`thumbTop = scrollPosition / scrollHeight * trackHeight`), so a mark for a match lands inside the thumb once you navigate to it; `realContentHeight` (scrollHeight minus tail) is used only to suppress the overlay when the whole document already fits the viewport. Marks resolve on **reflow**, not on every scroll tick: `createMarkCache` (`src/app/lib/mark-cache.ts`) re-resolves only when the seam's reflow key (`docKey:contentWidth:mountedCount`) changes, latched in `onFrame` so it always describes the laid-out state rather than the pending render. A key change also fires a notify, so `ScrollIndicators` re-reads on a resize or TOC toggle without waiting for a scroll. It reads the current layout off `viewerRef`, on a `setTimeout(…, 0)` after mount/search changes and on every scroll notification. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match`), painted with `theme.scrollMarkActive` / `scrollMarkMatch`. With no active search or on a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
 
 ## 8. Sticky overlay (`src/app/components/StickyHeader.tsx`)
 
@@ -239,7 +238,7 @@ Flow:
 
 1. `/` or `?` in viewer → `dispatch` produces `startSearch` → `setSearch({ pattern: '', matches: [], index: -1, dir })` and `setFocus('search')`.
 2. `SearchInput` mounts as the status line; owns its `useKeyboard`. Enter commits → `findMatches(nodes, value)` → `setSearch({ pattern, matches, index: matches.length ? 0 : -1 })` → focus back to viewer. Escape clears search.
-3. `App` effect on `search.index` / `search.pattern` change → `nearestPrecedingHeadingId(nodes, match)` → `scrollChildIntoView(id)`.
+3. `App` effect on `search.index` / `search.pattern` change → `matchScrollTarget(...)` → `jumpToMatch({ match, matches, index, topOffset })`.
 4. With search active, `n` / `N` are remapped (in `mapViewer`) to `nextMatch` / `prevMatch`. Without it, they fall through to heading nav.
 
 `nearestPrecedingHeadingId` walks the top-level node list up to `match.blockPath[0]` and returns the last heading id seen (or null if the match precedes every heading).

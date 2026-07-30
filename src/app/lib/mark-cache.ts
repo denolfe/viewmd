@@ -11,9 +11,10 @@ export type MarkCache = {
 }
 
 /**
- * Owns when scroll marks must be resolved again. Marks are document-space, so
- * scrolling cannot move one; `reflowKey` is probed per read and changes whenever
- * content rewraps or grows. `matches` is compared by identity, because search state
+ * Owns when scroll marks must be resolved again. `reflowKey` must describe the
+ * *laid-out* state, not the pending render: a resolve reads geometry, so a key that
+ * ran ahead of layout would cache marks under a value that never comes back around.
+ * It is probed per read. `matches` is compared by identity, because search state
  * mints a new array per pattern.
  */
 export function createMarkCache(params: {

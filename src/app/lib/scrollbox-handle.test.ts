@@ -341,6 +341,21 @@ describe('createScrollboxHandle getScrollMarks', () => {
     expect(seam.handle.getScrollMarks({ matches }).marks).not.toBe(first.marks)
   })
 
+  test('a reflow notifies listeners on its own, with no scroll to trigger the re-read', () => {
+    const box = makeMarkBox()
+    let width = 80
+    const seam = createScrollboxHandle(markDeps(box, { contentWidth: () => width }))
+    const listener = mock()
+    seam.handle.subscribeScroll(listener)
+
+    seam.onFrame()
+    expect(listener).toHaveBeenCalledTimes(0)
+
+    width = 60
+    seam.onFrame()
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
   test('scrolling alone does not invalidate the marks', () => {
     const box = makeMarkBox()
     const seam = createScrollboxHandle(markDeps(box))

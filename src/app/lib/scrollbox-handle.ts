@@ -110,10 +110,11 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
     return { delta, reached: Math.min(target.top, maxScroll) >= target.top - 1 }
   }
 
-  // Scrolls apply synchronously under `isCompleting`, so the box sits at its target
-  // before the settle is announced. `repositioned` is deferred one microtask, keeping
-  // the Cover drop out of OpenTUI's frame dispatch. `notify` commits parent state from
-  // that same dispatch without deferring, so the asymmetry rests on nothing verified.
+  // `repositioned` fires on the microtask after the effects apply, so the Cover
+  // drops outside OpenTUI's frame dispatch: by then the box already sits at its
+  // target and `isCompleting` has been restored, so the re-render it triggers
+  // cannot be read back as a user scroll. (`notify` commits from the dispatch
+  // directly; it has no state to drop.)
   const applyEffects = (effects: PendingEffect[]): void => {
     // Saved and restored, not cleared: a nested send must leave an outer batch's
     // remaining scrolls still reading as engine-driven.
@@ -190,7 +191,13 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
           fullyMounted: live.isFullyMounted(),
         })
       }
-      laidOutKey = renderKey()
+      const key = renderKey()
+      if (key !== laidOutKey) {
+        laidOutKey = key
+        // A reflow landed, so every cached mark sits against the previous layout.
+        // Listeners re-read here rather than waiting for the next scroll.
+        needsNotify = true
+      }
       if (needsNotify) {
         needsNotify = false
         notify()
@@ -226,12 +233,12 @@ function createBoxGeometry(box: ScrollboxLike): BoxGeometry {
     findChild: id => findOne(box, id, snapshotGeometry),
     findChildren: ids =>
       collectById({ root: box.content, wanted: new Set(ids), collect: snapshotGeometry }),
-    collectTextBearers: id => findOne(box, id, node => collectTextBearers(node, [])) ?? [],
+    collectTextBearers: id => findOne(box, id, node => collectTextBearers(node)) ?? [],
     collectTextBearersFor: ids =>
       collectById({
         root: box.content,
         wanted: new Set(ids),
-        collect: (node): TextBearer[] => collectTextBearers(node, []),
+        collect: (node): TextBearer[] => collectTextBearers(node),
       }),
   }
 }

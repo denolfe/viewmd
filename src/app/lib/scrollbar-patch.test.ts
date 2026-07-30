@@ -17,8 +17,8 @@ class FakeScrollBar {
   slider = { viewPortSize: 0 }
   _viewportSize = 0
   _scrollSize = 0
-  // An accessor, like the real one: `watchScroll` only patches over a prototype
-  // accessor, so a plain field here would make it silently install as a no-op.
+  // Declared by `ScrollbarHost`; the thumb patch neither reads nor writes it. An
+  // accessor rather than a field, so the fake matches the real prototype shape.
   _scrollPosition = 0
 
   get scrollPosition() {

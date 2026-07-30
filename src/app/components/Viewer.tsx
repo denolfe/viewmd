@@ -99,8 +99,9 @@ export function Viewer({
     }
   }, [viewerRef, renderer])
 
-  // Refresh headings/marks once the whole doc is mounted — deferred to the
-  // next frame so listeners read post-layout geometry.
+  // A doc that fits in its initial prefix never grows `mountedCount`, so the seam's
+  // own reflow notify never fires for it. This delivers that first sync, on the next
+  // frame so listeners read post-layout geometry.
   useEffect(() => {
     if (fullyMounted) seamRef.current?.requestNotify()
   }, [fullyMounted])
