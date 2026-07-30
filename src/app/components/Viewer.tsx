@@ -40,7 +40,7 @@ export function Viewer({
    * otherwise reuse the same heading renderable across the swap, leaving its
    * layout stale (NaN height, frozen y=0) so it hijacks the sticky overlay.
    */
-  docKey?: string
+  docKey: string
 }) {
   const { viewerRef, contentWidth, contentMaxWidth } = useAppState()
   const renderer = useRenderer()
@@ -56,7 +56,7 @@ export function Viewer({
   const onScrollRef = useLatest(onScroll)
   const onRepositionedRef = useLatest(onRepositioned)
   const contentWidthRef = useLatest(contentWidth)
-  const docKeyRef = useLatest(docKey ?? '')
+  const docKeyRef = useLatest(docKey)
 
   // Ref'd so the once-mounted seam effect always reads the current map.
   const projectionsRef = useLatest(useMemo(() => projectionMap(nodes), [nodes]))

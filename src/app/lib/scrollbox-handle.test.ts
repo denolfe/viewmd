@@ -311,16 +311,33 @@ describe('createScrollboxHandle getScrollMarks', () => {
     expect(seam.handle.getScrollMarks({ matches }).marks).toBe(first.marks)
 
     width = 60
+    seam.onFrame()
     expect(seam.handle.getScrollMarks({ matches }).marks).not.toBe(first.marks)
   })
 
-  test('a newly mounted chunk invalidates the marks', () => {
+  test('a newly mounted chunk invalidates the marks, but only once it has laid out', () => {
     const box = makeMarkBox()
     let mounted = 1
     const seam = createScrollboxHandle(markDeps(box, { mountedCount: () => mounted }))
 
     const first = seam.handle.getScrollMarks({ matches })
+    // The chunk has committed but has no geometry yet, so the old marks are the
+    // only ones resolved against a real layout.
     mounted = 33
+    expect(seam.handle.getScrollMarks({ matches }).marks).toBe(first.marks)
+
+    seam.onFrame()
+    expect(seam.handle.getScrollMarks({ matches }).marks).not.toBe(first.marks)
+  })
+
+  test('a doc swap invalidates the marks', () => {
+    const box = makeMarkBox()
+    let doc = 'a.md'
+    const seam = createScrollboxHandle(markDeps(box, { docKey: () => doc }))
+
+    const first = seam.handle.getScrollMarks({ matches })
+    doc = 'b.md'
+    seam.onFrame()
     expect(seam.handle.getScrollMarks({ matches }).marks).not.toBe(first.marks)
   })
 

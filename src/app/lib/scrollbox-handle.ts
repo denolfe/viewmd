@@ -67,13 +67,18 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   const { box, live } = deps
   const geom = createBoxGeometry(box)
   const scrollListeners = new Set<() => void>()
+  // Marks are document-space, so only a rewrap or newly mounted content can move
+  // one: width rewraps, each mounted chunk grows the content, and navigating swaps
+  // the document. A reload keeps the same key and is caught instead by the cache's
+  // `matches` identity check, since its doc reset clears the search.
+  const renderKey = (): string => `${live.docKey()}:${live.contentWidth()}:${live.mountedCount()}`
+  // Latched in `onFrame`, not read live: these update a render before the matching
+  // renderables have geometry, so a read-time key would cache marks resolved against
+  // the previous layout and then never invalidate them.
+  let laidOutKey = renderKey()
   const marks = createMarkCache({
     resolve: matches => resolveScrollMarks({ geom, projections: live.projections(), matches }),
-    // Marks are document-space, so only a rewrap or newly mounted content can move
-    // one: width rewraps, each mounted chunk grows the content, and a doc swap
-    // replaces it wholesale. All three are React-known before layout, so the key
-    // never depends on geometry that lands a frame later.
-    reflowKey: () => `${live.docKey()}:${live.contentWidth()}:${live.mountedCount()}`,
+    reflowKey: () => laidOutKey,
   })
   let state: PendingState = IDLE
   let needsNotify = false
@@ -81,9 +86,6 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   // can tell them from a user wheel/drag/keypress. Only the latter supersedes a pending.
   let isCompleting = false
 
-  // Synchronous even when called from OpenTUI's frame handler: React batches the
-  // resulting state updates, so unlike a `repositioned` commit this cannot re-enter
-  // a render mid-frame.
   const notify = (): void => {
     deps.onScroll()
     for (const cb of scrollListeners) cb()
@@ -108,8 +110,10 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
     return { delta, reached: Math.min(target.top, maxScroll) >= target.top - 1 }
   }
 
-  // Scrolls run sync under `isCompleting`; repositioned defers, because committing
-  // parent state inside OpenTUI's frame handler risks a re-entrant render.
+  // Scrolls apply synchronously under `isCompleting`, so the box sits at its target
+  // before the settle is announced. `repositioned` is deferred one microtask, keeping
+  // the Cover drop out of OpenTUI's frame dispatch. `notify` commits parent state from
+  // that same dispatch without deferring, so the asymmetry rests on nothing verified.
   const applyEffects = (effects: PendingEffect[]): void => {
     // Saved and restored, not cleared: a nested send must leave an outer batch's
     // remaining scrolls still reading as engine-driven.
@@ -186,6 +190,7 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
           fullyMounted: live.isFullyMounted(),
         })
       }
+      laidOutKey = renderKey()
       if (needsNotify) {
         needsNotify = false
         notify()
