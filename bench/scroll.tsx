@@ -1,22 +1,37 @@
 // Per-scroll-step cost on a fully mounted document, headless.
-// Usage: bun bench/scroll.tsx <doc.md>...
+// Usage: bun bench/scroll.tsx [doc.md...]   (defaults to DOCS below)
 import { addDefaultParsers } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
 import { App } from '../src/app/App'
-import { buildTree } from '../src/app/lib/ast'
+import { buildDocument } from '../src/app/lib/loadDocument'
 import { extraParsers } from '../src/app/parsers'
+
+// Scroll cost scales with heading count times renderable count, so the default
+// set spans that range: a short doc, a mid-sized one, and long-document.md —
+// 1200 lines, 51 headings, ~2000 renderables, which is where the cost shows up.
+const DOCS = ['README.md', 'docs/ARCHITECTURE.md', 'test/long-document.md']
 
 addDefaultParsers(extraParsers)
 
-for (const file of process.argv.slice(2)) {
+const files = process.argv.length > 2 ? process.argv.slice(2) : DOCS
+
+for (const file of files) {
   const md = await Bun.file(file).text()
-  const { nodes, toc, headingIds } = buildTree(md)
+  // buildDocument, not buildTree: it runs the real pipeline (frontmatter split,
+  // mermaid preprocessing), so the mounted tree matches what a reader scrolls.
+  const { nodes, toc, headingIds, frontmatter } = buildDocument(md, file)
   const setup = await createTestRenderer({ width: 120, height: 40, targetFps: 240 })
   setup.renderer.setMaxListeners(0)
   flushSync(() =>
     createRoot(setup.renderer).render(
-      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} headingLines={{}} />,
+      <App
+        nodes={nodes}
+        toc={toc}
+        headingIds={headingIds}
+        frontmatter={frontmatter}
+        headingLines={{}}
+      />,
     ),
   )
   // Progressive mount grows one chunk per setTimeout(0) task; renderOnce alone
