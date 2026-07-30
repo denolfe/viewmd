@@ -35,7 +35,16 @@ function makePositionalViewerRef(
         const y = positions[id]
         return y === undefined ? null : { y, height: 1 }
       },
+      findChildren: ids => {
+        const out = new Map<string, { y: number; height: number }>()
+        for (const id of ids) {
+          const y = positions[id]
+          if (y !== undefined) out.set(id, { y, height: 1 })
+        }
+        return out
+      },
       collectTextBearers: () => [],
+      collectTextBearersFor: () => new Map(),
     }),
     getScrollMarks: () => ({
       marks: [],

@@ -30,7 +30,7 @@ Quick orientation:
 - Entry: `src/index.tsx` → `preprocess` → `buildTree` (AST + TOC + headingIds) → `createRoot(renderer).render(<App />)`.
 - `App` (`src/app/App.tsx`) holds the shared view state in one `useViewState` store (`{ state, actions }`, `src/app/lib/view-state.ts`) plus a `useLatest` ref over it (`stateRef`); it assembles both into `AppState` for `AppStateContext`. Imperative scroll goes through a `ScrollboxHandle` on `viewerRef`.
 - Keyboard: `useKeyboard` → `mapKey` (pure, `src/app/lib/keys.ts`) → `dispatch` (pure, `src/app/lib/dispatch.ts`) → `Commands` (effectful, built by `createCommands` in `src/app/lib/commands.ts`, which reads `stateRef.current.*` and writes via `actions.*`).
-- Heading boxes carry `id={node.id}`; `Viewer` resolves them via `box.content.findDescendantById(id)` for scroll/visibility logic.
+- Heading boxes carry `id={node.id}`; the scroll seam resolves them through the `BoxGeometry` port, which walks the renderable tree with `collectById` (`renderable-tree.ts`).
 - Two modules project the `TocEntry` tree, and they share nothing but the type: `toc-util.ts` serves the TOC sidebar (flatten/expand/width), `overlay-rows.ts` serves the sticky overlay (`ancestorChain` → `ancestorRows`). `fold.ts` consumes the latter for its offsets, so shown rows and occluded rows can't drift apart.
 
 ## Testing features

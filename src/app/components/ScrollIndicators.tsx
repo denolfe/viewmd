@@ -3,7 +3,11 @@ import { useTerminalDimensions } from '@opentui/react'
 import { useAppState } from '../state'
 import { computeThumbRows, computeTrackCells } from '../lib/scroll-marks'
 import type { MarkKind, ThumbRows, TrackCell } from '../lib/scroll-marks'
+import type { Match } from '../lib/search'
 import { theme } from '../styles/theme'
+
+/** Stable empty set, so the mark cache's identity check still hits with no search. */
+const NO_MATCHES: Match[] = []
 
 const TICK = '─'
 const MULTI_TICK = '═'
@@ -13,7 +17,7 @@ const COLOR: Record<MarkKind, string> = {
 }
 
 export function ScrollIndicators() {
-  const { viewerRef, search, contentWidth } = useAppState()
+  const { viewerRef, search } = useAppState()
   const { height } = useTerminalDimensions()
   const [cells, setCells] = useState<TrackCell[]>([])
   const [thumb, setThumb] = useState<ThumbRows | null>(null)
@@ -23,23 +27,24 @@ export function ScrollIndicators() {
     const recompute = () => {
       const v = viewerRef.current
       if (!v) return
-      const geo = v.getScrollMarks({
-        matches: search?.matches ?? [],
-        activeIndex: search?.index ?? -1,
-      })
-      setCells(computeTrackCells(geo))
+      const geo = v.getScrollMarks({ matches: search?.matches ?? NO_MATCHES })
+      setCells(computeTrackCells({ ...geo, activeIndex: search?.index ?? -1 }))
       setThumb(computeThumbRows(geo))
       setTrackRows(geo.viewportHeight)
     }
     // Defer past the current commit so the scrollbox has laid out.
     const tid = setTimeout(recompute, 0)
-    // Thumb rows shift as the user scrolls; marks are document-space and don't.
+    // Covers scrolls and reflows alike: the seam notifies when a reflow lands. A new
+    // search pattern instead mints a new `matches` array, which the cache detects by
+    // identity on the read the dependency below schedules.
     const unsubscribe = viewerRef.current?.subscribeScroll(recompute)
     return () => {
       clearTimeout(tid)
       unsubscribe?.()
     }
-  }, [viewerRef, search?.pattern, search?.index, contentWidth, height])
+    // `height` is a dependency of its own: a vertical resize moves the thumb and the
+    // track row count without moving a document-space mark, so no reflow notify follows.
+  }, [viewerRef, search?.pattern, search?.index, height])
 
   if (cells.length === 0) return null
   const byRow = new Map(cells.map(c => [c.row, c]))

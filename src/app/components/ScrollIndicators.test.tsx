@@ -92,3 +92,62 @@ test('search ticks render on the scrollbar column without a row offset', async (
 
   renderer.destroy()
 })
+
+/**
+ * Marks are document-space, so scrolling moves only the thumb. ScrollIndicators
+ * leans on that to skip mark resolution on the scroll path, so making marks
+ * scroll-dependent would leave the skip painting stale ticks.
+ */
+test('scrolling moves the thumb but leaves the search ticks where they are', async () => {
+  const { nodes, toc, headingIds } = buildTree(FIXTURE)
+  const { renderer, mockInput, flush, renderOnce, captureCharFrame } = await createTestRenderer({
+    width: 80,
+    height: 20,
+  })
+  const settle = async () => {
+    await flush({ maxPasses: 20 })
+    await new Promise(r => setTimeout(r, 30))
+    await renderOnce()
+  }
+
+  createRoot(renderer).render(
+    <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} headingLines={{}} />,
+  )
+  await settle()
+  // The very first key is consumed by the terminal capability handshake.
+  await mockInput.typeText('x')
+  await settle()
+  await mockInput.typeText('/')
+  await settle()
+  await mockInput.typeText('zebra')
+  await settle()
+  mockInput.pressEnter()
+  await settle()
+
+  const readBar = () => {
+    const lines = captureCharFrame().split('\n')
+    let barCol = -1
+    for (let c = 0; c < 80 && barCol < 0; c++) {
+      if (lines.filter(l => l[c] === '█' || l[c] === '▀' || l[c] === '▄').length >= 2) barCol = c
+    }
+    const at = (glyphs: string[]) =>
+      lines
+        .map((l, row) => ({ row, ch: l[barCol] ?? '' }))
+        .filter(({ ch }) => glyphs.includes(ch))
+        .map(({ row }) => row)
+    return { barCol, ticks: at(['─', '═']), thumb: at(['█', '▀', '▄']) }
+  }
+
+  const before = readBar()
+  expect(before.barCol).toBeGreaterThan(0)
+  expect(before.ticks.length).toBeGreaterThan(0)
+
+  for (let i = 0; i < 20; i++) await mockInput.typeText('j')
+  await settle()
+
+  const after = readBar()
+  expect(after.thumb).not.toEqual(before.thumb)
+  expect(after.ticks).toEqual(before.ticks)
+
+  renderer.destroy()
+})

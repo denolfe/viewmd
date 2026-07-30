@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
 import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
-import { AppStateContext } from './state'
-import type { AppState, ScrollboxHandle, Status } from './state'
+import { AppStateContext, HeadingStateContext } from './state'
+import type { AppState, HeadingState, ScrollboxHandle, Status } from './state'
 import type { Action } from './lib/keys'
 import type { Node, TocEntry } from './lib/ast'
 import { mapKey } from './lib/keys'
@@ -17,7 +17,7 @@ import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import { tocVisibleContentWidth } from './lib/toc-util'
 import { FILE_ROW_ID } from './lib/overlay-rows'
-import { createFold, findVisibleHeadingIds } from './lib/fold'
+import { createFold } from './lib/fold'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
@@ -82,12 +82,14 @@ export function App({
   const stateRef = useLatest(view)
 
   const onError = useCallback((text: string) => setStatus({ kind: 'error', text }), [])
+  // Reads the heading through `stateRef`: as a dependency it would rebuild
+  // `commands` and the context value on every scrolled row.
   const captureScroll = useCallback(
     () => ({
       scrollTop: viewerRef.current?.getScrollTop() ?? 0,
-      currentHeadingId: view.currentHeadingId,
+      currentHeadingId: stateRef.current.currentHeadingId,
     }),
-    [view.currentHeadingId],
+    [stateRef],
   )
   const initialDoc = useMemo(
     () =>
@@ -110,7 +112,7 @@ export function App({
   // Raise the cover in the same render that swaps in the new doc, keyed on the
   // intent seq. A layout effect would commit the cover one render later, leaving a
   // gap where the incoming doc paints at scrollTop 0 before the jump lands. The
-  // Viewer drops it via onRepositioned once the reposition settles.
+  // scroll seam drops it via onRepositioned once the reposition settles.
   const coverRaisedSeqRef = useRef(-1)
   if (nav.intent && nav.intent.reset !== 'none' && nav.intent.seq !== coverRaisedSeqRef.current) {
     coverRaisedSeqRef.current = nav.intent.seq
@@ -171,10 +173,12 @@ export function App({
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      actions.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), headingIds, 0))
+      actions.visibleHeadingIds(
+        fold.resolveAt({ geom: v.getGeometry(), headingIds, topOffset: 0 }).visibleHeadingIds,
+      )
     }, 0)
     return () => clearTimeout(tid)
-  }, [headingIds])
+  }, [headingIds, fold])
 
   useEffect(() => {
     if (status.kind === 'idle') return
@@ -205,7 +209,8 @@ export function App({
       setStatus({ kind: 'error', text: 'Cannot edit: reading from stdin' })
       return
     }
-    const line = view.currentHeadingId ? headingLines[view.currentHeadingId] : undefined
+    const currentHeadingId = stateRef.current.currentHeadingId
+    const line = currentHeadingId ? headingLines[currentHeadingId] : undefined
     const argv = buildEditorArgv({
       command: resolveEditorCommand(process.env),
       filePath: activePath,
@@ -217,7 +222,9 @@ export function App({
       return
     }
     nav.reload()
-  }, [nav, view.currentHeadingId, renderer, headingLines])
+    // Depends on the `nav` members it uses, not the object: `nav` is fresh every
+    // render and would make `commands` unstable.
+  }, [nav.doc.absPath, nav.reload, renderer, headingLines, stateRef])
 
   const commands = useMemo(
     () =>
@@ -259,15 +266,29 @@ export function App({
     ],
   )
 
+  const onViewerScroll = useCallback(() => commands.syncFromScroll(), [commands])
+  const onViewerRepositioned = useCallback(() => {
+    setCovering(false)
+    commands.syncFromScroll()
+  }, [commands])
+
+  const headingState = useMemo<HeadingState>(
+    () => ({
+      currentHeadingId: view.currentHeadingId,
+      visibleHeadingIds: view.visibleHeadingIds,
+    }),
+    [view.currentHeadingId, view.visibleHeadingIds],
+  )
+
+  // Depends on the `view` fields it reads, not `view` itself: any field write
+  // makes a new ViewState, which would invalidate this on every scrolled row.
   const appState = useMemo<AppState>(
     () => ({
       focus: view.focus,
-      currentHeadingId: view.currentHeadingId,
       viewerRef,
       expanded: view.expanded,
       tocCursorId: view.tocCursorId,
       search: view.search,
-      visibleHeadingIds: view.visibleHeadingIds,
       contentWidth,
       contentMaxWidth,
       dir: nav.doc.dir,
@@ -278,7 +299,11 @@ export function App({
       commands,
     }),
     [
-      view,
+      view.focus,
+      view.expanded,
+      view.tocCursorId,
+      view.search,
+      view.helpVisible,
       contentWidth,
       contentMaxWidth,
       nav.doc.dir,
@@ -318,48 +343,47 @@ export function App({
 
   return (
     <AppStateContext.Provider value={appState}>
-      <box flexDirection="column" height="100%">
-        <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
-          <StickyHeader toc={toc} fileLabel={fileLabel} onAncestorClick={onAncestorClick} />
-          <SearchBar toc={toc} fileLabel={fileLabel} />
-          <HelpPanel />
-          <Viewer
-            nodes={nodes}
-            frontmatter={frontmatter}
-            tailReserve={tailReserve}
-            docKey={nav.doc.absPath ?? '<stdin>'}
-            onScroll={() => commands.syncFromScroll()}
-            onRepositioned={() => {
-              setCovering(false)
-              commands.syncFromScroll()
-            }}
-          />
-          {/* Opaque cover masking the swap-in reposition (see `covering`). Spans the
-              viewer column (content + scrollbar + padding) and sits above the sticky
-              header so the whole viewer reads as one clean transition. */}
-          {covering && (
-            <box
-              position="absolute"
-              top={0}
-              left={0}
-              width={contentWidth + VIEWER_OVERHEAD}
-              height="100%"
-              backgroundColor={theme.background}
-              zIndex={20}
+      <HeadingStateContext.Provider value={headingState}>
+        <box flexDirection="column" height="100%">
+          <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
+            <StickyHeader toc={toc} fileLabel={fileLabel} onAncestorClick={onAncestorClick} />
+            <SearchBar toc={toc} fileLabel={fileLabel} />
+            <HelpPanel />
+            <Viewer
+              nodes={nodes}
+              frontmatter={frontmatter}
+              tailReserve={tailReserve}
+              docKey={nav.doc.absPath ?? '<stdin>'}
+              onScroll={onViewerScroll}
+              onRepositioned={onViewerRepositioned}
             />
-          )}
-          {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
-              makes it flash its own vertical scrollbar for one frame before layout
-              settles. `visible={false}` still frees the column so the viewer reclaims
-              the width. */}
-          {toc.length > 0 && (
-            <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
-              <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
-            </box>
-          )}
+            {/* Opaque cover masking the swap-in reposition (see `covering`). Spans the
+                viewer column (content + scrollbar + padding) and sits above the sticky
+                header so the whole viewer reads as one clean transition. */}
+            {covering && (
+              <box
+                position="absolute"
+                top={0}
+                left={0}
+                width={contentWidth + VIEWER_OVERHEAD}
+                height="100%"
+                backgroundColor={theme.background}
+                zIndex={20}
+              />
+            )}
+            {/* Toggle `visible` rather than unmounting: remounting the TOC scrollbox
+                makes it flash its own vertical scrollbar for one frame before layout
+                settles. `visible={false}` still frees the column so the viewer reclaims
+                the width. */}
+            {toc.length > 0 && (
+              <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
+                <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
+              </box>
+            )}
+          </box>
+          <StatusLine fileLabel={fileLabel} />
         </box>
-        <StatusLine fileLabel={fileLabel} />
-      </box>
+      </HeadingStateContext.Provider>
     </AppStateContext.Provider>
   )
 }

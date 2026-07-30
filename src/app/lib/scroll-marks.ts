@@ -1,8 +1,12 @@
 /** Mark categories, ordered by paint priority (higher wins a shared row). */
 export type MarkKind = 'match' | 'activeMatch'
 
-/** A mark resolved to its document-space y (row offset from the top of the scroll content). */
-export type ResolvedMark = { y: number; kind: MarkKind }
+/**
+ * A mark resolved to its document-space y (row offset from the top of the scroll
+ * content). Carries its match index, so stepping the active match repaints
+ * without re-resolving anything.
+ */
+export type ResolvedMark = { y: number; matchIndex: number }
 
 /** One painted scrollbar cell. `count` is how many marks collapsed onto the row. */
 export type TrackCell = { row: number; kind: MarkKind; count: number }
@@ -30,24 +34,29 @@ export function blockId(path: number[]): string {
  * `realContentHeight` (scrollHeight minus tail) is used only for the scrollability
  * guard: when the whole document fits the viewport there is nothing to indicate.
  * When several marks share a row, the highest-rank kind wins.
+ *
+ * `activeIndex` (search.index) is the match to paint as `activeMatch`; -1 for none.
  */
 export function computeTrackCells(params: {
   marks: ResolvedMark[]
+  activeIndex?: number
   scrollHeight: number
   viewportHeight: number
   realContentHeight: number
 }): TrackCell[] {
   const { marks, scrollHeight, viewportHeight, realContentHeight } = params
+  const activeIndex = params.activeIndex ?? -1
   if (viewportHeight < 1 || scrollHeight <= 0 || realContentHeight <= viewportHeight) return []
   const byRow = new Map<number, { kind: MarkKind; count: number }>()
   for (const mark of marks) {
+    const kind: MarkKind = mark.matchIndex === activeIndex ? 'activeMatch' : 'match'
     const raw = Math.round((mark.y / scrollHeight) * viewportHeight)
     const row = Math.max(0, Math.min(viewportHeight - 1, raw))
     const existing = byRow.get(row)
-    if (!existing) byRow.set(row, { kind: mark.kind, count: 1 })
+    if (!existing) byRow.set(row, { kind, count: 1 })
     else {
       existing.count++
-      if (KIND_RANK[mark.kind] > KIND_RANK[existing.kind]) existing.kind = mark.kind
+      if (KIND_RANK[kind] > KIND_RANK[existing.kind]) existing.kind = kind
     }
   }
   return [...byRow.entries()].map(([row, { kind, count }]) => ({ row, kind, count }))

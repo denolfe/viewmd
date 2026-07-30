@@ -121,7 +121,7 @@ const mountViewerOnly = async (md: string, onScroll?: () => void) => {
   }
   createRoot(setup.renderer).render(
     <AppStateContext.Provider value={state}>
-      <Viewer nodes={nodes} onScroll={onScroll} />
+      <Viewer nodes={nodes} onScroll={onScroll} docKey="fixture.md" />
     </AppStateContext.Provider>,
   )
   // Wait for React to commit the mount effect that installs the handle. Each
@@ -223,7 +223,7 @@ function DocHost({
   controller.current = setNodes
   return (
     <AppStateContext.Provider value={state}>
-      <Viewer nodes={nodes} />
+      <Viewer nodes={nodes} docKey="fixture.md" />
     </AppStateContext.Provider>
   )
 }

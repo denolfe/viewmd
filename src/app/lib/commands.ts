@@ -3,7 +3,6 @@ import type { ScrollboxHandle } from '../state'
 import type { Node, TocEntry } from './ast'
 import type { DocReset } from './documentNavigation'
 import { flattenVisible } from './toc-util'
-import { findHeadingNearTop, findVisibleHeadingIds } from './fold'
 import { findMatches } from './search'
 import type { Fold } from './fold'
 import type { ViewActions, ViewState } from './view-state'
@@ -79,8 +78,17 @@ export function createCommands(deps: CommandDeps): Commands {
   const refreshVisible = (topOffset: number): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
-    const next = findVisibleHeadingIds(v.getGeometry(), doc.headingIds, topOffset)
-    if (!setsEqual(stateRef.current.visibleHeadingIds, next)) actions.visibleHeadingIds(next)
+    // Visible set only: `jumpTo` sets currentHeadingId to the jump target, and
+    // writing it from geometry here would override that on the frame before the
+    // pin lands.
+    const { visibleHeadingIds } = fold.resolveAt({
+      geom: v.getGeometry(),
+      headingIds: doc.headingIds,
+      topOffset,
+    })
+    if (!setsEqual(stateRef.current.visibleHeadingIds, visibleHeadingIds)) {
+      actions.visibleHeadingIds(visibleHeadingIds)
+    }
   }
 
   // Resolve current + visible headings against live geometry and apply the setters
@@ -89,11 +97,11 @@ export function createCommands(deps: CommandDeps): Commands {
   const resolveHeadings = (): void => {
     const v = viewerRef.current
     if (!v || doc.headingIds.length === 0) return
-    const { currentHeadingId, visibleHeadingIds } = fold.resolveCurrent(
-      v.getGeometry(),
-      doc.headingIds,
+    const { currentHeadingId, visibleHeadingIds } = fold.resolveCurrent({
+      geom: v.getGeometry(),
+      headingIds: doc.headingIds,
       historyDepth,
-    )
+    })
     if (currentHeadingId && currentHeadingId !== stateRef.current.currentHeadingId) {
       actions.currentHeadingId(currentHeadingId)
     }
@@ -132,7 +140,9 @@ export function createCommands(deps: CommandDeps): Commands {
       const geom = viewerRef.current?.getGeometry()
       const cur =
         stateRef.current.currentHeadingId ??
-        (geom ? findHeadingNearTop(geom, doc.headingIds, 0) : null)
+        (geom
+          ? fold.resolveAt({ geom, headingIds: doc.headingIds, topOffset: 0 }).currentHeadingId
+          : null)
       const idx = cur ? doc.headingIds.indexOf(cur) : -1
       let nextIdx: number
       if (dir === 1) nextIdx = idx < 0 ? 0 : Math.min(doc.headingIds.length - 1, idx + 1)
@@ -248,7 +258,10 @@ export function createCommands(deps: CommandDeps): Commands {
       if (!v) return
       v.pinScrollTop(0)
       actions.currentHeadingId(null)
-      actions.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), doc.headingIds, 0))
+      actions.visibleHeadingIds(
+        fold.resolveAt({ geom: v.getGeometry(), headingIds: doc.headingIds, topOffset: 0 })
+          .visibleHeadingIds,
+      )
     },
   }
 }

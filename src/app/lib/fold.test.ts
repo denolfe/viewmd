@@ -1,11 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  createFold,
-  PIN_TOP_OFFSET,
-  childToTopDelta,
-  findHeadingNearTop,
-  findVisibleHeadingIds,
-} from './fold'
+import { createFold, PIN_TOP_OFFSET, childToTopDelta } from './fold'
 import { makeGeometry } from './viewport-geometry.testutil'
 import type { TocEntry } from './ast'
 
@@ -89,7 +83,7 @@ describe('createFold resolveCurrent', () => {
   const headingIds = ['a', 'b', 'c', 'd']
 
   test('empty headingIds resolves to null / empty set', () => {
-    const res = fold.resolveCurrent(makeGeometry(), [], 0)
+    const res = fold.resolveCurrent({ geom: makeGeometry(), headingIds: [], historyDepth: 0 })
     expect(res.currentHeadingId).toBeNull()
     expect(res.visibleHeadingIds.size).toBe(0)
   })
@@ -98,19 +92,35 @@ describe('createFold resolveCurrent', () => {
     const geom = makeGeometry({
       positions: { a: { y: -5 }, b: { y: -3 }, c: { y: 0 }, d: { y: 50 } },
     })
-    const res = fold.resolveCurrent(geom, headingIds, 0)
+    const res = fold.resolveCurrent({ geom, headingIds, historyDepth: 0 })
     expect(res.currentHeadingId).toBe('c')
     expect(res.visibleHeadingIds.has('c')).toBe(false)
   })
 
   test('bails without looping when the fold offset cycles', () => {
-    // Two headings whose folds leapfrog each other could cycle; the seen-offset guard must terminate.
+    // offsetFor: a=0, b=1, c=2, d=0. Pass1 offset0/fold1 -> id=b, next=offsetFor(b)=1.
+    // Pass2 offset1/fold2 -> id=c, next=offsetFor(c)=2. Pass3 offset2/fold3 -> id=d,
+    // next=offsetFor(d)=0, which was already seen -> bail at offset=2 (pass2's value),
+    // where d (y=3) is the greatest heading at/above fold=3.
     const geom = makeGeometry({
       positions: { a: { y: 0 }, b: { y: 1 }, c: { y: 2 }, d: { y: 3 } },
     })
-    const res = fold.resolveCurrent(geom, headingIds, 0)
-    expect(res.currentHeadingId).not.toBeNull()
-    expect(headingIds).toContain(res.currentHeadingId ?? '')
+    const res = fold.resolveCurrent({ geom, headingIds, historyDepth: 0 })
+    expect(res.currentHeadingId).toBe('d')
+  })
+
+  test('converges over multiple passes when the fixed point requires correction', () => {
+    // Pass1 offset0/fold1: b (y=0) is the greatest at/above the fold, a (y=-100)
+    // qualifies too -> id=b. next=offsetFor(b)=1, continue.
+    // Pass2 offset1/fold2: c (y=2) reaches the fold and wins -> id=c. next=2, continue.
+    // Pass3 offset2/fold3: c again -> next=offsetFor(c)=2=offset, converged.
+    const geom = makeGeometry({
+      positions: { a: { y: -100 }, b: { y: 0 }, c: { y: 2 }, d: { y: 1000 } },
+    })
+    const res = fold.resolveCurrent({ geom, headingIds, historyDepth: 0 })
+    expect(res.currentHeadingId).toBe('c')
+    // At the converged offset (2), c is the only heading intersecting the viewport.
+    expect([...res.visibleHeadingIds]).toEqual(['c'])
   })
 })
 
@@ -120,35 +130,49 @@ describe('PIN_TOP_OFFSET', () => {
   })
 })
 
-describe('findHeadingNearTop', () => {
+describe('createFold resolveAt', () => {
+  // The offset is supplied, so no toc is needed to compute one.
+  const fold = createFold({ toc: [] })
+
   test('picks the greatest heading at or above the fold (with PIN slack)', () => {
     // viewportTop 0, topOffset 1 → threshold = 0 + 1 + PIN_TOP_OFFSET(1) = 2.
     const geom = makeGeometry({ positions: { a: { y: -5 }, b: { y: 2 }, c: { y: 10 } } })
-    expect(findHeadingNearTop(geom, ['a', 'b', 'c'], 1)).toBe('b')
+    const res = fold.resolveAt({ geom, headingIds: ['a', 'b', 'c'], topOffset: 1 })
+    expect(res.currentHeadingId).toBe('b')
   })
 
   test('falls back to the first heading below when none are at/above', () => {
     const geom = makeGeometry({ positions: { a: { y: 8 }, b: { y: 3 }, c: { y: 12 } } })
     // threshold = 0 + 0 + 1 = 1; all below → smallest y (b at 3).
-    expect(findHeadingNearTop(geom, ['a', 'b', 'c'], 0)).toBe('b')
+    const res = fold.resolveAt({ geom, headingIds: ['a', 'b', 'c'], topOffset: 0 })
+    expect(res.currentHeadingId).toBe('b')
   })
 
   test('ignores unmounted headings (findChild null)', () => {
     const geom = makeGeometry({ positions: { a: { y: -1 } } })
-    expect(findHeadingNearTop(geom, ['a', 'missing'], 0)).toBe('a')
+    const res = fold.resolveAt({ geom, headingIds: ['a', 'missing'], topOffset: 0 })
+    expect(res.currentHeadingId).toBe('a')
   })
-})
 
-describe('findVisibleHeadingIds', () => {
   test('includes headings whose box intersects [top, bottom)', () => {
     // top = 0 + topOffset(2) = 2; bottom = 0 + viewportHeight(10) = 10.
     const geom = makeGeometry({
       viewportHeight: 10,
       positions: { above: { y: 1 }, edge: { y: 2 }, mid: { y: 5 }, below: { y: 10 } },
     })
-    const visible = findVisibleHeadingIds(geom, ['above', 'edge', 'mid', 'below'], 2)
+    const res = fold.resolveAt({
+      geom,
+      headingIds: ['above', 'edge', 'mid', 'below'],
+      topOffset: 2,
+    })
     // above: bottom 2 > 2? no. edge: bottom 3 > 2 && top 2 < 10 → yes. mid → yes. below: top 10 < 10? no.
-    expect([...visible].sort()).toEqual(['edge', 'mid'])
+    expect([...res.visibleHeadingIds].sort()).toEqual(['edge', 'mid'])
+  })
+
+  test('empty headingIds resolves to null / empty set', () => {
+    const res = fold.resolveAt({ geom: makeGeometry(), headingIds: [], topOffset: 0 })
+    expect(res.currentHeadingId).toBeNull()
+    expect(res.visibleHeadingIds.size).toBe(0)
   })
 })
 

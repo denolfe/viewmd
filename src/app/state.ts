@@ -7,11 +7,11 @@ import type { Commands } from './lib/commands'
 import type { BoxGeometry } from './lib/viewport-geometry'
 
 /**
- * Imperative scroll API surface exposed by the Viewer's scrollbox ref.
+ * Imperative scroll API surface, built by `createScrollboxHandle`
+ * (`src/app/lib/scrollbox-handle.ts`) over the mounted scrollbox.
  *
  * `scrollBy`, `scrollTo` map directly to `ScrollBoxRenderable`.
- * `scrollToBottom` is a polyfill the Viewer provides by wrapping the raw
- * renderable ref:
+ * `scrollToBottom` is a polyfill over the raw renderable:
  *   `{ scrollToBottom: () => box.scrollTo(box.scrollHeight) }`
  */
 export type ScrollboxHandle = {
@@ -35,11 +35,12 @@ export type ScrollboxHandle = {
   /** The live geometry port over the scrollbox — for pure heading/offset resolution. */
   getGeometry: () => BoxGeometry
   /**
-   * Resolves search matches to absolute content-y for the scrollbar overlay.
-   * `activeIndex` (search.index) tags one match as `activeMatch`. Returns raw geometry
-   * for `computeTrackCells`. Unresolvable marks are omitted (never throws).
+   * Search matches resolved to document-space marks for the scrollbar overlay, plus
+   * the scroll/track dimensions that position them. Unresolvable marks are omitted
+   * and never throw; `computeTrackCells` tags the active match itself. `marks` is a
+   * cached instance shared across calls — callers must treat it as read-only.
    */
-  getScrollMarks: (params: { matches: Match[]; activeIndex: number }) => {
+  getScrollMarks: (params: { matches: Match[] }) => {
     marks: ResolvedMark[]
     scrollTop: number
     scrollHeight: number
@@ -80,12 +81,29 @@ export type Status =
   | { kind: 'error'; text: string }
   | { kind: 'info'; text: string }
 
+/**
+ * Heading state, which changes on nearly every scrolled row. Held apart from
+ * `AppState` because only the overlay and the sidebar read it: folding it in
+ * would invalidate that context every row and re-render the whole content tree
+ * to repaint three renderables.
+ */
+export type HeadingState = {
+  /** Last heading at/above the Fold, or the last one jumped to. */
+  currentHeadingId: string | null
+  /** Heading ids whose box intersects the Viewport below the Fold offset. */
+  visibleHeadingIds: Set<string>
+}
+
+export const HeadingStateContext = createContext<HeadingState | null>(null)
+
+export function useHeadingState(): HeadingState {
+  const s = useContext(HeadingStateContext)
+  if (!s) throw new Error('useHeadingState must be called inside a HeadingStateContext.Provider')
+  return s
+}
+
 export type AppState = {
   focus: Focus
-
-  currentHeadingId: string | null
-
-  visibleHeadingIds: Set<string>
 
   // Imperative scroll: handler calls viewerRef.current?.scrollBy(...) etc.
   viewerRef: RefObject<ScrollboxHandle | null>

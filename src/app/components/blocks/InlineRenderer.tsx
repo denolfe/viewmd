@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
+import type { Match } from '../../lib/search'
 import type { SearchState } from '../../state'
 import { useAppState } from '../../state'
 import { classifyHref } from '../../lib/links'
@@ -123,13 +124,40 @@ function InlineLink({ node }: { node: Extract<InlineNode, { kind: 'link' }> }) {
  * visible text; ranges are match offsets within it. The cursor is recreated
  * every render and advanced by each HighlightedText in render order, aligning
  * leaf values into the run text by ordered indexOf (robust to pill glyphs and
- * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode
- * and no memoized consumers — double-invoke or memoization would desync the cursor.
+ * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode:
+ * a double-invoke would advance the cursor twice.
+ *
+ * A memo boundary is safe only *above* a RunScope, where the scope and its leaves
+ * are skipped or rendered as one unit. Memoizing *between* them would let some
+ * leaves advance the cursor while others are skipped, landing ranges on the
+ * wrong text.
  */
 /** Ranges are consumed in ascending, non-overlapping order (findMatches' regex emission order). */
 export type HighlightRange = { start: number; end: number; isActive: boolean }
 type RunScopeValue = { text: string; ranges: HighlightRange[]; cursor: { pos: number } }
 const RunScopeContext = createContext<RunScopeValue | null>(null)
+
+/**
+ * Match groups keyed by `blockElementId|runKey`. Every RunScope asks for its own
+ * ranges on each render, so scanning the whole list per call costs `runs × matches`.
+ * Keyed on the array, not the SearchState: stepping the active match only moves
+ * `index`, and the groups stay good.
+ */
+const runGroups = new WeakMap<Match[], Map<string, Match[]>>()
+
+function groupsFor(matches: Match[]): Map<string, Match[]> {
+  const cached = runGroups.get(matches)
+  if (cached) return cached
+  const groups = new Map<string, Match[]>()
+  for (const m of matches) {
+    const key = `${m.blockElementId}|${m.runKey}`
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(m)
+    else groups.set(key, [m])
+  }
+  runGroups.set(matches, groups)
+  return groups
+}
 
 export function matchRangesForRun(
   search: Pick<SearchState, 'matches' | 'index'> | null,
@@ -137,13 +165,10 @@ export function matchRangesForRun(
   runKey: string,
 ): HighlightRange[] {
   if (!search?.matches.length) return []
+  const group = groupsFor(search.matches).get(`${blockElementId}|${runKey}`)
+  if (!group) return []
   const active = search.index >= 0 ? search.matches[search.index] : undefined
-  const out: HighlightRange[] = []
-  for (const m of search.matches) {
-    if (m.blockElementId !== blockElementId || m.runKey !== runKey) continue
-    out.push({ start: m.start, end: m.start + m.length, isActive: m === active })
-  }
-  return out
+  return group.map(m => ({ start: m.start, end: m.start + m.length, isActive: m === active }))
 }
 
 export function RunScope({

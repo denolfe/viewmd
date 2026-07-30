@@ -1,4 +1,4 @@
-import type { BoxGeometry, TextBearer } from './viewport-geometry'
+import type { BoxGeometry, ChildGeometry, TextBearer } from './viewport-geometry'
 
 /**
  * Positional `BoxGeometry` fake for unit tests. Heading y-positions are absolute;
@@ -26,6 +26,22 @@ export function makeGeometry(
       const p = positions[id]
       return p ? { y: p.y, height: p.height ?? 1 } : null
     },
+    findChildren: ids => {
+      const out = new Map<string, ChildGeometry>()
+      for (const id of ids) {
+        const p = positions[id]
+        if (p) out.set(id, { y: p.y, height: p.height ?? 1 })
+      }
+      return out
+    },
     collectTextBearers: id => bearers[id] ?? [],
+    collectTextBearersFor: ids => {
+      const out = new Map<string, TextBearer[]>()
+      for (const id of ids) {
+        const b = bearers[id]
+        if (b) out.set(id, b)
+      }
+      return out
+    },
   }
 }

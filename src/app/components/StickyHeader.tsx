@@ -1,4 +1,4 @@
-import { useAppState } from '../state'
+import { useAppState, useHeadingState } from '../state'
 import { ancestorChain, ancestorRows, documentHasH1 } from '../lib/overlay-rows'
 import { theme } from '../styles/theme'
 import { MutedInline } from './blocks/MutedInline'
@@ -16,8 +16,8 @@ export function StickyHeader({
   fileLabel?: string
   onAncestorClick: (id: string) => void
 }) {
-  const { currentHeadingId, visibleHeadingIds, contentWidth, historyDepth, trailLabels, commands } =
-    useAppState()
+  const { contentWidth, historyDepth, trailLabels, commands } = useAppState()
+  const { currentHeadingId, visibleHeadingIds } = useHeadingState()
 
   const hasH1 = documentHasH1(toc)
   const chain = ancestorChain(toc, currentHeadingId)

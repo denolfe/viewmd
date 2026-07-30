@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import type { Node } from '../../lib/ast'
 import { parseHtmlSegments } from '../../lib/html'
@@ -53,7 +54,18 @@ function Hr() {
   )
 }
 
-export function NodeList({ nodes, pathPrefix = [] }: { nodes: Node[]; pathPrefix?: number[] }) {
+/**
+ * Memoized so a shell re-render (status line, overlay, sidebar) doesn't walk the
+ * whole block tree. Context still propagates through the boundary, so blocks
+ * that read shell state keep updating.
+ */
+export const NodeList = memo(function NodeList({
+  nodes,
+  pathPrefix = [],
+}: {
+  nodes: Node[]
+  pathPrefix?: number[]
+}) {
   return (
     <>
       {nodes.map((n, i) => (
@@ -61,4 +73,4 @@ export function NodeList({ nodes, pathPrefix = [] }: { nodes: Node[]; pathPrefix
       ))}
     </>
   )
-}
+})
