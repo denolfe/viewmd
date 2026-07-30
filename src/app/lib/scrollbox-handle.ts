@@ -110,11 +110,11 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
     return { delta, reached: Math.min(target.top, maxScroll) >= target.top - 1 }
   }
 
-  // `repositioned` fires on the microtask after the effects apply, so the Cover
-  // drops outside OpenTUI's frame dispatch: by then the box already sits at its
-  // target and `isCompleting` has been restored, so the re-render it triggers
-  // cannot be read back as a user scroll. (`notify` commits from the dispatch
-  // directly; it has no state to drop.)
+  // Every `scrollBy` in the batch applies first, so `repositioned` announces a box
+  // already sitting at its target. It fires on a microtask, making `onRepositioned`
+  // — and the Cover drop behind it — asynchronous by contract rather than a guard:
+  // `send` commits the reducer state before applying effects, so the transition is
+  // already settled by the time the shell hears about it.
   const applyEffects = (effects: PendingEffect[]): void => {
     // Saved and restored, not cleared: a nested send must leave an outer batch's
     // remaining scrolls still reading as engine-driven.

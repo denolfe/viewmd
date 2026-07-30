@@ -354,6 +354,10 @@ describe('createScrollboxHandle getScrollMarks', () => {
     width = 60
     seam.onFrame()
     expect(listener).toHaveBeenCalledTimes(1)
+
+    // Once per change, not once per frame: the key is now the latched one.
+    seam.onFrame()
+    expect(listener).toHaveBeenCalledTimes(1)
   })
 
   test('scrolling alone does not invalidate the marks', () => {

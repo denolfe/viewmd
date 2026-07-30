@@ -34,14 +34,16 @@ export function ScrollIndicators() {
     }
     // Defer past the current commit so the scrollbox has laid out.
     const tid = setTimeout(recompute, 0)
-    // Covers scrolls and reflows alike: the seam notifies when a reflow lands, which
-    // is the only moment cached marks stop matching the layout. `height` stays a
-    // dependency because a vertical resize moves the thumb without moving a mark.
+    // Covers scrolls and reflows alike: the seam notifies when a reflow lands. A new
+    // search pattern instead mints a new `matches` array, which the cache detects by
+    // identity on the read the dependency below schedules.
     const unsubscribe = viewerRef.current?.subscribeScroll(recompute)
     return () => {
       clearTimeout(tid)
       unsubscribe?.()
     }
+    // `height` is a dependency of its own: a vertical resize moves the thumb and the
+    // track row count without moving a document-space mark, so no reflow notify follows.
   }, [viewerRef, search?.pattern, search?.index, height])
 
   if (cells.length === 0) return null
