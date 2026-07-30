@@ -109,7 +109,7 @@ describe('collectTextBearers', () => {
       visits,
       children: [bearer(9, 'nested')],
     })
-    const out = collectTextBearers(self, [])
+    const out = collectTextBearers(self)
     expect(out).toHaveLength(1)
     expect(out[0]?.plainText).toBe('hi')
     expect(visits).toEqual([])
@@ -127,7 +127,9 @@ describe('collectTextBearers', () => {
   })
 
   test('rejects near-bearers whose field types are wrong', () => {
-    const candidates: FakeNode[] = [
+    const candidates: unknown[] = [
+      // No `lineInfo` key at all, which the `in` guard rejects before any typeof check.
+      { y: 1, plainText: 'x', getChildren: () => [] },
       node({ y: 1, plainText: 'x' }),
       node({ y: 1, plainText: 'x', lineInfo: {} }),
       node({ y: 1, plainText: 'x', lineInfo: { lineStartCols: 'nope' } }),

@@ -63,7 +63,7 @@ function isTreeNode(value: unknown): value is TreeNode {
 
 /**
  * A renderable that prints text. Field types are checked rather than just their
- * presence: a bearer with a non-numeric `y` resolves every match in it to a NaN row.
+ * presence: a bearer with a non-finite `y` resolves every match in it to a NaN row.
  */
 function isTextBearer(value: unknown): value is TextBearer {
   if (typeof value !== 'object' || value === null) return false
