@@ -17,11 +17,10 @@ const FIXTURE = [
 ].join('\n')
 
 /**
- * The current/visible heading state lives in its own context so scrolling does
- * not re-render the content tree. This asserts the overlay still tracks the
- * scroll: were that context dropped, or the heading state folded into a value
- * the overlay stops subscribing to, the ancestor rows would freeze and 'Top
- * Title' would appear nowhere once its own line scrolls away.
+ * Heading state lives in its own context so scrolling doesn't re-render the
+ * content tree. This asserts the overlay still tracks the scroll: dropping that
+ * context, or folding the state somewhere the overlay stops subscribing to,
+ * would freeze the ancestor rows.
  */
 test('the sticky overlay picks up the current heading while scrolling', async () => {
   const { nodes, toc, headingIds } = buildTree(FIXTURE)

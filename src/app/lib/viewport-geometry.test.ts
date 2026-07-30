@@ -52,9 +52,8 @@ describe('resolveMatchY', () => {
   })
 
   /**
-   * `resolveMatchYs` exists only to avoid the `matches × tree` walk of resolving
-   * one at a time, so it must stay a pure batching of `resolveMatchY` — including
-   * the unmounted-block null and the run-unknown block.y fallbacks, and order.
+   * `resolveMatchYs` must stay a pure batching of `resolveMatchY`: same order,
+   * same unmounted-block null and run-unknown `block.y` fallbacks.
    */
   test('resolveMatchYs matches resolveMatchY for every match, in order', () => {
     const geom = makeGeometry({ positions: { blk: { y: 100 } }, bearers })

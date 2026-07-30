@@ -37,10 +37,8 @@ export type ScrollboxHandle = {
   /**
    * Resolves search matches to absolute content-y for the scrollbar overlay.
    * Returns raw geometry for `computeTrackCells`, which tags the active match
-   * itself. Unresolvable marks are omitted (never throws).
-   *
-   * Costs a tree walk, so callers resolve only when the marks can actually have
-   * moved — see `getTrackGeometry` for the scroll path.
+   * itself. Unresolvable marks are omitted (never throws). Costs a tree walk, so
+   * callers resolve only when marks can have moved (see `getTrackGeometry`).
    */
   getScrollMarks: (params: { matches: Match[] }) => {
     marks: ResolvedMark[]
@@ -51,8 +49,8 @@ export type ScrollboxHandle = {
   }
   /**
    * The scroll/track dimensions `getScrollMarks` also returns, without resolving
-   * any match. Lets the thumb — the only part of the overlay that moves with the
-   * scroll — update without paying for mark resolution.
+   * any match. Lets the thumb, the only part of the overlay that moves with the
+   * scroll, update without paying for mark resolution.
    */
   getTrackGeometry: () => {
     scrollTop: number
@@ -97,8 +95,8 @@ export type Status =
 /**
  * Heading state, which changes on nearly every scrolled row. Held apart from
  * `AppState` because only the overlay and the sidebar read it: folding it in
- * would invalidate the context on every row and re-render the whole content
- * tree — thousands of renderables — to repaint three of them.
+ * would invalidate that context every row and re-render the whole content tree
+ * to repaint three renderables.
  */
 export type HeadingState = {
   /** Last heading at/above the Fold, or the last one jumped to. */

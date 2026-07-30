@@ -3,8 +3,8 @@ export type MarkKind = 'match' | 'activeMatch'
 
 /**
  * A mark resolved to its document-space y (row offset from the top of the scroll
- * content). Carries the index of the match it came from rather than a `MarkKind`,
- * so stepping the active match repaints without re-resolving anything.
+ * content). Carries its match index, so stepping the active match repaints
+ * without re-resolving anything.
  */
 export type ResolvedMark = { y: number; matchIndex: number }
 

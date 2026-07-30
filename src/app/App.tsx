@@ -82,9 +82,8 @@ export function App({
   const stateRef = useLatest(view)
 
   const onError = useCallback((text: string) => setStatus({ kind: 'error', text }), [])
-  // Reads the heading through `stateRef` rather than depending on it: as a
-  // dependency it would rebuild `nav.follow` → `commands` → the context value on
-  // every scrolled row, re-rendering the content tree.
+  // Reads the heading through `stateRef`: as a dependency it would rebuild
+  // `commands` and the context value on every scrolled row.
   const captureScroll = useCallback(
     () => ({
       scrollTop: viewerRef.current?.getScrollTop() ?? 0,
@@ -221,8 +220,8 @@ export function App({
       return
     }
     nav.reload()
-    // Depends on the two `nav` members it uses, not the whole object: the hook
-    // returns a fresh one each render, which would make `commands` unstable.
+    // Depends on the `nav` members it uses, not the object: `nav` is fresh every
+    // render and would make `commands` unstable.
   }, [nav.doc.absPath, nav.reload, renderer, headingLines, stateRef])
 
   const commands = useMemo(
@@ -279,9 +278,8 @@ export function App({
     [view.currentHeadingId, view.visibleHeadingIds],
   )
 
-  // Depends on the individual `view` fields it reads, not `view` itself: every
-  // field write produces a new ViewState, so depending on the object would
-  // invalidate this on each scrolled row and defeat the split above.
+  // Depends on the `view` fields it reads, not `view` itself: any field write
+  // makes a new ViewState, which would invalidate this on every scrolled row.
   const appState = useMemo<AppState>(
     () => ({
       focus: view.focus,

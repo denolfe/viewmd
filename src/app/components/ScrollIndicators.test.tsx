@@ -94,11 +94,9 @@ test('search ticks render on the scrollbar column without a row offset', async (
 })
 
 /**
- * Marks are document-space, so scrolling cannot move them — only the thumb
- * moves. ScrollIndicators leans on exactly that to skip mark resolution on the
- * scroll path (it costs a tree walk per match, and a long document can hold
- * thousands). Were marks made scroll-dependent, the skip would start painting
- * stale ticks and this test would catch it.
+ * Marks are document-space, so scrolling moves only the thumb. ScrollIndicators
+ * leans on that to skip mark resolution on the scroll path, so making marks
+ * scroll-dependent would leave the skip painting stale ticks.
  */
 test('scrolling moves the thumb but leaves the search ticks where they are', async () => {
   const { nodes, toc, headingIds } = buildTree(FIXTURE)

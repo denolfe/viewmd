@@ -111,12 +111,22 @@ export function Viewer({
         const c = box.content.findDescendantById(id)
         return c ? { y: c.y, height: c.height } : null
       },
-      findChildren: ids => collectChildGeometry(box.content, new Set(ids), new Map()),
+      findChildren: ids =>
+        collectById({
+          root: box.content,
+          wanted: new Set(ids),
+          collect: (node): ChildGeometry => ({ y: node.y ?? 0, height: node.height ?? 0 }),
+        }),
       collectTextBearers: id => {
         const el = box.content.findDescendantById(id)
         return el ? collectTextBearers(el, []) : []
       },
-      collectTextBearersFor: ids => collectBearersByBlock(box.content, new Set(ids), new Map()),
+      collectTextBearersFor: ids =>
+        collectById({
+          root: box.content,
+          wanted: new Set(ids),
+          collect: (node): TextBearer[] => collectTextBearers(node, []),
+        }),
     }
     // Resolve a pending target against live geometry into a plain value the pure
     // reducer can act on. The only place delta fns are called.
@@ -300,61 +310,43 @@ function asTextBearer(node: unknown): TextBearer | null {
   return node as unknown as TextBearer
 }
 
+type TreeNode = { getChildren(): unknown[]; id?: unknown; y?: number; height?: number }
+
 /**
- * Geometry of every `wanted` id found beneath `node`, in one walk. Prunes as
- * soon as the set is exhausted, and does not descend into a matched box (ids are
- * block-level and never nest inside one another).
+ * `collect` applied to every `wanted` id found beneath `root`, in one walk.
+ * Prunes as soon as the set is exhausted, and stops at a matched box without
+ * descending into it: ids are block-level and never nest inside one another.
  */
-function collectChildGeometry(
-  node: { getChildren(): unknown[] },
-  wanted: Set<string>,
-  out: Map<string, ChildGeometry>,
-): Map<string, ChildGeometry> {
-  for (const child of node.getChildren()) {
-    if (wanted.size === 0) break
-    if (!isTreeNode(child)) continue
-    const id = typeof child.id === 'string' ? child.id : undefined
-    if (id !== undefined && wanted.delete(id)) {
-      out.set(id, { y: child.y ?? 0, height: child.height ?? 0 })
-      continue
+function collectById<T>(params: {
+  root: { getChildren(): unknown[] }
+  wanted: Set<string>
+  collect: (node: TreeNode) => T
+}): Map<string, T> {
+  const { wanted, collect } = params
+  const out = new Map<string, T>()
+  const walk = (node: { getChildren(): unknown[] }): void => {
+    for (const child of node.getChildren()) {
+      if (wanted.size === 0) return
+      if (!isTreeNode(child)) continue
+      const id = typeof child.id === 'string' ? child.id : undefined
+      if (id !== undefined && wanted.delete(id)) {
+        out.set(id, collect(child))
+        continue
+      }
+      walk(child)
     }
-    collectChildGeometry(child, wanted, out)
   }
+  walk(params.root)
   return out
 }
 
-function isTreeNode(
-  value: unknown,
-): value is { getChildren(): unknown[]; id?: unknown; y?: number; height?: number } {
+function isTreeNode(value: unknown): value is TreeNode {
   return (
     typeof value === 'object' &&
     value !== null &&
     'getChildren' in value &&
     typeof value.getChildren === 'function'
   )
-}
-
-/**
- * Text bearers of every `wanted` block beneath `node`, in one walk. Prunes once
- * the set is exhausted, and collects a matched block's bearers without
- * descending past it — block ids never nest inside one another.
- */
-function collectBearersByBlock(
-  node: { getChildren(): unknown[] },
-  wanted: Set<string>,
-  out: Map<string, TextBearer[]>,
-): Map<string, TextBearer[]> {
-  for (const child of node.getChildren()) {
-    if (wanted.size === 0) break
-    if (!isTreeNode(child)) continue
-    const id = typeof child.id === 'string' ? child.id : undefined
-    if (id !== undefined && wanted.delete(id)) {
-      out.set(id, collectTextBearers(child, []))
-      continue
-    }
-    collectBearersByBlock(child, wanted, out)
-  }
-  return out
 }
 
 /**

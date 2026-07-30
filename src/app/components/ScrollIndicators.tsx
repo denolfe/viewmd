@@ -19,13 +19,12 @@ export function ScrollIndicators() {
   const [thumb, setThumb] = useState<ThumbRows | null>(null)
   const [trackRows, setTrackRows] = useState(0)
 
-  // Marks resolved at a given content height, so a scroll can tell "these are
-  // still valid" from "the content grew under me".
+  // Cached marks plus the content height they were resolved at, so a scroll can
+  // tell "still valid" from "the content grew under me".
   const resolved = useRef<{ marks: ResolvedMark[]; contentHeight: number } | null>(null)
 
-  // Everything that can move a mark. `search.index` is deliberately absent: it
-  // only picks which tick paints as active, and dropping the cache for that would
-  // re-resolve every match on each n/N press.
+  // Everything that can move a mark. `search.index` is absent on purpose: it only
+  // picks which tick paints as active.
   useEffect(() => {
     resolved.current = null
   }, [search?.pattern, contentWidth, height])
@@ -35,19 +34,14 @@ export function ScrollIndicators() {
       const v = viewerRef.current
       if (!v) return
       const track = v.getTrackGeometry()
-      // Resolving marks costs a tree walk per match, and a long document under a
-      // common pattern holds thousands — far too much for a per-row scroll
-      // handler. Marks are document-space, so only a content reflow can move
-      // them, and every reflow that matters here (progressive mount, resize,
-      // reload) changes the real content height. Gate on that rather than on
-      // `scrollHeight`, which also carries the tail — and the tail tracks the
-      // current heading's ancestor stack, so it shifts on nearly every row.
+      // Marks are document-space, so only a reflow moves them, and every reflow
+      // that matters (progressive mount, resize, reload) changes the real content
+      // height. Gate on that, not `scrollHeight`: the tail shifts on nearly every row.
       if (resolved.current?.contentHeight !== track.realContentHeight) {
         const geo = v.getScrollMarks({ matches: search?.matches ?? [] })
         resolved.current = { marks: geo.marks, contentHeight: geo.realContentHeight }
       }
-      // Cheap arithmetic over the cached marks. Re-run every time even so: cell
-      // rows scale by `scrollHeight`, which the moving tail does change.
+      // Cheap arithmetic, so re-run every time: cell rows scale by `scrollHeight`.
       setCells(
         computeTrackCells({
           ...track,

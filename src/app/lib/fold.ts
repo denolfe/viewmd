@@ -16,7 +16,11 @@ export function findHeadingNearTop(
   ids: string[],
   topOffset: number,
 ): string | null {
-  return headingNearTop(geom.findChildren(ids), ids, geom.viewportTop + topOffset)
+  return resolveHeadingNearTop({
+    boxes: geom.findChildren(ids),
+    ids,
+    top: geom.viewportTop + topOffset,
+  })
 }
 
 /** Ids whose box vertically overlaps the viewport below `topOffset`. */
@@ -25,7 +29,7 @@ export function findVisibleHeadingIds(
   ids: string[],
   topOffset: number,
 ): Set<string> {
-  return visibleHeadingIds({
+  return resolveVisibleIds({
     boxes: geom.findChildren(ids),
     ids,
     top: geom.viewportTop + topOffset,
@@ -94,8 +98,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     if (headingIds.length === 0) {
       return { currentHeadingId: null, visibleHeadingIds: new Set() }
     }
-    // Every pass and the final visible-set scan read the same heading boxes, so
-    // resolve them once: geometry is fixed for the duration of this call.
+    // Geometry is fixed for this call, so resolve the boxes every pass shares once.
     const boxes = geom.findChildren(headingIds)
     // Heading and offset are mutually recursive (offset depends on which heading
     // is current, which depends on the offset), so iterate to a fixed point. A
@@ -104,7 +107,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     let id: string | null = null
     const seen = new Set<number>()
     for (let pass = 0; pass < 8; pass++) {
-      id = headingNearTop(boxes, headingIds, geom.viewportTop + offset)
+      id = resolveHeadingNearTop({ boxes, ids: headingIds, top: geom.viewportTop + offset })
       const next = id ? offsetFor(id, historyDepth) : 0
       if (next === offset || seen.has(next)) break
       seen.add(offset)
@@ -112,7 +115,7 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     }
     return {
       currentHeadingId: id,
-      visibleHeadingIds: visibleHeadingIds({
+      visibleHeadingIds: resolveVisibleIds({
         boxes,
         ids: headingIds,
         top: geom.viewportTop + offset,
@@ -125,12 +128,13 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
 }
 
 /** Last heading at/above `top` (plus PIN_TOP_OFFSET slack), else the topmost one. */
-function headingNearTop(
-  boxes: Map<string, ChildGeometry>,
-  ids: string[],
-  top: number,
-): string | null {
-  const fold = top + PIN_TOP_OFFSET
+function resolveHeadingNearTop(params: {
+  boxes: Map<string, ChildGeometry>
+  ids: string[]
+  top: number
+}): string | null {
+  const { boxes, ids } = params
+  const fold = params.top + PIN_TOP_OFFSET
   let bestId: string | null = null
   let bestY = -Infinity
   let firstBelowId: string | null = null
@@ -150,7 +154,8 @@ function headingNearTop(
   return bestId ?? firstBelowId
 }
 
-function visibleHeadingIds(params: {
+/** Ids whose box overlaps the `top`..`bottom` band. */
+function resolveVisibleIds(params: {
   boxes: Map<string, ChildGeometry>
   ids: string[]
   top: number

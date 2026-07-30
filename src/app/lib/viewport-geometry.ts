@@ -17,17 +17,15 @@ export type BoxGeometry = {
   scrollHeight: number
   findChild(id: string): ChildGeometry | null
   /**
-   * Geometry for every requested id in a single tree walk; unmounted ids are
-   * absent. Resolving a whole heading set one id at a time costs
-   * `ids × tree` — this is what keeps per-scroll heading resolution linear.
+   * Geometry for every requested id in one tree walk; unmounted ids are absent.
+   * Resolving a heading set one id at a time costs `ids × tree`.
    */
   findChildren(ids: string[]): Map<string, ChildGeometry>
   collectTextBearers(id: string): TextBearer[]
   /**
-   * Text bearers for every requested block in a single tree walk; unmounted ids
-   * are absent. The batch twin of `collectTextBearers`, for the same reason
-   * `findChildren` exists — a search can hold thousands of matches, and
-   * resolving them one at a time costs `matches × tree`.
+   * Text bearers for every requested block in one tree walk; unmounted ids are
+   * absent. A search can hold thousands of matches, and resolving them one at a
+   * time costs `matches × tree`.
    */
   collectTextBearersFor(ids: string[]): Map<string, TextBearer[]>
 }
@@ -72,8 +70,8 @@ export function resolveMatchY(
 }
 
 /**
- * Screen row for every match, resolving each distinct block once in a batch walk
- * instead of once per match. Same results as mapping `resolveMatchY`, in order.
+ * Screen row for every match, resolving each distinct block once instead of once
+ * per match. Same results as mapping `resolveMatchY`, in order.
  */
 export function resolveMatchYs(
   geom: BoxGeometry,

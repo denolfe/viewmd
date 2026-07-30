@@ -55,10 +55,9 @@ function Hr() {
 }
 
 /**
- * Memoized so a re-render of the shell (status line, sticky overlay, sidebar)
- * doesn't walk the whole block tree — on a large document that is thousands of
- * renderables per scrolled row. Blocks that need shell state read it from
- * context, which propagates through this boundary, so they still update.
+ * Memoized so a shell re-render (status line, overlay, sidebar) doesn't walk the
+ * whole block tree. Context still propagates through the boundary, so blocks
+ * that read shell state keep updating.
  */
 export const NodeList = memo(function NodeList({
   nodes,

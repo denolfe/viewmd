@@ -9,8 +9,8 @@ import { findMatches } from '../src/app/lib/search'
 import { extraParsers } from '../src/app/parsers'
 
 // Scroll cost scales with heading count times renderable count, so the default
-// set spans that range: a short doc, a mid-sized one, and long-document.md —
-// 1200 lines, 51 headings, ~2000 renderables, which is where the cost shows up.
+// set spans that range: a short doc, a mid-sized one, and long-document.md
+// (1200 lines, 51 headings, ~2000 renderables) where the cost shows up.
 const DOCS = ['README.md', 'docs/ARCHITECTURE.md', 'test/long-document.md']
 
 addDefaultParsers(extraParsers)
@@ -66,31 +66,30 @@ for (const file of files) {
     steps.push(performance.now() - t0)
   }
 
-  // Committing a search resolves every match to a row, and the scrollbar overlay
-  // re-checks its marks on each scroll — both walk the tree, so a long document
-  // with many matches is where that cost shows. `e` hits most English prose.
-  // Opening the bar mounts a focused <input>, and a pattern typed before that
-  // lands nowhere — the timing is racy in the headless harness, so retry
-  // until the live counter proves the pattern took. Retries happen before the
-  // clock starts, so they can't inflate the commit measurement.
+  // Committing a search resolves every match to a row and the overlay rechecks
+  // its marks on each scroll, so a long document with many matches is where that
+  // cost shows. `e` hits most English prose.
+  // Opening the bar mounts a focused <input>, and a pattern typed before it lands
+  // nowhere. The timing is racy here, so retry until the live counter proves the
+  // pattern took; retries run before the clock starts.
   const settleInput = async () => {
     await setup.flush()
     await sleep(5)
     await setup.renderOnce()
   }
-  let opened = false
-  for (let attempt = 0; attempt < 20 && !opened; attempt++) {
+  let isOpen = false
+  for (let attempt = 0; attempt < 20 && !isOpen; attempt++) {
     await setup.mockInput.typeText('/')
     await settleInput()
     await setup.mockInput.typeText('e')
     await settleInput()
-    opened = /\d+ of \d+/.test(setup.captureCharFrame())
-    if (!opened) {
+    isOpen = /\d+ of \d+/.test(setup.captureCharFrame())
+    if (!isOpen) {
       setup.mockInput.pressKey('escape')
       await settleInput()
     }
   }
-  if (!opened) {
+  if (!isOpen) {
     console.error(`${file}: could not open the search bar after 20 attempts`)
     process.exit(1)
   }
@@ -103,10 +102,9 @@ for (const file of files) {
   await sleep(0)
   await setup.renderOnce()
   const commit = performance.now() - t1
-  // The search phase is worthless if the pattern never reached the input — and it
-  // fails silently, reporting fast numbers for work that never happened. Match
-  // ticks in the scrollbar column are the observable proof it committed; the same
-  // glyphs appear in table rules, so look only at that column.
+  // A search that never committed fails silently, reporting fast numbers for work
+  // that never happened. Match ticks are the observable proof; the same glyphs
+  // appear in table rules, so look only at the scrollbar column.
   if (countTicksInScrollbarColumn(setup.captureCharFrame()) === 0) {
     console.error(`${file}: search never committed — no match ticks in the scrollbar column`)
     process.exit(1)

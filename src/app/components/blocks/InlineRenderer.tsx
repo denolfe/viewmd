@@ -127,10 +127,10 @@ function InlineLink({ node }: { node: Extract<InlineNode, { kind: 'link' }> }) {
  * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode:
  * a double-invoke would advance the cursor twice.
  *
- * A memo boundary is safe only *above* a RunScope, where the scope and all its
- * HighlightedText descendants are skipped or rendered as one unit. Memoizing
- * anything *between* a RunScope and its leaves would let some leaves advance the
- * cursor while others are skipped, and the ranges would land on the wrong text.
+ * A memo boundary is safe only *above* a RunScope, where the scope and its leaves
+ * are skipped or rendered as one unit. Memoizing *between* them would let some
+ * leaves advance the cursor while others are skipped, landing ranges on the
+ * wrong text.
  */
 /** Ranges are consumed in ascending, non-overlapping order (findMatches' regex emission order). */
 export type HighlightRange = { start: number; end: number; isActive: boolean }
@@ -138,12 +138,10 @@ type RunScopeValue = { text: string; ranges: HighlightRange[]; cursor: { pos: nu
 const RunScopeContext = createContext<RunScopeValue | null>(null)
 
 /**
- * Match groups keyed by `blockElementId|runKey`, cached against the match array
- * itself. Every RunScope in the document asks for its own ranges on each render,
- * so scanning the whole match list per call costs `runs × matches` — on a long
- * document under a common pattern that is millions of comparisons per keystroke.
- * Keyed on the array rather than the SearchState because stepping the active
- * match keeps the same matches; only `index` moves.
+ * Match groups keyed by `blockElementId|runKey`. Every RunScope asks for its own
+ * ranges on each render, so scanning the whole list per call costs `runs × matches`.
+ * Keyed on the array, not the SearchState: stepping the active match only moves
+ * `index`, and the groups stay good.
  */
 const runGroups = new WeakMap<Match[], Map<string, Match[]>>()
 
