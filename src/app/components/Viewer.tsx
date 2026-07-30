@@ -10,6 +10,7 @@ import { installRealisticThumb } from '../lib/scrollbar-thumb'
 import { seedMatchIndex } from '../lib/match-nav'
 import { projectionMap } from '../lib/visible-text'
 import { childToTopDelta } from '../lib/fold'
+import { collectById, collectTextBearers } from '../lib/renderable-tree'
 import {
   matchScrollDelta,
   resolveMatchYs,
@@ -295,76 +296,4 @@ function watchScroll(box: ScrollBoxRenderable, notify: () => void): () => void {
     // @ts-expect-error: restoring prototype lookup by deleting the override.
     delete sb.scrollPosition
   }
-}
-
-function asTextBearer(node: unknown): TextBearer | null {
-  if (!node || typeof node !== 'object') return null
-  if (!('plainText' in node) || !('lineInfo' in node) || !('y' in node)) return null
-  const li = (node as { lineInfo: unknown }).lineInfo
-  if (
-    !li ||
-    typeof li !== 'object' ||
-    !Array.isArray((li as { lineStartCols?: unknown }).lineStartCols)
-  )
-    return null
-  return node as unknown as TextBearer
-}
-
-type TreeNode = { getChildren(): unknown[]; id?: unknown; y?: number; height?: number }
-
-/**
- * `collect` applied to every `wanted` id found beneath `root`, in one walk.
- * Prunes as soon as the set is exhausted, and stops at a matched box without
- * descending into it: ids are block-level and never nest inside one another.
- */
-function collectById<T>(params: {
-  root: { getChildren(): unknown[] }
-  wanted: Set<string>
-  collect: (node: TreeNode) => T
-}): Map<string, T> {
-  const { wanted, collect } = params
-  const out = new Map<string, T>()
-  const walk = (node: { getChildren(): unknown[] }): void => {
-    for (const child of node.getChildren()) {
-      if (wanted.size === 0) return
-      if (!isTreeNode(child)) continue
-      const id = typeof child.id === 'string' ? child.id : undefined
-      if (id !== undefined && wanted.delete(id)) {
-        out.set(id, collect(child))
-        continue
-      }
-      walk(child)
-    }
-  }
-  walk(params.root)
-  return out
-}
-
-function isTreeNode(value: unknown): value is TreeNode {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'getChildren' in value &&
-    typeof value.getChildren === 'function'
-  )
-}
-
-/**
- * All text-bearing descendants in tree order. Multi-text blocks (tables,
- * blockquotes) render one text renderable per cell/paragraph; element-ordinal
- * indexing must span them all to land on the right one.
- */
-export function collectTextBearers(
-  node: { getChildren(): unknown[] },
-  out: TextBearer[],
-): TextBearer[] {
-  const self = asTextBearer(node)
-  if (self) {
-    out.push(self)
-    return out
-  }
-  for (const child of node.getChildren()) {
-    collectTextBearers(child as { getChildren(): unknown[] }, out)
-  }
-  return out
 }
