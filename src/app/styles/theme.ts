@@ -16,7 +16,7 @@ export const theme = {
   h1Bg: '#2472c8',
   h1Fg: '#000000',
   codespanBg: '#3c3c3c',
-  codespanFg: '#f48771',
+  codespanFg: '#ce9178',
   kbdBg: '#3a3a3a',
   link: '#2472c8',
   navLink: '#23d18b',
