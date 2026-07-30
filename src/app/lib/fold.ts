@@ -5,38 +5,6 @@ import type { BoxGeometry, ChildGeometry } from './viewport-geometry'
 /** Small gap (rows) so a pinned heading isn't flush behind its ancestor rows. */
 export const PIN_TOP_OFFSET = 1
 
-/**
- * Last heading whose box sits at/above the fold (`topOffset` rows below the
- * viewport top, plus PIN_TOP_OFFSET slack). Falls back to the first heading
- * below when none are above. `childToTopDelta` pins jumps with the same slack,
- * so a freshly pinned heading resolves as current instead of its predecessor.
- */
-export function findHeadingNearTop(
-  geom: BoxGeometry,
-  ids: string[],
-  topOffset: number,
-): string | null {
-  return resolveHeadingNearTop({
-    boxes: geom.findChildren(ids),
-    ids,
-    top: geom.viewportTop + topOffset,
-  })
-}
-
-/** Ids whose box vertically overlaps the viewport below `topOffset`. */
-export function findVisibleHeadingIds(
-  geom: BoxGeometry,
-  ids: string[],
-  topOffset: number,
-): Set<string> {
-  return resolveVisibleIds({
-    boxes: geom.findChildren(ids),
-    ids,
-    top: geom.viewportTop + topOffset,
-    bottom: geom.viewportTop + geom.viewportHeight,
-  })
-}
-
 /** Rows to scroll so `id` sits `topOffset` (+ PIN_TOP_OFFSET) below the viewport top. Null if unmounted. */
 export function childToTopDelta(geom: BoxGeometry, id: string, topOffset: number): number | null {
   const child = geom.findChild(id)
@@ -57,7 +25,20 @@ export type Fold = {
   /** Fold offset to reserve in the scrollbox tail for the last heading (0 when none). */
   tailReserve(lastHeadingId: string | null, historyDepth: number): number
   /** Current heading + visible set against live geometry, resolving the heading↔offset fixed point. */
-  resolveCurrent(geom: BoxGeometry, headingIds: string[], historyDepth: number): HeadingResolution
+  resolveCurrent(params: {
+    geom: BoxGeometry
+    headingIds: string[]
+    historyDepth: number
+  }): HeadingResolution
+  /**
+   * Current heading + visible set for a caller that already fixed the offset (a
+   * jump just pinned it), so there is no fixed point to search for.
+   */
+  resolveAt(params: {
+    geom: BoxGeometry
+    headingIds: string[]
+    topOffset: number
+  }): HeadingResolution
 }
 
 /**
@@ -90,41 +71,71 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
   const tailReserve = (lastHeadingId: string | null, historyDepth: number): number =>
     lastHeadingId ? offsetFor(lastHeadingId, historyDepth) : 0
 
-  const resolveCurrent = (
-    geom: BoxGeometry,
-    headingIds: string[],
-    historyDepth: number,
-  ): HeadingResolution => {
-    if (headingIds.length === 0) {
-      return { currentHeadingId: null, visibleHeadingIds: new Set() }
-    }
+  const resolveCurrent = (params: {
+    geom: BoxGeometry
+    headingIds: string[]
+    historyDepth: number
+  }): HeadingResolution => {
+    const { geom, headingIds, historyDepth } = params
+    if (headingIds.length === 0) return emptyResolution()
     // Geometry is fixed for this call, so resolve the boxes every pass shares once.
     const boxes = geom.findChildren(headingIds)
     // Heading and offset are mutually recursive (offset depends on which heading
     // is current, which depends on the offset), so iterate to a fixed point. A
     // shallow heading sitting at a deeper one's fold can cycle; bail if an offset repeats.
     let offset = 0
-    let id: string | null = null
     const seen = new Set<number>()
     for (let pass = 0; pass < 8; pass++) {
-      id = resolveHeadingNearTop({ boxes, ids: headingIds, top: geom.viewportTop + offset })
+      const id = resolveHeadingNearTop({ boxes, ids: headingIds, top: geom.viewportTop + offset })
       const next = id ? offsetFor(id, historyDepth) : 0
       if (next === offset || seen.has(next)) break
       seen.add(offset)
       offset = next
     }
-    return {
-      currentHeadingId: id,
-      visibleHeadingIds: resolveVisibleIds({
-        boxes,
-        ids: headingIds,
-        top: geom.viewportTop + offset,
-        bottom: geom.viewportTop + geom.viewportHeight,
-      }),
-    }
+    return resolveWith({ geom, headingIds, boxes, offset })
   }
 
-  return { offsetFor, aboveOffsetFor, tailReserve, resolveCurrent }
+  const resolveAt = (params: {
+    geom: BoxGeometry
+    headingIds: string[]
+    topOffset: number
+  }): HeadingResolution => {
+    const { geom, headingIds, topOffset } = params
+    if (headingIds.length === 0) return emptyResolution()
+    return resolveWith({
+      geom,
+      headingIds,
+      boxes: geom.findChildren(headingIds),
+      offset: topOffset,
+    })
+  }
+
+  return { offsetFor, aboveOffsetFor, tailReserve, resolveCurrent, resolveAt }
+}
+
+/** Current heading + visible set for a known offset, from boxes already resolved. */
+function resolveWith(params: {
+  geom: BoxGeometry
+  headingIds: string[]
+  boxes: Map<string, ChildGeometry>
+  offset: number
+}): HeadingResolution {
+  const { geom, headingIds, boxes, offset } = params
+  const top = geom.viewportTop + offset
+  return {
+    currentHeadingId: resolveHeadingNearTop({ boxes, ids: headingIds, top }),
+    visibleHeadingIds: resolveVisibleIds({
+      boxes,
+      ids: headingIds,
+      top,
+      bottom: geom.viewportTop + geom.viewportHeight,
+    }),
+  }
+}
+
+/** Fresh empty resolution; the set is new each call because callers may hold it. */
+function emptyResolution(): HeadingResolution {
+  return { currentHeadingId: null, visibleHeadingIds: new Set() }
 }
 
 /** Last heading at/above `top` (plus PIN_TOP_OFFSET slack), else the topmost one. */

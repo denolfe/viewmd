@@ -17,7 +17,7 @@ import type { FrontmatterRow } from './lib/frontmatter'
 import { Toc } from './components/Toc'
 import { tocVisibleContentWidth } from './lib/toc-util'
 import { FILE_ROW_ID } from './lib/overlay-rows'
-import { createFold, findVisibleHeadingIds } from './lib/fold'
+import { createFold } from './lib/fold'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
@@ -173,10 +173,12 @@ export function App({
     const tid = setTimeout(() => {
       const v = viewerRef.current
       if (!v) return
-      actions.visibleHeadingIds(findVisibleHeadingIds(v.getGeometry(), headingIds, 0))
+      actions.visibleHeadingIds(
+        fold.resolveAt({ geom: v.getGeometry(), headingIds, topOffset: 0 }).visibleHeadingIds,
+      )
     }, 0)
     return () => clearTimeout(tid)
-  }, [headingIds])
+  }, [headingIds, fold])
 
   useEffect(() => {
     if (status.kind === 'idle') return
