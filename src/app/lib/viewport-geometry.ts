@@ -145,12 +145,12 @@ function matchYIn(params: {
  * Every match resolved to a document-space mark. Unresolvable matches are omitted,
  * so a mark's `matchIndex` is the index into `matches`, not into the result.
  */
-export function resolveScrollMarks(
-  geom: BoxGeometry,
-  projections: Map<string, BlockProjection>,
-  params: { matches: Match[] },
-): ResolvedMark[] {
-  const { matches } = params
+export function resolveScrollMarks(params: {
+  geom: BoxGeometry
+  projections: Map<string, BlockProjection>
+  matches: Match[]
+}): ResolvedMark[] {
+  const { geom, projections, matches } = params
   const marks: ResolvedMark[] = []
   // Renderable `.y` is screen-absolute and includes the scroll translation
   // (content.translateY = -scrollTop). Convert to document space so marks stay

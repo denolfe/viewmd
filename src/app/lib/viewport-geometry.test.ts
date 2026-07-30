@@ -326,7 +326,7 @@ describe('resolveScrollMarks', () => {
       length: 1,
     }
     // screenToDoc = scrollTop(30) - viewportTop(3) = 27; matchY 50 → docY 77.
-    expect(resolveScrollMarks(geom, projections, { matches: [match] })).toEqual([
+    expect(resolveScrollMarks({ geom, projections, matches: [match] })).toEqual([
       { y: 77, matchIndex: 0 },
     ])
   })
@@ -357,6 +357,6 @@ describe('resolveScrollMarks', () => {
     })
     // Index 0 is unmounted and dropped; index 1 survives and keeps matchIndex 1.
     const matches = [mk({ blockElementId: 'gone', blockPath: [9] }), mk({})]
-    expect(resolveScrollMarks(geom, projections, { matches })).toEqual([{ y: 40, matchIndex: 1 }])
+    expect(resolveScrollMarks({ geom, projections, matches })).toEqual([{ y: 40, matchIndex: 1 }])
   })
 })

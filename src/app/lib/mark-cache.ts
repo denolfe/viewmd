@@ -3,25 +3,31 @@ import type { ResolvedMark } from './scroll-marks'
 
 export type MarkCache = {
   /**
-   * Resolved marks for `matches` at reflow `token`. Resolves only on a miss, so the
-   * scroll path can read marks every row without paying a tree walk.
+   * Resolved marks for `matches`, re-resolved only when the reflow key changes, so
+   * the scroll path can read marks every row without paying a tree walk. The result
+   * is the cached array instance, so callers must treat it as read-only.
    */
-  read(params: { matches: Match[]; token: number }): ResolvedMark[]
+  read(matches: Match[]): ResolvedMark[]
 }
 
 /**
- * Owns when scroll marks must be resolved again. `matches` is compared by identity:
- * search state hands out a new array per pattern, so identity is the grain that
- * matters. `token` is an opaque reflow counter, because marks are document-space and
- * only a reflow can move one.
+ * Owns when scroll marks must be resolved again. Marks are document-space, so
+ * scrolling cannot move one; `reflowKey` is probed per read and changes whenever
+ * content rewraps or grows. `matches` is compared by identity, because search state
+ * mints a new array per pattern.
  */
-export function createMarkCache(resolve: (matches: Match[]) => ResolvedMark[]): MarkCache {
-  let cached: { matches: Match[]; token: number; marks: ResolvedMark[] } | null = null
+export function createMarkCache(params: {
+  resolve: (matches: Match[]) => ResolvedMark[]
+  reflowKey: () => string
+}): MarkCache {
+  const { resolve, reflowKey } = params
+  let cached: { matches: Match[]; key: string; marks: ResolvedMark[] } | null = null
   return {
-    read: ({ matches, token }) => {
-      if (cached && cached.matches === matches && cached.token === token) return cached.marks
+    read: matches => {
+      const key = reflowKey()
+      if (cached && cached.matches === matches && cached.key === key) return cached.marks
       const marks = resolve(matches)
-      cached = { matches, token, marks }
+      cached = { matches, key, marks }
       return marks
     },
   }
