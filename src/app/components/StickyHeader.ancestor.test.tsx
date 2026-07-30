@@ -2,13 +2,16 @@ import { test, expect, mock } from 'bun:test'
 import { createTestRenderer, createMockMouse, MouseButtons } from '@opentui/core/testing'
 import { createRoot } from '@opentui/react'
 import { StickyHeader } from './StickyHeader'
-import { AppStateContext } from '../state'
-import type { AppState } from '../state'
+import { AppStateContext, HeadingStateContext } from '../state'
+import type { AppState, HeadingState } from '../state'
+
+// One flat stub for both contexts; `renderHeader` splits it at the providers.
+type Stub = AppState & HeadingState
 import { createNoopCommands } from '../lib/commands'
 import { FILE_ROW_ID } from '../lib/overlay-rows'
 import type { TocEntry } from '../lib/ast'
 
-function makeStub(overrides: Partial<AppState> = {}): AppState {
+function makeStub(overrides: Partial<Stub> = {}): Stub {
   return {
     focus: 'viewer',
     currentHeadingId: null,
@@ -38,7 +41,7 @@ function tocEntry(partial: Partial<TocEntry> & Pick<TocEntry, 'id' | 'level' | '
 }
 
 async function renderHeader(params: {
-  stub: AppState
+  stub: Stub
   toc: TocEntry[]
   fileLabel?: string
   onAncestorClick: (id: string) => void
@@ -54,11 +57,13 @@ async function renderHeader(params: {
   }
   createRoot(renderer).render(
     <AppStateContext.Provider value={params.stub}>
-      <StickyHeader
-        toc={params.toc}
-        fileLabel={params.fileLabel}
-        onAncestorClick={params.onAncestorClick}
-      />
+      <HeadingStateContext.Provider value={params.stub}>
+        <StickyHeader
+          toc={params.toc}
+          fileLabel={params.fileLabel}
+          onAncestorClick={params.onAncestorClick}
+        />
+      </HeadingStateContext.Provider>
     </AppStateContext.Provider>,
   )
   await settle()

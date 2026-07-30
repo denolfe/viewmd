@@ -123,8 +123,13 @@ function InlineLink({ node }: { node: Extract<InlineNode, { kind: 'link' }> }) {
  * visible text; ranges are match offsets within it. The cursor is recreated
  * every render and advanced by each HighlightedText in render order, aligning
  * leaf values into the run text by ordered indexOf (robust to pill glyphs and
- * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode
- * and no memoized consumers — double-invoke or memoization would desync the cursor.
+ * to wrapInline's dropped whitespace in tables). Relies on no React StrictMode:
+ * a double-invoke would advance the cursor twice.
+ *
+ * A memo boundary is safe only *above* a RunScope, where the scope and all its
+ * HighlightedText descendants are skipped or rendered as one unit. Memoizing
+ * anything *between* a RunScope and its leaves would let some leaves advance the
+ * cursor while others are skipped, and the ranges would land on the wrong text.
  */
 /** Ranges are consumed in ascending, non-overlapping order (findMatches' regex emission order). */
 export type HighlightRange = { start: number; end: number; isActive: boolean }

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useTerminalDimensions } from '@opentui/react'
 import type { Node } from '../../lib/ast'
 import { parseHtmlSegments } from '../../lib/html'
@@ -53,7 +54,19 @@ function Hr() {
   )
 }
 
-export function NodeList({ nodes, pathPrefix = [] }: { nodes: Node[]; pathPrefix?: number[] }) {
+/**
+ * Memoized so a re-render of the shell (status line, sticky overlay, sidebar)
+ * doesn't walk the whole block tree — on a large document that is thousands of
+ * renderables per scrolled row. Blocks that need shell state read it from
+ * context, which propagates through this boundary, so they still update.
+ */
+export const NodeList = memo(function NodeList({
+  nodes,
+  pathPrefix = [],
+}: {
+  nodes: Node[]
+  pathPrefix?: number[]
+}) {
   return (
     <>
       {nodes.map((n, i) => (
@@ -61,4 +74,4 @@ export function NodeList({ nodes, pathPrefix = [] }: { nodes: Node[]; pathPrefix
       ))}
     </>
   )
-}
+})

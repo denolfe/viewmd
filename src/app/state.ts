@@ -80,12 +80,29 @@ export type Status =
   | { kind: 'error'; text: string }
   | { kind: 'info'; text: string }
 
+/**
+ * Heading state, which changes on nearly every scrolled row. Held apart from
+ * `AppState` because only the overlay and the sidebar read it: folding it in
+ * would invalidate the context on every row and re-render the whole content
+ * tree — thousands of renderables — to repaint three of them.
+ */
+export type HeadingState = {
+  /** Last heading at/above the Fold, or the last one jumped to. */
+  currentHeadingId: string | null
+  /** Heading ids whose box intersects the Viewport below the Fold offset. */
+  visibleHeadingIds: Set<string>
+}
+
+export const HeadingStateContext = createContext<HeadingState | null>(null)
+
+export function useHeadingState(): HeadingState {
+  const s = useContext(HeadingStateContext)
+  if (!s) throw new Error('useHeadingState must be called inside a HeadingStateContext.Provider')
+  return s
+}
+
 export type AppState = {
   focus: Focus
-
-  currentHeadingId: string | null
-
-  visibleHeadingIds: Set<string>
 
   // Imperative scroll: handler calls viewerRef.current?.scrollBy(...) etc.
   viewerRef: RefObject<ScrollboxHandle | null>

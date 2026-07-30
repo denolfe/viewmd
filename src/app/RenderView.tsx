@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
-import { AppStateContext } from './state'
-import type { AppState, ScrollboxHandle } from './state'
+import { AppStateContext, HeadingStateContext } from './state'
+import type { AppState, HeadingState, ScrollboxHandle } from './state'
 import { NodeList } from './components/blocks/NodeRenderer'
 import { Frontmatter } from './components/blocks/Frontmatter'
 import { CONTENT_MAX_WIDTH } from './styles/layout'
@@ -14,6 +14,10 @@ type Props = {
   frontmatter?: FrontmatterRow[]
   contentMaxWidth?: number
 }
+
+// A one-shot render has no viewport and no scrolling, so nothing is ever
+// current or visible.
+const STATIC_HEADINGS: HeadingState = { currentHeadingId: null, visibleHeadingIds: new Set() }
 
 export function RenderView({
   nodes,
@@ -30,8 +34,6 @@ export function RenderView({
   const state = useMemo<AppState>(
     () => ({
       focus: 'viewer',
-      currentHeadingId: null,
-      visibleHeadingIds: new Set(),
       viewerRef,
       expanded: new Map(),
       tocCursorId: null,
@@ -50,10 +52,12 @@ export function RenderView({
 
   return (
     <AppStateContext.Provider value={state}>
-      <box flexDirection="column" width={state.contentWidth}>
-        <Frontmatter rows={frontmatter} />
-        <NodeList nodes={nodes} />
-      </box>
+      <HeadingStateContext.Provider value={STATIC_HEADINGS}>
+        <box flexDirection="column" width={state.contentWidth}>
+          <Frontmatter rows={frontmatter} />
+          <NodeList nodes={nodes} />
+        </box>
+      </HeadingStateContext.Provider>
     </AppStateContext.Provider>
   )
 }

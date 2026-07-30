@@ -1,7 +1,7 @@
 import { useLayoutEffect, useRef } from 'react'
 import { useRenderer } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
-import { useAppState } from '../state'
+import { useAppState, useHeadingState } from '../state'
 import { flattenVisible, isTocExpanded } from '../lib/toc-util'
 import { onPrimaryClick } from '../lib/mouse'
 import { theme } from '../styles/theme'
@@ -17,7 +17,8 @@ export function Toc({
   onEntryJump: (id: string) => void
   onEntryToggle: (id: string) => void
 }) {
-  const { expanded, currentHeadingId, tocCursorId, focus } = useAppState()
+  const { expanded, tocCursorId, focus } = useAppState()
+  const { currentHeadingId } = useHeadingState()
   const visible = flattenVisible(toc, expanded)
   const renderer = useRenderer()
   const boxRef = useRef<ScrollBoxRenderable | null>(null)

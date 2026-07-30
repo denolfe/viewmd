@@ -4,17 +4,21 @@ import { addDefaultParsers } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
 import { App } from '../src/app/App'
-import { buildDocument } from '../src/app/lib/loadDocument'
+import { buildTree } from '../src/app/lib/ast'
 import { extraParsers } from '../src/app/parsers'
 
 addDefaultParsers(extraParsers)
 
 for (const file of process.argv.slice(2)) {
   const md = await Bun.file(file).text()
-  const document = buildDocument(md, { kind: 'file', absPath: '/x/a.md', dir: '/x' })
+  const { nodes, toc, headingIds } = buildTree(md)
   const setup = await createTestRenderer({ width: 120, height: 40, targetFps: 240 })
   setup.renderer.setMaxListeners(0)
-  flushSync(() => createRoot(setup.renderer).render(<App document={document} />))
+  flushSync(() =>
+    createRoot(setup.renderer).render(
+      <App nodes={nodes} toc={toc} headingIds={headingIds} frontmatter={[]} headingLines={{}} />,
+    ),
+  )
   // Progressive mount grows one chunk per setTimeout(0) task; renderOnce alone
   // never drains that queue, so a bench without this measures a partial tree.
   for (let i = 0; i < 60; i++) {
@@ -32,7 +36,7 @@ for (const file of process.argv.slice(2)) {
     steps.push(performance.now() - t0)
   }
   console.log(
-    `${file}\n  nodes=${document.nodes.length} headings=${document.headingIds.length}` +
+    `${file}\n  nodes=${nodes.length} headings=${headingIds.length}` +
       ` renderables=${countTree(setup.renderer.root)}` +
       `\n  step p50=${pct(steps, 0.5)}ms p95=${pct(steps, 0.95)}ms`,
   )

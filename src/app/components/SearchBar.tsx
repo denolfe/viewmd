@@ -1,6 +1,6 @@
 import { TextAttributes } from '@opentui/core'
 import { useKeyboard } from '@opentui/react'
-import { useAppState } from '../state'
+import { useAppState, useHeadingState } from '../state'
 import { ancestorChain, ancestorRows, documentHasH1 } from '../lib/overlay-rows'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
@@ -10,8 +10,8 @@ import type { TocEntry } from '../lib/ast'
 const BAR_WIDTH = 28
 
 export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
-  const { search, focus, currentHeadingId, visibleHeadingIds, contentWidth, commands } =
-    useAppState()
+  const { search, focus, contentWidth, commands } = useAppState()
+  const { currentHeadingId, visibleHeadingIds } = useHeadingState()
 
   const onInput = (pattern: string) => commands.applySearchPattern({ pattern, commit: false })
 
