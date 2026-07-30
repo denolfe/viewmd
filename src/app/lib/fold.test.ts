@@ -101,7 +101,7 @@ describe('createFold resolveCurrent', () => {
     // offsetFor: a=0, b=1, c=2, d=0. Pass1 offset0/fold1 -> id=b, next=offsetFor(b)=1.
     // Pass2 offset1/fold2 -> id=c, next=offsetFor(c)=2. Pass3 offset2/fold3 -> id=d,
     // next=offsetFor(d)=0, which was already seen -> bail at offset=2 (pass2's value),
-    // where d (y=3) is still the greatest heading at/above fold=3.
+    // where d (y=3) is the greatest heading at/above fold=3.
     const geom = makeGeometry({
       positions: { a: { y: 0 }, b: { y: 1 }, c: { y: 2 }, d: { y: 3 } },
     })
@@ -110,9 +110,10 @@ describe('createFold resolveCurrent', () => {
   })
 
   test('converges over multiple passes when the fixed point requires correction', () => {
-    // Pass1 offset0/fold1: only b qualifies (y=0) -> id=b. next=offsetFor(b)=1, continue.
-    // Pass2 offset1/fold2: c now qualifies (y=2) -> id=c. next=offsetFor(c)=2, continue.
-    // Pass3 offset2/fold3: still c (highest y<=fold) -> next=offsetFor(c)=2=offset, converged.
+    // Pass1 offset0/fold1: b (y=0) is the greatest at/above the fold, a (y=-100)
+    // qualifies too -> id=b. next=offsetFor(b)=1, continue.
+    // Pass2 offset1/fold2: c (y=2) reaches the fold and wins -> id=c. next=2, continue.
+    // Pass3 offset2/fold3: c again -> next=offsetFor(c)=2=offset, converged.
     const geom = makeGeometry({
       positions: { a: { y: -100 }, b: { y: 0 }, c: { y: 2 }, d: { y: 1000 } },
     })

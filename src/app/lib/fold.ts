@@ -84,16 +84,16 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     const boxes = geom.findChildren(headingIds)
     // Heading and offset are mutually recursive (offset depends on which heading
     // is current, which depends on the offset), so iterate to a fixed point. A
-    // shallow heading sitting at a deeper one's fold can cycle; bail if an offset repeats.
+    // shallow heading sitting at a deeper one's fold can cycle, so bail if an
+    // offset repeats. Each pass records one previously-unseen offset drawn from a
+    // finite set (trail rows + ancestor rows, bounded by heading depth), so that
+    // guard alone bounds the loop.
     let offset = 0
     const seen = new Set<number>()
     for (;;) {
       const id = resolveHeadingNearTop({ boxes, ids: headingIds, top: geom.viewportTop + offset })
       const next = id ? offsetFor(id, historyDepth) : 0
       if (next === offset || seen.has(next)) break
-      // Each pass records one previously-unseen offset drawn from the finite
-      // set of possible fold offsets (trail rows + ancestor rows, bounded by
-      // heading depth), so the seen-offset guard alone bounds this loop.
       seen.add(offset)
       offset = next
     }
