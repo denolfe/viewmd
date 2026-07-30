@@ -35,5 +35,13 @@ export function makeGeometry(
       return out
     },
     collectTextBearers: id => bearers[id] ?? [],
+    collectTextBearersFor: ids => {
+      const out = new Map<string, TextBearer[]>()
+      for (const id of ids) {
+        const b = bearers[id]
+        if (b) out.set(id, b)
+      }
+      return out
+    },
   }
 }

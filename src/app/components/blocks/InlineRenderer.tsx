@@ -2,6 +2,7 @@ import { createContext, useContext } from 'react'
 import type { ReactNode } from 'react'
 import { TextAttributes } from '@opentui/core'
 import type { InlineNode } from '../../lib/ast'
+import type { Match } from '../../lib/search'
 import type { SearchState } from '../../state'
 import { useAppState } from '../../state'
 import { classifyHref } from '../../lib/links'
@@ -136,19 +137,40 @@ export type HighlightRange = { start: number; end: number; isActive: boolean }
 type RunScopeValue = { text: string; ranges: HighlightRange[]; cursor: { pos: number } }
 const RunScopeContext = createContext<RunScopeValue | null>(null)
 
+/**
+ * Match groups keyed by `blockElementId|runKey`, cached against the match array
+ * itself. Every RunScope in the document asks for its own ranges on each render,
+ * so scanning the whole match list per call costs `runs × matches` — on a long
+ * document under a common pattern that is millions of comparisons per keystroke.
+ * Keyed on the array rather than the SearchState because stepping the active
+ * match keeps the same matches; only `index` moves.
+ */
+const runGroups = new WeakMap<Match[], Map<string, Match[]>>()
+
+function groupsFor(matches: Match[]): Map<string, Match[]> {
+  const cached = runGroups.get(matches)
+  if (cached) return cached
+  const groups = new Map<string, Match[]>()
+  for (const m of matches) {
+    const key = `${m.blockElementId}|${m.runKey}`
+    const bucket = groups.get(key)
+    if (bucket) bucket.push(m)
+    else groups.set(key, [m])
+  }
+  runGroups.set(matches, groups)
+  return groups
+}
+
 export function matchRangesForRun(
   search: Pick<SearchState, 'matches' | 'index'> | null,
   blockElementId: string,
   runKey: string,
 ): HighlightRange[] {
   if (!search?.matches.length) return []
+  const group = groupsFor(search.matches).get(`${blockElementId}|${runKey}`)
+  if (!group) return []
   const active = search.index >= 0 ? search.matches[search.index] : undefined
-  const out: HighlightRange[] = []
-  for (const m of search.matches) {
-    if (m.blockElementId !== blockElementId || m.runKey !== runKey) continue
-    out.push({ start: m.start, end: m.start + m.length, isActive: m === active })
-  }
-  return out
+  return group.map(m => ({ start: m.start, end: m.start + m.length, isActive: m === active }))
 }
 
 export function RunScope({

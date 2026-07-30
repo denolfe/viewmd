@@ -10,9 +10,9 @@ test('blockId joins a path with the blk- prefix', () => {
 
 test('maps y over scrollHeight (thumb scale) to a track row', () => {
   const marks: ResolvedMark[] = [
-    { y: 0, kind: 'match' },
-    { y: 50, kind: 'match' },
-    { y: 100, kind: 'match' },
+    { y: 0, matchIndex: 0 },
+    { y: 50, matchIndex: 1 },
+    { y: 100, matchIndex: 2 },
   ]
   // round(y / scrollHeight * viewportHeight) = round(y / 110 * 11) = round(y / 10)
   const cells = computeTrackCells({
@@ -27,8 +27,8 @@ test('maps y over scrollHeight (thumb scale) to a track row', () => {
 
 test('clamps rows into the track', () => {
   const marks: ResolvedMark[] = [
-    { y: -20, kind: 'match' },
-    { y: 9999, kind: 'match' },
+    { y: -20, matchIndex: 0 },
+    { y: 9999, matchIndex: 1 },
   ]
   const cells = computeTrackCells({
     marks,
@@ -41,12 +41,13 @@ test('clamps rows into the track', () => {
 
 test('collision priority is activeMatch > match', () => {
   const marks: ResolvedMark[] = [
-    { y: 0, kind: 'match' },
-    { y: 2, kind: 'activeMatch' },
+    { y: 0, matchIndex: 0 },
+    { y: 2, matchIndex: 1 },
   ]
   // scrollHeight large so both marks round onto row 0.
   const cells = computeTrackCells({
     marks,
+    activeIndex: 1,
     scrollHeight: 10_000,
     viewportHeight: 200,
     realContentHeight: 9_000,
@@ -58,10 +59,10 @@ test('collision priority is activeMatch > match', () => {
 
 test('counts marks collapsed onto a shared row', () => {
   const marks: ResolvedMark[] = [
-    { y: 0, kind: 'match' },
-    { y: 1, kind: 'match' },
-    { y: 2, kind: 'match' },
-    { y: 5_000, kind: 'match' },
+    { y: 0, matchIndex: 0 },
+    { y: 1, matchIndex: 1 },
+    { y: 2, matchIndex: 2 },
+    { y: 5_000, matchIndex: 3 },
   ]
   const cells = computeTrackCells({
     marks,
@@ -74,7 +75,7 @@ test('counts marks collapsed onto a shared row', () => {
 })
 
 test('renders nothing when the document fits the viewport or track is degenerate', () => {
-  const marks: ResolvedMark[] = [{ y: 5, kind: 'match' }]
+  const marks: ResolvedMark[] = [{ y: 5, matchIndex: 0 }]
   // realContentHeight <= viewportHeight → not scrollable.
   expect(
     computeTrackCells({ marks, scrollHeight: 100, viewportHeight: 10, realContentHeight: 10 }),

@@ -23,6 +23,13 @@ export type BoxGeometry = {
    */
   findChildren(ids: string[]): Map<string, ChildGeometry>
   collectTextBearers(id: string): TextBearer[]
+  /**
+   * Text bearers for every requested block in a single tree walk; unmounted ids
+   * are absent. The batch twin of `collectTextBearers`, for the same reason
+   * `findChildren` exists — a search can hold thousands of matches, and
+   * resolving them one at a time costs `matches × tree`.
+   */
+  collectTextBearersFor(ids: string[]): Map<string, TextBearer[]>
 }
 
 type MatchJumpParams = { match: Match; topOffset?: number }
@@ -56,12 +63,50 @@ export function resolveMatchY(
 ): number | null {
   const block = geom.findChild(match.blockElementId)
   if (!block) return null
+  return matchYIn({
+    match,
+    block,
+    bearers: geom.collectTextBearers(match.blockElementId),
+    projections,
+  })
+}
+
+/**
+ * Screen row for every match, resolving each distinct block once in a batch walk
+ * instead of once per match. Same results as mapping `resolveMatchY`, in order.
+ */
+export function resolveMatchYs(
+  geom: BoxGeometry,
+  matches: Match[],
+  projections: Map<string, BlockProjection>,
+): (number | null)[] {
+  const ids = [...new Set(matches.map(m => m.blockElementId))]
+  const boxes = geom.findChildren(ids)
+  const bearersById = geom.collectTextBearersFor(ids)
+  return matches.map(match => {
+    const block = boxes.get(match.blockElementId)
+    if (!block) return null
+    return matchYIn({
+      match,
+      block,
+      bearers: bearersById.get(match.blockElementId) ?? [],
+      projections,
+    })
+  })
+}
+
+/** Per-match row math, once its block geometry and text bearers are in hand. */
+function matchYIn(params: {
+  match: Match
+  block: ChildGeometry
+  bearers: TextBearer[]
+  projections: Map<string, BlockProjection>
+}): number {
+  const { match, block, projections } = params
   const proj = projections.get(match.blockElementId)
   const run = proj?.runs.find(r => r.key === match.runKey)
   if (!proj || !run) return block.y
-  const bearers = geom
-    .collectTextBearers(match.blockElementId)
-    .filter(b => !isRuleBearer(b.plainText))
+  const bearers = params.bearers.filter(b => !isRuleBearer(b.plainText))
 
   // Element ordinal of this run's first element among the block's content bearers.
   // Empty runs still mount an empty <text> bearer, so clamp each run to ≥1.
@@ -102,7 +147,7 @@ export function resolveScrollMarks(
   geom: BoxGeometry,
   tail: number,
   projections: Map<string, BlockProjection>,
-  params: { matches: Match[]; activeIndex: number },
+  params: { matches: Match[] },
 ): {
   marks: ResolvedMark[]
   scrollTop: number
@@ -110,18 +155,17 @@ export function resolveScrollMarks(
   viewportHeight: number
   realContentHeight: number
 } {
-  const { matches, activeIndex } = params
+  const { matches } = params
   const marks: ResolvedMark[] = []
   // Renderable `.y` is screen-absolute and includes the scroll translation
   // (content.translateY = -scrollTop). Convert to document space so marks stay
   // fixed on the track while scrolling: docY = screenY - viewportScreenY + scrollTop.
   const screenToDoc = geom.scrollTop - geom.viewportTop
-  for (let i = 0; i < matches.length; i++) {
-    const match = matches[i]
-    if (!match) continue
-    const y = resolveMatchY(geom, match, projections)
-    if (y === null) continue
-    marks.push({ y: y + screenToDoc, kind: i === activeIndex ? 'activeMatch' : 'match' })
+  const ys = resolveMatchYs(geom, matches, projections)
+  for (let i = 0; i < ys.length; i++) {
+    const y = ys[i]
+    if (y === null || y === undefined) continue
+    marks.push({ y: y + screenToDoc, matchIndex: i })
   }
   return {
     marks,

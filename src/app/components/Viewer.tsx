@@ -12,7 +12,7 @@ import { projectionMap } from '../lib/visible-text'
 import { childToTopDelta } from '../lib/fold'
 import {
   matchScrollDelta,
-  resolveMatchY,
+  resolveMatchYs,
   resolveScrollMarks,
   scrollTopDelta,
 } from '../lib/viewport-geometry'
@@ -116,6 +116,7 @@ export function Viewer({
         const el = box.content.findDescendantById(id)
         return el ? collectTextBearers(el, []) : []
       },
+      collectTextBearersFor: ids => collectBearersByBlock(box.content, new Set(ids), new Map()),
     }
     // Resolve a pending target against live geometry into a plain value the pure
     // reducer can act on. The only place delta fns are called.
@@ -167,11 +168,17 @@ export function Viewer({
         send({ kind: 'pinJump', target: { kind: 'scrollTop', top } })
       },
       getGeometry: () => geom,
-      getScrollMarks: ({ matches, activeIndex }) =>
-        resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches, activeIndex }),
+      getScrollMarks: ({ matches }) =>
+        resolveScrollMarks(geom, tailRef.current, projectionsRef.current, { matches }),
+      getTrackGeometry: () => ({
+        scrollTop: geom.scrollTop,
+        scrollHeight: geom.scrollHeight,
+        viewportHeight: geom.viewportHeight,
+        realContentHeight: geom.scrollHeight - tailRef.current,
+      }),
       seedMatchIndex: ({ matches }) =>
         seedMatchIndex({
-          matchYs: matches.map(m => resolveMatchY(geom, m, projectionsRef.current)),
+          matchYs: resolveMatchYs(geom, matches, projectionsRef.current),
           viewportTop: geom.viewportTop,
         }),
       jumpToMatch: params => {
@@ -325,6 +332,29 @@ function isTreeNode(
     'getChildren' in value &&
     typeof value.getChildren === 'function'
   )
+}
+
+/**
+ * Text bearers of every `wanted` block beneath `node`, in one walk. Prunes once
+ * the set is exhausted, and collects a matched block's bearers without
+ * descending past it — block ids never nest inside one another.
+ */
+function collectBearersByBlock(
+  node: { getChildren(): unknown[] },
+  wanted: Set<string>,
+  out: Map<string, TextBearer[]>,
+): Map<string, TextBearer[]> {
+  for (const child of node.getChildren()) {
+    if (wanted.size === 0) break
+    if (!isTreeNode(child)) continue
+    const id = typeof child.id === 'string' ? child.id : undefined
+    if (id !== undefined && wanted.delete(id)) {
+      out.set(id, collectTextBearers(child, []))
+      continue
+    }
+    collectBearersByBlock(child, wanted, out)
+  }
+  return out
 }
 
 /**
