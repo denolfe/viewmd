@@ -98,13 +98,28 @@ describe('createFold resolveCurrent', () => {
   })
 
   test('bails without looping when the fold offset cycles', () => {
-    // Two headings whose folds leapfrog each other could cycle; the seen-offset guard must terminate.
+    // offsetFor: a=0, b=1, c=2, d=0. Pass1 offset0/fold1 -> id=b, next=offsetFor(b)=1.
+    // Pass2 offset1/fold2 -> id=c, next=offsetFor(c)=2. Pass3 offset2/fold3 -> id=d,
+    // next=offsetFor(d)=0, which was already seen -> bail at offset=2 (pass2's value),
+    // where d (y=3) is still the greatest heading at/above fold=3.
     const geom = makeGeometry({
       positions: { a: { y: 0 }, b: { y: 1 }, c: { y: 2 }, d: { y: 3 } },
     })
     const res = fold.resolveCurrent({ geom, headingIds, historyDepth: 0 })
-    expect(res.currentHeadingId).not.toBeNull()
-    expect(headingIds).toContain(res.currentHeadingId ?? '')
+    expect(res.currentHeadingId).toBe('d')
+  })
+
+  test('converges over multiple passes when the fixed point requires correction', () => {
+    // Pass1 offset0/fold1: only b qualifies (y=0) -> id=b. next=offsetFor(b)=1, continue.
+    // Pass2 offset1/fold2: c now qualifies (y=2) -> id=c. next=offsetFor(c)=2, continue.
+    // Pass3 offset2/fold3: still c (highest y<=fold) -> next=offsetFor(c)=2=offset, converged.
+    const geom = makeGeometry({
+      positions: { a: { y: -100 }, b: { y: 0 }, c: { y: 2 }, d: { y: 1000 } },
+    })
+    const res = fold.resolveCurrent({ geom, headingIds, historyDepth: 0 })
+    expect(res.currentHeadingId).toBe('c')
+    // At the converged offset (2), c is the only heading intersecting the viewport.
+    expect([...res.visibleHeadingIds]).toEqual(['c'])
   })
 })
 

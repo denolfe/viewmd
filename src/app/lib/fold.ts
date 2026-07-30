@@ -17,6 +17,18 @@ export type HeadingResolution = {
   visibleHeadingIds: Set<string>
 }
 
+type ResolveCurrentParams = {
+  geom: BoxGeometry
+  headingIds: string[]
+  historyDepth: number
+}
+
+type ResolveAtParams = {
+  geom: BoxGeometry
+  headingIds: string[]
+  topOffset: number
+}
+
 export type Fold = {
   /** Rows the overlay occludes once `id` is the current heading (ancestor rows + trail row; self excluded). */
   offsetFor(id: string, historyDepth: number): number
@@ -25,20 +37,13 @@ export type Fold = {
   /** Fold offset to reserve in the scrollbox tail for the last heading (0 when none). */
   tailReserve(lastHeadingId: string | null, historyDepth: number): number
   /** Current heading + visible set against live geometry, resolving the heading↔offset fixed point. */
-  resolveCurrent(params: {
-    geom: BoxGeometry
-    headingIds: string[]
-    historyDepth: number
-  }): HeadingResolution
+  resolveCurrent(params: ResolveCurrentParams): HeadingResolution
   /**
-   * Current heading + visible set for a caller that already fixed the offset (a
-   * jump just pinned it), so there is no fixed point to search for.
+   * Current heading + visible set for a caller supplying the offset (a pin's
+   * fold offset, or 0 for the raw viewport top), so there is no fixed point to
+   * search for.
    */
-  resolveAt(params: {
-    geom: BoxGeometry
-    headingIds: string[]
-    topOffset: number
-  }): HeadingResolution
+  resolveAt(params: ResolveAtParams): HeadingResolution
 }
 
 /**
@@ -71,12 +76,9 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
   const tailReserve = (lastHeadingId: string | null, historyDepth: number): number =>
     lastHeadingId ? offsetFor(lastHeadingId, historyDepth) : 0
 
-  const resolveCurrent = (params: {
-    geom: BoxGeometry
-    headingIds: string[]
-    historyDepth: number
-  }): HeadingResolution => {
+  const resolveCurrent = (params: ResolveCurrentParams): HeadingResolution => {
     const { geom, headingIds, historyDepth } = params
+    // Skips the findChildren tree walk below when there's nothing to resolve.
     if (headingIds.length === 0) return emptyResolution()
     // Geometry is fixed for this call, so resolve the boxes every pass shares once.
     const boxes = geom.findChildren(headingIds)
@@ -85,22 +87,22 @@ export function createFold(params: { toc: TocEntry[]; fileLabel?: string }): Fol
     // shallow heading sitting at a deeper one's fold can cycle; bail if an offset repeats.
     let offset = 0
     const seen = new Set<number>()
-    for (let pass = 0; pass < 8; pass++) {
+    for (;;) {
       const id = resolveHeadingNearTop({ boxes, ids: headingIds, top: geom.viewportTop + offset })
       const next = id ? offsetFor(id, historyDepth) : 0
       if (next === offset || seen.has(next)) break
+      // Each pass records one previously-unseen offset drawn from the finite
+      // set of possible fold offsets (trail rows + ancestor rows, bounded by
+      // heading depth), so the seen-offset guard alone bounds this loop.
       seen.add(offset)
       offset = next
     }
     return resolveWith({ geom, headingIds, boxes, offset })
   }
 
-  const resolveAt = (params: {
-    geom: BoxGeometry
-    headingIds: string[]
-    topOffset: number
-  }): HeadingResolution => {
+  const resolveAt = (params: ResolveAtParams): HeadingResolution => {
     const { geom, headingIds, topOffset } = params
+    // Skips the findChildren tree walk below when there's nothing to resolve.
     if (headingIds.length === 0) return emptyResolution()
     return resolveWith({
       geom,
@@ -133,7 +135,7 @@ function resolveWith(params: {
   }
 }
 
-/** Fresh empty resolution; the set is new each call because callers may hold it. */
+/** Empty resolution. */
 function emptyResolution(): HeadingResolution {
   return { currentHeadingId: null, visibleHeadingIds: new Set() }
 }
