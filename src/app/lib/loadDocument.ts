@@ -4,7 +4,7 @@ import type { Node, TocEntry } from './ast'
 import { FRONTMATTER_ID, parseFrontmatter, splitFrontmatter } from './frontmatter'
 import type { FrontmatterRow } from './frontmatter'
 import { computeHeadingLines, countNewlines } from './headingLines'
-import { replaceMermaidBlocks } from './preprocess'
+import { replaceDotBlocks, replaceMermaidBlocks } from './preprocess'
 
 export type LoadedDocument = {
   nodes: Node[]
@@ -24,7 +24,7 @@ export function buildDocument(md: string, filePath?: string): LoadedDocument {
   const { frontmatter, body } = splitFrontmatter(md)
   const offset = countNewlines(md.slice(0, md.length - body.length))
   const headingLines = computeHeadingLines({ body, offset })
-  const processed = replaceMermaidBlocks(body)
+  const processed = replaceDotBlocks(replaceMermaidBlocks(body))
   const { nodes, toc, headingIds } = buildTree(processed)
   const rows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
   const absPath = filePath ? resolve(filePath) : undefined
