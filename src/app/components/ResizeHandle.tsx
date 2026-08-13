@@ -1,45 +1,27 @@
-import { useRef, useState } from 'react'
-import { MouseButton } from '@opentui/core'
+import { useState } from 'react'
 import type { MouseEvent } from '@opentui/core'
 import { useTerminalDimensions } from '@opentui/react'
-import { isDoubleClick } from '../lib/sidebar-resize'
 import { theme } from '../styles/theme'
 
 type ResizeHandleProps = {
-  /** Begin a drag-resize (left mousedown on the handle, not a double-click). */
-  onResizeStart: () => void
-  /** Clear the width override back to auto (double-click on the handle). */
-  onReset: () => void
+  /** Forwards a mousedown on the seam to `App`, which owns start/reset/double-click. */
+  onSeamMouseDown: (event: MouseEvent) => void
 }
 
 /**
- * Invisible 1-col grab zone overlaid on the sidebar's left edge. Absolute
- * positioning keeps it out of flex layout so it costs no column. Hover reveals
- * a thin bar so the otherwise-invisible zone is discoverable.
+ * Invisible 1-col grab zone overlaid on the content/TOC seam (the sidebar's left
+ * edge). Absolute positioning keeps it out of flex layout so it costs no column.
+ * Hover reveals a thin bar so the otherwise-invisible zone is discoverable.
  *
- * The handle only STARTS the resize on mousedown; the drag stream itself is
- * tracked by a full-width ancestor (see App). OpenTUI binds drag-capture to the
- * hit-target of the *first* drag event, and a real terminal's first motion
+ * It only forwards the mousedown; `App` owns the resize/reset/double-click logic
+ * and the drag stream (see the drag shield in `App`). OpenTUI binds drag-capture
+ * to the hit-target of the *first* drag event, and a real terminal's first motion
  * already leaves this 1-col strip — so the handle cannot reliably receive the
- * drag events itself. Double-click clears the override back to auto width.
+ * drag events itself.
  */
-export function ResizeHandle({ onResizeStart, onReset }: ResizeHandleProps) {
+export function ResizeHandle({ onSeamMouseDown }: ResizeHandleProps) {
   const { height: termHeight } = useTerminalDimensions()
   const [isHovered, setIsHovered] = useState(false)
-  const lastDownAtRef = useRef<number | null>(null)
-
-  const onMouseDown = (event: MouseEvent) => {
-    if (event.button !== MouseButton.LEFT) return
-    event.stopPropagation()
-    const now = Date.now()
-    if (isDoubleClick({ now, lastDownAt: lastDownAtRef.current })) {
-      onReset()
-      lastDownAtRef.current = null
-      return
-    }
-    lastDownAtRef.current = now
-    onResizeStart()
-  }
 
   return (
     <box
@@ -49,7 +31,7 @@ export function ResizeHandle({ onResizeStart, onReset }: ResizeHandleProps) {
       width={1}
       height="100%"
       backgroundColor={isHovered ? theme.tocFocusBg : undefined}
-      onMouseDown={onMouseDown}
+      onMouseDown={onSeamMouseDown}
       onMouseOver={() => setIsHovered(true)}
       onMouseOut={() => setIsHovered(false)}
     >

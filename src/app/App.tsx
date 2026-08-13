@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
 import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
+import { MouseButton } from '@opentui/core'
 import type { MouseEvent } from '@opentui/core'
 import { AppStateContext, HeadingStateContext } from './state'
 import type { AppState, HeadingState, ScrollboxHandle, Status } from './state'
@@ -24,7 +25,7 @@ import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { ResizeHandle } from './components/ResizeHandle'
-import { sidebarWidthFromDragX } from './lib/sidebar-resize'
+import { contentWidthFromSeamX, isDoubleClick } from './lib/sidebar-resize'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import { theme } from './styles/theme'
 import type { LoadedDocument } from './lib/loadDocument'
@@ -84,10 +85,10 @@ export function App({
   // mirrors the state so the drag handler no-ops if it ever fires outside a resize.
   const isResizingRef = useRef(false)
   const [isResizing, setIsResizing] = useState(false)
-  const startResize = () => {
-    isResizingRef.current = true
-    setIsResizing(true)
-  }
+  // Tracks the previous seam mousedown so a second within the window resets to
+  // auto. Owned here, not in the handle, so the reset fires whether the second
+  // mousedown lands on the handle or on the drag shield mounted over it.
+  const lastSeamDownAtRef = useRef<number | null>(null)
 
   // At startup the H1 (if any) sits at the top of the viewport — seed it so
   // the overlay's hide-when-visible rule fires on the first paint.
@@ -143,17 +144,19 @@ export function App({
   // Size the TOC to its visible content, but never below 16 cols nor above 40%
   // of the terminal. Measuring only visible rows lets collapsing a wide subtree
   // shrink the sidebar so the viewer reclaims the freed columns.
-  const autoTocWidth = Math.min(
+  const tocWidth = Math.min(
     Math.floor(termWidth * 0.4),
     Math.max(16, tocVisibleContentWidth(toc, view.expanded) + TOC_PADDING),
   )
-  // Manual drag width wins until reset (double-click on the handle) or process exit.
-  const tocWidth = view.tocWidthOverride ?? autoTocWidth
+  // Dragging the content/TOC seam sets a session-only content max-width override
+  // (double-click on the handle clears it). It lifts the configured cap so the
+  // reclaimed columns on wide terminals become readable content, not dead space.
+  const effectiveContentMax = view.contentWidthOverride ?? contentMaxWidth
   const viewerColumnWidth = Math.max(
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
   )
-  const contentWidth = Math.min(contentMaxWidth, viewerColumnWidth)
+  const contentWidth = Math.min(effectiveContentMax, viewerColumnWidth)
 
   // Stable across nav; rebuilt only when the doc (toc/fileLabel) changes.
   const fold = useMemo(() => createFold({ toc, fileLabel }), [toc, fileLabel])
@@ -309,7 +312,7 @@ export function App({
       tocCursorId: view.tocCursorId,
       search: view.search,
       contentWidth,
-      contentMaxWidth,
+      contentMaxWidth: effectiveContentMax,
       dir: nav.doc.dir,
       historyDepth: nav.historyDepth,
       trailLabels,
@@ -324,7 +327,7 @@ export function App({
       view.search,
       view.helpVisible,
       contentWidth,
-      contentMaxWidth,
+      effectiveContentMax,
       nav.doc.dir,
       nav.historyDepth,
       trailLabels,
@@ -360,10 +363,26 @@ export function App({
   const onAncestorClick = (id: string) =>
     id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
+  const onSeamDown = (event: MouseEvent) => {
+    if (event.button !== MouseButton.LEFT) return
+    event.stopPropagation()
+    const now = Date.now()
+    const isReset = isDoubleClick({ now, lastDownAt: lastSeamDownAtRef.current })
+    lastSeamDownAtRef.current = isReset ? null : now
+    if (isReset) actions.setContentWidthOverride(null)
+    // Mount the shield on every seam press (reset included) so the trailing
+    // mouseup lands on it, not on a TOC row that the reset just shifted under
+    // the cursor. onResizeEnd (its mouseup) tears it down.
+    isResizingRef.current = true
+    setIsResizing(true)
+  }
   const onResizeDrag = (event: MouseEvent) => {
     if (!isResizingRef.current) return
     event.stopPropagation()
-    actions.setTocWidthOverride(sidebarWidthFromDragX({ x: event.x, termWidth }))
+    // A drag ends the double-click chain: without this, the drag's own mousedown
+    // would pair with the next click and fire a reset one press too early.
+    lastSeamDownAtRef.current = null
+    actions.setContentWidthOverride(contentWidthFromSeamX({ x: event.x, termWidth, tocWidth }))
   }
   const onResizeEnd = () => {
     isResizingRef.current = false
@@ -420,10 +439,7 @@ export function App({
                 position="relative"
               >
                 <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
-                <ResizeHandle
-                  onResizeStart={startResize}
-                  onReset={() => actions.setTocWidthOverride(null)}
-                />
+                <ResizeHandle onSeamMouseDown={onSeamDown} />
               </box>
             )}
             {/* Drag shield: while resizing, a transparent full-screen box on top
@@ -438,6 +454,7 @@ export function App({
                 width="100%"
                 height="100%"
                 zIndex={1000}
+                onMouseDown={onSeamDown}
                 onMouseDrag={onResizeDrag}
                 onMouseUp={onResizeEnd}
                 onMouseDragEnd={onResizeEnd}

@@ -1,26 +1,27 @@
 import { test, expect } from 'bun:test'
-import {
-  sidebarWidthFromDragX,
-  isDoubleClick,
-  MIN_TOC_WIDTH,
-  MIN_VIEWER_WIDTH,
-  DOUBLE_CLICK_MS,
-} from './sidebar-resize'
+import { contentWidthFromSeamX, isDoubleClick, DOUBLE_CLICK_MS } from './sidebar-resize'
+import { VIEWER_OVERHEAD } from '../styles/layout'
+import { MIN_CONTENT_WIDTH } from './config'
 
-test('sidebarWidthFromDragX: mid-range width is termWidth - x', () => {
-  expect(sidebarWidthFromDragX({ x: 70, termWidth: 100 })).toBe(30)
+test('contentWidthFromSeamX: mid-range width is the seam column minus viewer overhead', () => {
+  expect(contentWidthFromSeamX({ x: 100, termWidth: 200, tocWidth: 24 })).toBe(
+    100 - VIEWER_OVERHEAD,
+  )
 })
 
-test('sidebarWidthFromDragX: clamps to MIN_TOC_WIDTH when dragged too far right', () => {
-  expect(sidebarWidthFromDragX({ x: 98, termWidth: 100 })).toBe(MIN_TOC_WIDTH)
+test('contentWidthFromSeamX: clamps to MIN_CONTENT_WIDTH when dragged too far left', () => {
+  expect(contentWidthFromSeamX({ x: 5, termWidth: 200, tocWidth: 24 })).toBe(MIN_CONTENT_WIDTH)
 })
 
-test('sidebarWidthFromDragX: clamps so the viewer keeps MIN_VIEWER_WIDTH cols', () => {
-  expect(sidebarWidthFromDragX({ x: 1, termWidth: 100 })).toBe(100 - MIN_VIEWER_WIDTH)
+test('contentWidthFromSeamX: clamps so the auto-width TOC keeps its columns', () => {
+  // Farthest-right seam leaves exactly termWidth - tocWidth - overhead for content.
+  expect(contentWidthFromSeamX({ x: 500, termWidth: 200, tocWidth: 24 })).toBe(
+    200 - 24 - VIEWER_OVERHEAD,
+  )
 })
 
-test('sidebarWidthFromDragX: narrow terminals never invert the clamp', () => {
-  expect(sidebarWidthFromDragX({ x: 5, termWidth: 30 })).toBe(MIN_TOC_WIDTH)
+test('contentWidthFromSeamX: narrow terminals never invert the clamp', () => {
+  expect(contentWidthFromSeamX({ x: 5, termWidth: 30, tocWidth: 24 })).toBe(MIN_CONTENT_WIDTH)
 })
 
 test('isDoubleClick: true when prior down is within the window', () => {

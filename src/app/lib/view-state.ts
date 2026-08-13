@@ -14,8 +14,8 @@ export type ViewState = {
   tocVisible: boolean
   helpVisible: boolean
   mouseEnabled: boolean
-  /** Manual sidebar width override in cols; null uses the auto-computed width. Session-only. */
-  tocWidthOverride: number | null
+  /** Manual content max-width override in cols; null uses the configured cap. Session-only. */
+  contentWidthOverride: number | null
 }
 
 export type ViewActions = {
@@ -29,7 +29,7 @@ export type ViewActions = {
   toggleMouse: () => void
   toggleTocVisible: () => void
   toggleHelp: () => void
-  setTocWidthOverride: (n: number | null) => void
+  setContentWidthOverride: (n: number | null) => void
 }
 
 export function useViewState({ seedVisible }: { seedVisible: Set<string> }): {
@@ -46,7 +46,7 @@ export function useViewState({ seedVisible }: { seedVisible: Set<string> }): {
     tocVisible: true,
     helpVisible: false,
     mouseEnabled: false,
-    tocWidthOverride: null,
+    contentWidthOverride: null,
   }))
 
   const focus = useCallback((f: Focus) => setState(s => ({ ...s, focus: f })), [])
@@ -81,8 +81,8 @@ export function useViewState({ seedVisible }: { seedVisible: Set<string> }): {
     [],
   )
   const toggleHelp = useCallback(() => setState(s => ({ ...s, helpVisible: !s.helpVisible })), [])
-  const setTocWidthOverride = useCallback(
-    (n: number | null) => setState(s => ({ ...s, tocWidthOverride: n })),
+  const setContentWidthOverride = useCallback(
+    (n: number | null) => setState(s => ({ ...s, contentWidthOverride: n })),
     [],
   )
 
@@ -98,7 +98,7 @@ export function useViewState({ seedVisible }: { seedVisible: Set<string> }): {
       toggleMouse,
       toggleTocVisible,
       toggleHelp,
-      setTocWidthOverride,
+      setContentWidthOverride,
     }),
     [
       focus,
@@ -111,7 +111,7 @@ export function useViewState({ seedVisible }: { seedVisible: Set<string> }): {
       toggleMouse,
       toggleTocVisible,
       toggleHelp,
-      setTocWidthOverride,
+      setContentWidthOverride,
     ],
   )
 
