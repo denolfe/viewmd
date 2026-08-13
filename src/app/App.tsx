@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { dirname, resolve } from 'node:path'
 import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
+import type { MouseEvent } from '@opentui/core'
 import { AppStateContext, HeadingStateContext } from './state'
 import type { AppState, HeadingState, ScrollboxHandle, Status } from './state'
 import type { Action } from './lib/keys'
@@ -22,6 +23,8 @@ import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
+import { ResizeHandle } from './components/ResizeHandle'
+import { sidebarWidthFromDragX } from './lib/sidebar-resize'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import { theme } from './styles/theme'
 import type { LoadedDocument } from './lib/loadDocument'
@@ -71,6 +74,20 @@ export function App({
   // Opaque panel over the viewer while a swapped-in doc mounts and repositions,
   // so the reader never sees it painted at scrollTop 0 before the jump lands.
   const [covering, setCovering] = useState(false)
+
+  // Sidebar drag-resize. The 1-col handle only fires the mousedown; the drag
+  // stream is owned by a full-screen shield mounted while `isResizing` (see the
+  // JSX below). OpenTUI binds drag-capture to the first drag event's hit-target
+  // and the pointer immediately leaves the 1-col handle, so capturing on a
+  // stable, full-screen element is the only way to receive the whole drag
+  // regardless of whether the viewer or the TOC sits under the cursor. The ref
+  // mirrors the state so the drag handler no-ops if it ever fires outside a resize.
+  const isResizingRef = useRef(false)
+  const [isResizing, setIsResizing] = useState(false)
+  const startResize = () => {
+    isResizingRef.current = true
+    setIsResizing(true)
+  }
 
   // At startup the H1 (if any) sits at the top of the viewport — seed it so
   // the overlay's hide-when-visible rule fires on the first paint.
@@ -126,10 +143,12 @@ export function App({
   // Size the TOC to its visible content, but never below 16 cols nor above 40%
   // of the terminal. Measuring only visible rows lets collapsing a wide subtree
   // shrink the sidebar so the viewer reclaims the freed columns.
-  const tocWidth = Math.min(
+  const autoTocWidth = Math.min(
     Math.floor(termWidth * 0.4),
     Math.max(16, tocVisibleContentWidth(toc, view.expanded) + TOC_PADDING),
   )
+  // Manual drag width wins until reset (double-click on the handle) or process exit.
+  const tocWidth = view.tocWidthOverride ?? autoTocWidth
   const viewerColumnWidth = Math.max(
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
@@ -341,11 +360,28 @@ export function App({
   const onAncestorClick = (id: string) =>
     id === FILE_ROW_ID ? dispatchTocAction({ kind: 'top' }) : onEntryJump(id)
 
+  const onResizeDrag = (event: MouseEvent) => {
+    if (!isResizingRef.current) return
+    event.stopPropagation()
+    actions.setTocWidthOverride(sidebarWidthFromDragX({ x: event.x, termWidth }))
+  }
+  const onResizeEnd = () => {
+    isResizingRef.current = false
+    setIsResizing(false)
+  }
+
   return (
     <AppStateContext.Provider value={appState}>
       <HeadingStateContext.Provider value={headingState}>
         <box flexDirection="column" height="100%">
-          <box flexDirection="row" flexGrow={1} overflow="hidden" position="relative">
+          <box
+            flexDirection="row"
+            flexGrow={1}
+            overflow="hidden"
+            position="relative"
+            onMouseDrag={onResizeDrag}
+            onMouseUp={onResizeEnd}
+          >
             <StickyHeader toc={toc} fileLabel={fileLabel} onAncestorClick={onAncestorClick} />
             <SearchBar toc={toc} fileLabel={fileLabel} />
             <HelpPanel />
@@ -376,9 +412,36 @@ export function App({
                 settles. `visible={false}` still frees the column so the viewer reclaims
                 the width. */}
             {toc.length > 0 && (
-              <box width={tocWidth} border={false} visible={isTocShown} flexDirection="column">
+              <box
+                width={tocWidth}
+                border={false}
+                visible={isTocShown}
+                flexDirection="column"
+                position="relative"
+              >
                 <Toc toc={toc} onEntryJump={onEntryJump} onEntryToggle={onEntryToggle} />
+                <ResizeHandle
+                  onResizeStart={startResize}
+                  onReset={() => actions.setTocWidthOverride(null)}
+                />
               </box>
+            )}
+            {/* Drag shield: while resizing, a transparent full-screen box on top
+                captures the whole drag so it works regardless of whether the
+                pointer is over the viewer or the TOC. Without it, OpenTUI binds
+                the drag to whatever content sits under the cursor at first motion. */}
+            {isResizing && (
+              <box
+                position="absolute"
+                left={0}
+                top={0}
+                width="100%"
+                height="100%"
+                zIndex={1000}
+                onMouseDrag={onResizeDrag}
+                onMouseUp={onResizeEnd}
+                onMouseDragEnd={onResizeEnd}
+              />
             )}
           </box>
           <StatusLine fileLabel={fileLabel} />

@@ -72,7 +72,8 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
 - Derives `stateRef = useLatest(view)` (`src/app/lib/useLatest.ts`) — a ref updated to the latest `ViewState` on every render — so effectful code can read current state without becoming a render dependency.
 - Holds a `useRef<ScrollboxHandle>` (`viewerRef`) for imperative scroll calls — see [Imperative scroll](#imperative-scroll).
 - Computes layout each render from `useTerminalDimensions`:
-  - `tocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer).
+  - `autoTocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer).
+  - `tocWidth = tocWidthOverride ?? autoTocWidth` — a session-only `tocWidthOverride` (set by dragging the sidebar's left edge, see §9 TOC) takes precedence when non-null; it is not persisted.
   - `viewerColumnWidth = (hasToc ? termWidth - tocWidth : termWidth) - 2` (2 cols for the viewer scrollbar + paddingRight).
   - `contentWidth = min(CONTENT_MAX_WIDTH, viewerColumnWidth)` — exposed via context so block renderers can size to it.
 - Memoises an `AppState` object into `AppStateContext` so descendants read state via `useAppState()`.
@@ -88,7 +89,8 @@ Layout (rendered tree):
   <box flexDirection=row flexGrow=1 overflow=hidden position=relative>
     <StickyHeader />                ← absolute overlay; top/left 0; zIndex 10
     <Viewer />                      ← scrollbox, contentWidth + overhead
-    {hasToc && <box width=tocWidth><Toc /></box>}
+    {hasToc && <box width=tocWidth position=relative><Toc /><ResizeHandle /></box>}
+    {isResizing && <box absolute full-screen zIndex 1000/>}   ← drag shield
   </box>
   <StatusLine />                    ← height 1
 </box>
@@ -223,6 +225,12 @@ Jumps (`tocSelect`, `nextHeading`/`prevHeading`) call `scrollChildToTop(id, ance
 - The cursor row gets `theme.tocFocusBg` background while `focus === 'sidebar'`.
 
 Width is computed by `tocContentWidth` in `toc-util.ts` (`INDENT_PER_LEVEL * (level-1) + MARKER_WIDTH + inlineVisibleWidth(inline)`), clamped in `App.tsx`.
+
+### Drag-resize
+
+The sidebar's left edge carries an invisible 1-col `ResizeHandle` (`src/app/components/ResizeHandle.tsx`), absolutely positioned so it costs no column. Its mousedown only _starts_ a resize (or, on a double-click, clears the override back to auto width); hovering reveals a `▏` bar. While resizing, `App` mounts a transparent full-screen **drag shield** (`position=absolute`, `zIndex 1000`) whose `onMouseDrag` sets `view.tocWidthOverride` (`width = termWidth - event.x`, clamped so the sidebar keeps ≥ 16 cols and the viewer ≥ 20 — see `src/app/lib/sidebar-resize.ts`) and whose `onMouseUp`/`onMouseDragEnd` ends the resize.
+
+Why a full-screen shield rather than the handle itself: OpenTUI binds drag-**capture** to the hit-target of the _first_ `drag` event (not the `mousedown` target), and a real terminal's first motion has already left the 1-col handle. Capturing on a stable, full-screen element makes the whole drag land on one owner regardless of whether the pointer is over the viewer (dragging left) or the TOC (dragging right). The row box carries the same handlers as a fallback for the first event before the shield mounts. The handle's `<text>` sets `selectable={false}` so the mousedown doesn't start a text selection that would hijack the drag.
 
 ## 10. Search (`src/app/lib/search.ts`, `match-nav.ts`, `components/SearchInput.tsx`)
 
