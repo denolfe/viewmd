@@ -72,9 +72,10 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
 - Derives `stateRef = useLatest(view)` (`src/app/lib/useLatest.ts`) — a ref updated to the latest `ViewState` on every render — so effectful code can read current state without becoming a render dependency.
 - Holds a `useRef<ScrollboxHandle>` (`viewerRef`) for imperative scroll calls — see [Imperative scroll](#imperative-scroll).
 - Computes layout each render from `useTerminalDimensions`:
-  - `tocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer).
+  - `tocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer). The TOC always auto-sizes to its visible content.
+  - `effectiveContentMax = contentWidthOverride ?? contentMaxWidth` — a session-only `contentWidthOverride` (set by dragging the content/TOC seam, see §9 TOC) lifts the configured cap when non-null; it is not persisted.
   - `viewerColumnWidth = (hasToc ? termWidth - tocWidth : termWidth) - 2` (2 cols for the viewer scrollbar + paddingRight).
-  - `contentWidth = min(CONTENT_MAX_WIDTH, viewerColumnWidth)` — exposed via context so block renderers can size to it.
+  - `contentWidth = min(effectiveContentMax, viewerColumnWidth)` — exposed via context so block renderers can size to it. `effectiveContentMax` also flows to context as `contentMaxWidth`, so the Viewer's inner cap lifts with the drag.
 - Memoises an `AppState` object into `AppStateContext` so descendants read state via `useAppState()`.
 - Wires `useKeyboard` → `mapKey(ev, focus, { searchActive, helpOpen })` → `dispatch(action, commands)`. When `focus === 'search'`, `App` skips dispatch entirely — `SearchInput` owns its own `useKeyboard`.
 - Runs two effects:
@@ -88,7 +89,8 @@ Layout (rendered tree):
   <box flexDirection=row flexGrow=1 overflow=hidden position=relative>
     <StickyHeader />                ← absolute overlay; top/left 0; zIndex 10
     <Viewer />                      ← scrollbox, contentWidth + overhead
-    {hasToc && <box width=tocWidth><Toc /></box>}
+    {hasToc && <box width=tocWidth position=relative><Toc /><ResizeHandle /></box>}
+    {isResizing && <box absolute full-screen zIndex 1000/>}   ← drag shield
   </box>
   <StatusLine />                    ← height 1
 </box>
@@ -223,6 +225,12 @@ Jumps (`tocSelect`, `nextHeading`/`prevHeading`) call `scrollChildToTop(id, ance
 - The cursor row gets `theme.tocFocusBg` background while `focus === 'sidebar'`.
 
 Width is computed by `tocContentWidth` in `toc-util.ts` (`INDENT_PER_LEVEL * (level-1) + MARKER_WIDTH + inlineVisibleWidth(inline)`), clamped in `App.tsx`.
+
+### Drag-resize
+
+The content/TOC seam carries an invisible 1-col `ResizeHandle` (`src/app/components/ResizeHandle.tsx`), absolutely positioned on the TOC pane's left edge so it costs no column; hovering reveals a `▏` bar. It only forwards its mousedown — `App` (`onSeamDown`) owns the gesture. Dragging sets `view.contentWidthOverride` from the seam column (`contentWidth = event.x - VIEWER_OVERHEAD`, clamped so content keeps ≥ MIN_CONTENT_WIDTH and the auto-width TOC keeps its cols — see `contentWidthFromSeamX` in `src/app/lib/sidebar-resize.ts`). Because the TOC is auto-width and packs immediately right of the content, dragging the seam grows/shrinks the content in both directions and the TOC rides along — reclaiming the dead space a capped content leaves on wide terminals. A double-click on the seam clears the override back to the configured cap.
+
+While resizing, `App` mounts a transparent full-screen **drag shield** (`position=absolute`, `zIndex 1000`) whose `onMouseDrag` drives the resize and whose `onMouseUp`/`onMouseDragEnd` ends it. Why a shield rather than the handle itself: OpenTUI binds drag-**capture** to the hit-target of the _first_ `drag` event (not the `mousedown` target), and a real terminal's first motion has already left the 1-col handle. A stable full-screen owner also absorbs the trailing mouseup of a double-click, so the reset (which shifts the TOC left under the cursor) never lands a stray click on a TOC row. The row box carries the same handlers as a fallback for the first event before the shield mounts. A drag clears the double-click timer so a drag's own mousedown never pairs with the next click. The handle's `<text>` sets `selectable={false}` so the mousedown doesn't start a text selection that would hijack the drag.
 
 ## 10. Search (`src/app/lib/search.ts`, `match-nav.ts`, `components/SearchInput.tsx`)
 

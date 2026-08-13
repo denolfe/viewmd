@@ -91,6 +91,7 @@ function makeDeps(
     toggleMouse: mock(),
     toggleTocVisible: mock(),
     toggleHelp: mock(),
+    setContentWidthOverride: mock(),
   }
   const doc = { nodes: [], toc, headingIds, ...overrides.doc }
   const viewState: ViewState = {
@@ -103,6 +104,7 @@ function makeDeps(
     tocVisible: true,
     helpVisible: false,
     mouseEnabled: false,
+    contentWidthOverride: null,
     ...overrides.state,
   }
   const deps: CommandDeps = {
