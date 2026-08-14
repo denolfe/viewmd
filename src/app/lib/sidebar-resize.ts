@@ -25,6 +25,22 @@ export function contentWidthFromSeamX({
   return Math.min(max, Math.max(MIN_CONTENT_WIDTH, raw))
 }
 
+/** Hiding the TOC hands its columns to the content rather than to dead space. */
+export function contentMaxForSidebar({
+  contentMax,
+  tocWidth,
+  isTocShown,
+  hasToc,
+}: {
+  contentMax: number
+  tocWidth: number
+  isTocShown: boolean
+  hasToc: boolean
+}): number {
+  if (isTocShown || !hasToc) return contentMax
+  return contentMax + tocWidth
+}
+
 /** True when `now` follows a recorded prior `down` within DOUBLE_CLICK_MS. */
 export function isDoubleClick({
   now,

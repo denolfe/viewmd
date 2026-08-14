@@ -1,5 +1,10 @@
 import { test, expect } from 'bun:test'
-import { contentWidthFromSeamX, isDoubleClick, DOUBLE_CLICK_MS } from './sidebar-resize'
+import {
+  contentMaxForSidebar,
+  contentWidthFromSeamX,
+  isDoubleClick,
+  DOUBLE_CLICK_MS,
+} from './sidebar-resize'
 import { VIEWER_OVERHEAD } from '../styles/layout'
 import { MIN_CONTENT_WIDTH } from './config'
 
@@ -34,4 +39,22 @@ test('isDoubleClick: false when prior down is too old', () => {
 
 test('isDoubleClick: false when there was no prior down', () => {
   expect(isDoubleClick({ now: 1000, lastDownAt: null })).toBe(false)
+})
+
+test('contentMaxForSidebar: shown TOC leaves the cap alone', () => {
+  expect(
+    contentMaxForSidebar({ contentMax: 100, tocWidth: 24, isTocShown: true, hasToc: true }),
+  ).toBe(100)
+})
+
+test('contentMaxForSidebar: hidden TOC hands its columns to the content', () => {
+  expect(
+    contentMaxForSidebar({ contentMax: 100, tocWidth: 24, isTocShown: false, hasToc: true }),
+  ).toBe(124)
+})
+
+test('contentMaxForSidebar: a document without a TOC has no columns to reclaim', () => {
+  expect(
+    contentMaxForSidebar({ contentMax: 100, tocWidth: 24, isTocShown: false, hasToc: false }),
+  ).toBe(100)
 })
