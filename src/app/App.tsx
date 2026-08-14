@@ -25,7 +25,7 @@ import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
 import { StatusLine } from './components/StatusLine'
 import { ResizeHandle } from './components/ResizeHandle'
-import { contentWidthFromSeamX, isDoubleClick } from './lib/sidebar-resize'
+import { contentMaxForSidebar, contentWidthFromSeamX, isDoubleClick } from './lib/sidebar-resize'
 import { CONTENT_MAX_WIDTH, VIEWER_OVERHEAD } from './styles/layout'
 import { theme } from './styles/theme'
 import type { LoadedDocument } from './lib/loadDocument'
@@ -151,7 +151,12 @@ export function App({
   // Dragging the content/TOC seam sets a session-only content max-width override
   // (double-click on the handle clears it). It lifts the configured cap so the
   // reclaimed columns on wide terminals become readable content, not dead space.
-  const effectiveContentMax = view.contentWidthOverride ?? contentMaxWidth
+  const effectiveContentMax = contentMaxForSidebar({
+    contentMax: view.contentWidthOverride ?? contentMaxWidth,
+    tocWidth,
+    isTocShown,
+    hasToc: toc.length > 0,
+  })
   const viewerColumnWidth = Math.max(
     1,
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
