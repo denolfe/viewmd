@@ -21,6 +21,10 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
   const topRule = '┌' + cellWidths.map(w => '─'.repeat(w)).join('┬') + '┐'
   const midRule = '├' + cellWidths.map(w => '─'.repeat(w)).join('┼') + '┤'
   const botRule = '└' + cellWidths.map(w => '─'.repeat(w)).join('┴') + '┘'
+  const headerLines = node.header.map((cell, i) => wrapInline(cell, colWidths[i] ?? 0))
+  const rowLines = node.rows.map(row => row.map((cell, i) => wrapInline(cell, colWidths[i] ?? 0)))
+  // Wrapped rows blur together without a rule between them; dense tables stay compact.
+  const hasWrappedRow = rowLines.some(row => row.some(lines => lines.length > 1))
 
   return (
     <box
@@ -35,8 +39,8 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
       </text>
       <Row
         cells={node.header}
+        cellLines={headerLines}
         cellWidths={cellWidths}
-        colWidths={colWidths}
         isHeader
         blockId={id}
         runKeyFor={ci => `h${ci}`}
@@ -45,14 +49,20 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
         {midRule}
       </text>
       {node.rows.map((row, ri) => (
-        <Row
-          key={ri}
-          cells={row}
-          cellWidths={cellWidths}
-          colWidths={colWidths}
-          blockId={id}
-          runKeyFor={ci => `r${ri}c${ci}`}
-        />
+        <Fragment key={ri}>
+          {ri > 0 && hasWrappedRow ? (
+            <text fg={theme.border} height={1}>
+              {midRule}
+            </text>
+          ) : null}
+          <Row
+            cells={row}
+            cellLines={rowLines[ri] ?? []}
+            cellWidths={cellWidths}
+            blockId={id}
+            runKeyFor={ci => `r${ri}c${ci}`}
+          />
+        </Fragment>
       ))}
       <text fg={theme.border} height={1}>
         {botRule}
@@ -63,20 +73,19 @@ export function Table({ node, id }: { node: Extract<Node, { kind: 'table' }>; id
 
 function Row({
   cells,
+  cellLines,
   cellWidths,
-  colWidths,
   isHeader,
   blockId,
   runKeyFor,
 }: {
   cells: InlineNode[][]
+  cellLines: InlineNode[][][]
   cellWidths: number[]
-  colWidths: number[]
   isHeader?: boolean
   blockId: string
   runKeyFor: (ci: number) => string
 }) {
-  const cellLines = cells.map((cell, i) => wrapInline(cell, colWidths[i] ?? 0))
   const lineCount = Math.max(1, ...cellLines.map(c => c.length))
   return (
     <box flexDirection="row">
