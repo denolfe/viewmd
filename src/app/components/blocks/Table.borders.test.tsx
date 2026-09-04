@@ -67,3 +67,43 @@ test('table borders are continuous through wrapped, styled cells', async () => {
   }
   expect(holes).toEqual([])
 })
+
+const FLAT_FIXTURE = ['| Tool | License |', '|---|---|', '| A | MIT |', '| B | Apache-2.0 |'].join(
+  '\n',
+)
+
+async function renderRows(markdown: string): Promise<string[]> {
+  const { nodes, toc, headingIds } = buildTree(markdown)
+  const { renderer, flush, renderOnce, captureCharFrame } = await createTestRenderer({
+    width: 100,
+    height: 40,
+  })
+  createRoot(renderer).render(
+    <App
+      nodes={nodes}
+      toc={toc}
+      headingIds={headingIds}
+      frontmatter={[]}
+      headingLines={{}}
+      fileLabel="t/tables.md"
+    />,
+  )
+  await flush({ maxPasses: 20 })
+  await new Promise(r => setTimeout(r, 30))
+  await renderOnce()
+  return captureCharFrame().split('\n')
+}
+
+// A table with a wrapped row reads as a wall of text without separators, so
+// every body row gets a rule. Dense single-line tables stay compact.
+test('body rows are separated by rules when any row wraps', async () => {
+  const lines = await renderRows(FIXTURE)
+  const ruleRows = lines.filter(l => l.includes('├'))
+  expect(ruleRows.length).toBe(3) // header rule + one between each pair of the 3 body rows
+})
+
+test('single-line tables keep only the header rule', async () => {
+  const lines = await renderRows(FLAT_FIXTURE)
+  const ruleRows = lines.filter(l => l.includes('├'))
+  expect(ruleRows.length).toBe(1)
+})
