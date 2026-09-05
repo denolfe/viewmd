@@ -4,9 +4,7 @@ import { addDefaultParsers } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
 import { App } from '../src/app/App'
-import { buildTree } from '../src/app/lib/ast'
-import { splitFrontmatter } from '../src/app/lib/frontmatter'
-import { replaceMermaidBlocks } from '../src/app/lib/preprocess'
+import { buildDocument } from '../src/app/lib/loadDocument'
 import { extraParsers } from '../src/app/parsers'
 
 const file = process.argv[2]
@@ -16,8 +14,11 @@ if (!file) {
 }
 
 const md = await Bun.file(file).text()
-const { body } = splitFrontmatter(md)
-const { nodes, toc, headingIds } = buildTree(replaceMermaidBlocks(body))
+// buildDocument, not buildTree: it runs the real pipeline (frontmatter split,
+// mermaid/DOT preprocessing, heading lines), so the timing matches the CLI.
+const tParse = performance.now()
+const { nodes, toc, headingIds, frontmatter, fileLabel, headingLines } = buildDocument(md, file)
+const parseMs = performance.now() - tParse
 
 addDefaultParsers(extraParsers)
 const setup = await createTestRenderer({ width: 120, height: 40, targetFps: 240 })
@@ -29,9 +30,9 @@ flushSync(() => {
       nodes={nodes}
       toc={toc}
       headingIds={headingIds}
-      frontmatter={[]}
-      fileLabel="bench/doc"
-      headingLines={{}}
+      frontmatter={frontmatter}
+      fileLabel={fileLabel}
+      headingLines={headingLines}
     />,
   )
 })
@@ -47,5 +48,9 @@ if (!hasFrame) {
   console.error('first-frame: no non-blank frame after 1000 render passes')
   process.exit(1)
 }
-console.log(`first-frame ${performance.now().toFixed(1)}ms`)
+// Total is from process start; parse is the buildDocument slice of it, so the
+// remainder is startup + renderer init + mount.
+console.log(
+  `first-frame ${performance.now().toFixed(1)}ms  (parse ${parseMs.toFixed(1)}ms, nodes=${nodes.length})`,
+)
 process.exit(0)

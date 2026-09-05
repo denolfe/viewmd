@@ -66,6 +66,15 @@ for (const file of files) {
     steps.push(performance.now() - t0)
   }
 
+  // Match ticks paint over the thumb glyphs as soon as a pattern is typed, so a
+  // dense pattern erases every trace of the thumb. Locate the column now, while
+  // no search exists.
+  const scrollbarCol = findScrollbarColumn(setup.captureCharFrame())
+  if (scrollbarCol === -1) {
+    console.error(`${file}: no scrollbar thumb found — document may fit in the viewport`)
+    process.exit(1)
+  }
+
   // Committing a search resolves every match to a row and the overlay rechecks
   // its marks on each scroll, so a long document with many matches is where that
   // cost shows. `e` hits most English prose.
@@ -94,18 +103,21 @@ for (const file of files) {
     process.exit(1)
   }
   const t1 = performance.now()
-  await setup.mockInput.pressEnter()
+  setup.mockInput.pressEnter()
   await setup.renderOnce()
-  // Mark resolution is deferred past the commit, so drain before stopping the
-  // clock: the reader waits for it either way.
-  await setup.flush()
-  await sleep(0)
-  await setup.renderOnce()
-  const commit = performance.now() - t1
+  // Mark resolution is deferred past the commit and lands a variable number of
+  // tasks later, so drain until ticks appear: the reader waits for them either way.
   // A search that never committed fails silently, reporting fast numbers for work
-  // that never happened. Match ticks are the observable proof; the same glyphs
-  // appear in table rules, so look only at the scrollbar column.
-  if (countTicksInScrollbarColumn(setup.captureCharFrame()) === 0) {
+  // that never happened; ticks in the scrollbar column are the observable proof.
+  let hasTicks = false
+  for (let i = 0; i < 50 && !hasTicks; i++) {
+    await setup.flush()
+    await sleep(0)
+    await setup.renderOnce()
+    hasTicks = countTicks(setup.captureCharFrame(), scrollbarCol) > 0
+  }
+  const commit = performance.now() - t1
+  if (!hasTicks) {
     console.error(`${file}: search never committed — no match ticks in the scrollbar column`)
     process.exit(1)
   }
@@ -160,14 +172,18 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-/** Match ticks painted on the scrollbar column, located by the thumb's block glyphs. */
-function countTicksInScrollbarColumn(frame: string): number {
+/** Rightmost column holding the thumb's block glyphs, or -1 when no scrollbar is drawn. */
+function findScrollbarColumn(frame: string): number {
   const lines = frame.split('\n')
   const width = Math.max(...lines.map(l => l.length))
   for (let col = width - 1; col >= 0; col--) {
     const isThumb = lines.filter(l => '█▀▄'.includes(l[col] ?? '')).length >= 2
-    if (!isThumb) continue
-    return lines.filter(l => '─═'.includes(l[col] ?? '')).length
+    if (isThumb) return col
   }
-  return 0
+  return -1
+}
+
+/** Match ticks in one column; the same glyphs appear in table rules, so the column matters. */
+function countTicks(frame: string, col: number): number {
+  return frame.split('\n').filter(l => '─═'.includes(l[col] ?? '')).length
 }
