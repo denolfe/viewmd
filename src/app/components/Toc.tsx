@@ -1,5 +1,5 @@
-import { useLayoutEffect, useRef } from 'react'
-import { useRenderer } from '@opentui/react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
+import { useRenderer, useTerminalDimensions } from '@opentui/react'
 import type { ScrollBoxRenderable } from '@opentui/core'
 import { useAppState, useHeadingState } from '../state'
 import { flattenVisible, isTocExpanded } from '../lib/toc-util'
@@ -7,6 +7,10 @@ import { onPrimaryClick } from '../lib/mouse'
 import { theme } from '../styles/theme'
 import type { TocEntry } from '../lib/ast'
 import { MutedInline } from './blocks/MutedInline'
+import { useProgressiveCount } from './useProgressiveCount'
+
+/** Screenfuls of rows in the first paint; a buffer against wrapped rows undercounting. */
+const INITIAL_SCREENS = 2
 
 export function Toc({
   toc,
@@ -19,9 +23,21 @@ export function Toc({
 }) {
   const { expanded, tocCursorId, focus } = useAppState()
   const { currentHeadingId } = useHeadingState()
-  const visible = flattenVisible(toc, expanded)
+  const visible = useMemo(() => flattenVisible(toc, expanded), [toc, expanded])
   const renderer = useRenderer()
+  const { height } = useTerminalDimensions()
   const boxRef = useRef<ScrollBoxRenderable | null>(null)
+
+  // Every row is several renderables, so a doc with hundreds of headings would
+  // otherwise pay for the whole sidebar before first paint. Rows are one line
+  // each unless a heading wraps, so `height` rows is a low-biased screenful;
+  // the spacer keeps the sidebar scrollbar honest while the tail mounts.
+  const mountedCount = useProgressiveCount({
+    total: visible.length,
+    initial: () => height * INITIAL_SCREENS,
+    resetKey: toc,
+  })
+  const rows = mountedCount < visible.length ? visible.slice(0, mountedCount) : visible
 
   // On mount, scrollSize is set before viewportSize settles, so auto-visibility
   // recalculates with garbage metrics and the bar flashes visible for one
@@ -43,7 +59,7 @@ export function Toc({
 
   return (
     <scrollbox ref={boxRef} flexGrow={1} focusable={false} paddingX={1} paddingTop={1}>
-      {visible.map(e => {
+      {rows.map(e => {
         const isExpanded = isTocExpanded(e, expanded)
         const hasChildren = e.children.length > 0
         const marker = hasChildren ? (isExpanded ? '▾' : '▸') : '•'
@@ -53,6 +69,7 @@ export function Toc({
         return (
           <box
             key={e.id}
+            id={tocRowId(e.id)}
             flexDirection="row"
             backgroundColor={isCursor ? theme.tocFocusBg : undefined}
           >
@@ -80,6 +97,12 @@ export function Toc({
           </box>
         )
       })}
+      {rows.length < visible.length && <box height={visible.length - rows.length} />}
     </scrollbox>
   )
+}
+
+/** Renderable id of a TOC row, so tests and tree walks can find mounted rows. */
+export function tocRowId(entryId: string): string {
+  return `toc-row:${entryId}`
 }
