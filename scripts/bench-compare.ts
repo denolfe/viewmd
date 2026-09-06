@@ -9,6 +9,8 @@ export type BenchResult = {
   command: string
   mean: number
   stddev: number
+  /** hyperfine `-L` values; `doc` names the fixture the command rendered. */
+  parameters?: Record<string, string>
 }
 
 export type HyperfineReport = {
@@ -18,37 +20,54 @@ export type HyperfineReport = {
 export type Verdict = 'ok' | 'warn' | 'fail'
 
 export type Comparison = {
+  doc: string
   baseline: BenchResult
   pr: BenchResult
   ratio: number
   verdict: Verdict
 }
 
-/** Expects exactly two results: baseline first, PR second (hyperfine arg order). */
-export function compare(report: HyperfineReport): Comparison {
-  const [baseline, pr] = report.results
-  if (report.results.length !== 2 || !baseline || !pr) {
-    throw new Error(`Expected exactly 2 hyperfine results, got ${report.results.length}`)
+/**
+ * One comparison per `doc` parameter. hyperfine emits results parameter-outer,
+ * command-inner, so within a doc the baseline (first command) precedes the PR.
+ * Without parameters the whole report is a single unnamed pair.
+ */
+export function compareAll(report: HyperfineReport): Comparison[] {
+  const byDoc = new Map<string, BenchResult[]>()
+  for (const r of report.results) {
+    const doc = r.parameters?.doc ?? ''
+    byDoc.set(doc, [...(byDoc.get(doc) ?? []), r])
+  }
+  if (byDoc.size === 0) throw new Error('hyperfine report has no results')
+  return [...byDoc].map(([doc, results]) => compare(doc, results))
+}
+
+function compare(doc: string, results: BenchResult[]): Comparison {
+  const [baseline, pr] = results
+  if (results.length !== 2 || !baseline || !pr) {
+    throw new Error(`Expected exactly 2 hyperfine results for "${doc}", got ${results.length}`)
   }
   const ratio = pr.mean / baseline.mean
   if (!Number.isFinite(ratio)) {
     throw new Error(`Non-finite ratio from means ${pr.mean} / ${baseline.mean}`)
   }
-  if (ratio >= FAIL_RATIO) return { baseline, pr, ratio, verdict: 'fail' }
-  if (ratio >= WARN_RATIO) return { baseline, pr, ratio, verdict: 'warn' }
-  return { baseline, pr, ratio, verdict: 'ok' }
+  if (ratio >= FAIL_RATIO) return { doc, baseline, pr, ratio, verdict: 'fail' }
+  if (ratio >= WARN_RATIO) return { doc, baseline, pr, ratio, verdict: 'warn' }
+  return { doc, baseline, pr, ratio, verdict: 'ok' }
 }
 
-export function renderTable(params: { comparison: Comparison; baselineLabel: string }): string {
-  const { comparison, baselineLabel } = params
+export function renderTable(params: { comparisons: Comparison[]; baselineLabel: string }): string {
+  const { comparisons, baselineLabel } = params
   const emoji: Record<Verdict, string> = { ok: '✅', warn: '⚠️', fail: '❌' }
   const lines = [
-    '### Startup benchmark (`--render test/exhaustive.md`, linux-x64)',
+    '### Startup benchmark (`--render`, linux-x64)',
     '',
-    '| build | mean | ratio | verdict |',
-    '| --- | --- | --- | --- |',
-    `| baseline (${baselineLabel}) | ${ms(comparison.baseline)} | — | |`,
-    `| PR | ${ms(comparison.pr)} | ${comparison.ratio.toFixed(2)}× | ${emoji[comparison.verdict]} ${comparison.verdict} |`,
+    `| doc | baseline (${baselineLabel}) | PR | ratio | verdict |`,
+    '| --- | --- | --- | --- | --- |',
+    ...comparisons.map(
+      c =>
+        `| ${c.doc || '(default)'} | ${ms(c.baseline)} | ${ms(c.pr)} | ${c.ratio.toFixed(2)}× | ${emoji[c.verdict]} ${c.verdict} |`,
+    ),
     '',
     `Thresholds: warn ≥ ${WARN_RATIO}×, fail ≥ ${FAIL_RATIO}×. Baseline built from main.`,
   ]
@@ -72,14 +91,14 @@ if (import.meta.main) {
   }
 
   const report: HyperfineReport = await Bun.file(jsonPath).json()
-  const comparison = compare(report)
-  const table = renderTable({ comparison, baselineLabel })
+  const comparisons = compareAll(report)
+  const table = renderTable({ comparisons, baselineLabel })
 
   console.log(table)
   if (values.out) await Bun.write(values.out, table)
   if (process.env.GITHUB_STEP_SUMMARY) appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${table}\n`)
 
-  if (comparison.verdict === 'fail') process.exit(1)
+  if (comparisons.some(c => c.verdict === 'fail')) process.exit(1)
 }
 
 function ms(result: BenchResult): string {

@@ -44,11 +44,17 @@ jobs:
       - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
         with:
           tool: hyperfine
+      # Large fixtures are generated, not committed; both binaries read the same files.
+      - name: Generate large fixtures
+        run: |
+          bun bench/gen-fixture.ts 200 > bench/large.md
+          bun bench/gen-fixture.ts 1000 > bench/huge.md
       - name: Benchmark baseline vs PR
         run: |
           hyperfine --warmup 3 --runs 10 --export-json bench.json \
-            '../baseline/dist/bin/viewmd --render test/exhaustive.md' \
-            'dist/bin/viewmd --render test/exhaustive.md'
+            -L doc test/exhaustive.md,bench/large.md,bench/huge.md \
+            '../baseline/dist/bin/viewmd --render {doc}' \
+            'dist/bin/viewmd --render {doc}'
       - name: Compare
         run: bun run scripts/bench-compare.ts bench.json --baseline-label "main@$(git rev-parse --short origin/main)" --out bench-summary.md
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
