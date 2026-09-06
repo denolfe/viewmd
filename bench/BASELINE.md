@@ -166,3 +166,45 @@ responsiveness during mount becomes a real complaint.
   Scaling flattened substantially (3.57× → 1.91×) but did not disappear. See the
   first-frame section above for the likely cause (initial-prefix size still scales with
   estimate density, not just viewport height).
+
+## 2026-09-05 — Bun 1.4.1, M2 Max, headless 120x40
+
+Fixtures: `bun bench/gen-fixture.ts 200 > bench/large.md` (5.2k lines, 2202 nodes,
+401 headings), `bun bench/gen-fixture.ts 1000 > bench/huge.md` (26k lines, 11002 nodes,
+2001 headings). Both gitignored. Stage timings via `bun bench/stages.ts <doc>`.
+
+Baseline is `f596175` (post Bun 1.4.1). Bench scripts were fixed first
+(`bench/scroll.tsx` drains until the tree is stable and times every loop with the same
+keypress+render protocol; `bench/first-frame.tsx` runs `buildDocument`), so the
+"before" column is from the fixed scripts on the baseline commit.
+
+| metric                           |  before |  after | change |
+| :------------------------------- | ------: | -----: | -----: |
+| first-frame README               |    96ms |   96ms |      – |
+| first-frame large.md             |   157ms |  120ms |   −24% |
+| first-frame huge.md              |   320ms |  176ms |   −45% |
+| buildDocument huge.md            |    69ms |   39ms |   −44% |
+| full progressive mount, large.md | 11222ms | 4286ms |   −62% |
+| scroll step p50, large.md        |  13.9ms |  9.6ms |   −31% |
+| scroll step under search, large  |  15.3ms |  9.5ms |   −38% |
+
+What changed, in order of impact:
+
+1. `useProgressiveMount` minted a new `nodes.slice()` per Viewer render, so `NodeList`'s
+   memo never held and every chunk re-reconciled every mounted block. Memoized slice +
+   `memo(NodeRenderer)` on node identity and path value.
+2. TOC sidebar mounted every heading row before first paint; now progressive via the
+   shared `useProgressiveCount`.
+3. `computeHeadingLines` ran a second full `marked.lexer`; diagram preprocessing moved to
+   a token pass so one lex feeds both.
+4. Spacer estimate re-walked the unmounted tail per chunk (O(n²)); prefix-sum once.
+5. Keyboard scroll resolved headings twice (explicit + watched setter). Dropped the
+   explicit call.
+6. Build scripts now define `NODE_ENV=production`; the shipped binary was bundling the
+   development react-reconciler. Not reflected above (benches run from source in dev).
+
+Tried and dropped: deferring `projectionMap` past first paint (no gain — the scroll-marks
+path builds it before first paint anyway).
+
+Remaining floor on large.md: ~7ms/step is OpenTUI's per-frame layout walk over ~18k
+renderables; only virtualizing the Viewer moves it.
