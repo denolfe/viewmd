@@ -1,5 +1,6 @@
 // Per-scroll-step cost on a fully mounted document, headless.
-// Usage: bun bench/scroll.tsx [doc.md...]   (defaults to DOCS below)
+// Usage: bun bench/scroll.tsx [doc.md...] [--json]   (defaults to DOCS below)
+//   --json   emit one machine-readable JSON line per doc (single-doc runs only)
 import { addDefaultParsers } from '@opentui/core'
 import { createTestRenderer } from '@opentui/core/testing'
 import { createRoot, flushSync } from '@opentui/react'
@@ -15,14 +16,17 @@ const DOCS = ['README.md', 'docs/ARCHITECTURE.md', 'test/long-document.md']
 
 addDefaultParsers(extraParsers)
 
-const files = process.argv.length > 2 ? process.argv.slice(2) : DOCS
+const args = process.argv.slice(2)
+const asJson = args.includes('--json')
+const fileArgs = args.filter(a => !a.startsWith('--'))
+const files = fileArgs.length > 0 ? fileArgs : DOCS
 
 // One document per process. Renderers share a TreeSitter client that
 // `renderer.destroy()` tears down, so a second document in the same process
 // mounts against a dead highlighter and silently measures the wrong thing.
 if (files.length > 1) {
   for (const file of files) {
-    const proc = Bun.spawn(['bun', import.meta.path, file], {
+    const proc = Bun.spawn(['bun', import.meta.path, file, ...(asJson ? ['--json'] : [])], {
       stdout: 'inherit',
       stderr: 'inherit',
     })
@@ -157,14 +161,40 @@ for (const file of files) {
     await drain()
   }
 
-  console.log(
-    `${file}\n  nodes=${nodes.length} headings=${headingIds.length}` +
-      ` renderables=${countTree(setup.renderer.root)}  full mount=${mountMs.toFixed(0)}ms` +
-      `\n  step p50=${pct(steps, 0.5)}ms p95=${pct(steps, 0.95)}ms` +
-      `\n  search matches=${findMatches(nodes, 'e').length}  commit=${commit.toFixed(1)}ms` +
-      `\n  step under search p50=${pct(litSteps, 0.5)}ms p95=${pct(litSteps, 0.95)}ms` +
-      `\n  stepMatch(n) p50=${pct(matchSteps, 0.5)}ms p95=${pct(matchSteps, 0.95)}ms`,
-  )
+  const renderables = countTree(setup.renderer.root)
+  const matches = findMatches(nodes, 'e').length
+  if (asJson) {
+    console.log(
+      JSON.stringify({
+        doc: file,
+        nodes: nodes.length,
+        headings: headingIds.length,
+        renderables,
+        matches,
+        context: {
+          step_p95: num(pct(steps, 0.95)),
+          step_search_p95: num(pct(litSteps, 0.95)),
+          stepMatch_p95: num(pct(matchSteps, 0.95)),
+        },
+        metrics: {
+          full_mount: Number(mountMs.toFixed(0)),
+          step_p50: num(pct(steps, 0.5)),
+          step_search_p50: num(pct(litSteps, 0.5)),
+          stepMatch_p50: num(pct(matchSteps, 0.5)),
+          commit: Number(commit.toFixed(1)),
+        },
+      }),
+    )
+  } else {
+    console.log(
+      `${file}\n  nodes=${nodes.length} headings=${headingIds.length}` +
+        ` renderables=${renderables}  full mount=${mountMs.toFixed(0)}ms` +
+        `\n  step p50=${pct(steps, 0.5)}ms p95=${pct(steps, 0.95)}ms` +
+        `\n  search matches=${matches}  commit=${commit.toFixed(1)}ms` +
+        `\n  step under search p50=${pct(litSteps, 0.5)}ms p95=${pct(litSteps, 0.95)}ms` +
+        `\n  stepMatch(n) p50=${pct(matchSteps, 0.5)}ms p95=${pct(matchSteps, 0.95)}ms`,
+    )
+  }
   setup.renderer.destroy()
 }
 process.exit(0)
@@ -172,6 +202,10 @@ process.exit(0)
 function pct(samples: number[], q: number): string {
   const sorted = [...samples].sort((a, b) => a - b)
   return (sorted[Math.floor(q * (sorted.length - 1))] ?? 0).toFixed(2)
+}
+
+function num(s: string): number {
+  return Number(s)
 }
 
 function countTree(node: { getChildren?: () => unknown[] }): number {

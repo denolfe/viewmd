@@ -49,8 +49,28 @@ jobs:
           hyperfine --warmup 3 --runs 10 --export-json bench.json \
             '../baseline/dist/bin/viewmd --render test/exhaustive.md' \
             'dist/bin/viewmd --render test/exhaustive.md'
-      - name: Compare
+      - name: Compare (--render)
+        continue-on-error: true
         run: bun run scripts/bench-compare.ts bench.json --baseline-label "main@$(git rev-parse --short origin/main)" --out bench-summary.md
+      # The baseline worktree checks out main, whose harness scripts predate the
+      # --json flag. Copy the PR's harness + fixture in so both builds run the same
+      # measurement code against different src.
+      - name: Prepare harness benchmarks
+        run: |
+          bun bench/gen-fixture.ts 200 > bench/large.md
+          cp bench/first-frame.tsx bench/scroll.tsx bench/large.md ../baseline/bench/
+      - name: Run first-frame + scroll benches
+        run: |
+          bun bench/first-frame.tsx bench/large.md --json --runs 10 > ff-pr.json
+          bun bench/scroll.tsx bench/large.md --json > scroll-pr.json
+          (cd ../baseline && bun bench/first-frame.tsx bench/large.md --json --runs 10) > ff-base.json
+          (cd ../baseline && bun bench/scroll.tsx bench/large.md --json) > scroll-base.json
+      - name: Compare (first-frame)
+        continue-on-error: true
+        run: bun run scripts/bench-compare.ts --metrics "First-frame (large.md, runs=10)" ff-base.json ff-pr.json --baseline-label "main@$(git rev-parse --short origin/main)" --out bench-summary.md --append
+      - name: Compare (scroll)
+        continue-on-error: true
+        run: bun run scripts/bench-compare.ts --metrics "Scroll (large.md)" scroll-base.json scroll-pr.json --baseline-label "main@$(git rev-parse --short origin/main)" --out bench-summary.md --append
       - uses: marocchino/sticky-pull-request-comment@5770ad5eb8f42dd2c4f34da00c94c5381e49af88 # v3.0.5
         if: always()
         with:
@@ -61,6 +81,11 @@ jobs:
         if: always()
         with:
           name: bench-json
-          path: bench.json
+          path: |
+            bench.json
+            ff-base.json
+            ff-pr.json
+            scroll-base.json
+            scroll-pr.json
           if-no-files-found: ignore
           retention-days: 1
