@@ -9,8 +9,9 @@ await mkdir(outDir, { recursive: true })
 // per-platform native packages (`@opentui/core-*`) are marked external so the
 // bundle keeps their dynamic imports and resolves the matching one at runtime
 // from the consumer's node_modules. Tree-sitter wasm/scm assets are emitted
-// beside main.js, so `--outdir` (not `--outfile`) is required.
-await $`bun build --target=bun --external ${'@opentui/core-*'} --entry-naming ${'[dir]/main.js'} ./src/index.tsx --outdir ${outDir}`
+// beside main.js, so `--outdir` (not `--outfile`) is required. NODE_ENV is
+// pinned so React bundles its production reconciler, not the dev one.
+await $`bun build --target=bun --external ${'@opentui/core-*'} --entry-naming ${'[dir]/main.js'} --define ${'process.env.NODE_ENV="production"'} ./src/index.tsx --outdir ${outDir}`
 
 // Ship the tree-sitter worker beside the bundle so OpenTUI resolves it
 // relative to import.meta.url in fallback mode.

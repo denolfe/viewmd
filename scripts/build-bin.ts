@@ -57,6 +57,10 @@ await Bun.build({
   compile: { target: platform.bunTarget, outfile: outFile },
   format: 'cjs',
   bytecode: true,
+  // React and react-reconciler pick their build from NODE_ENV at bundle time;
+  // without this the binary ships the development reconciler with its
+  // profiling and prop-diff instrumentation on every commit.
+  define: { 'process.env.NODE_ENV': '"production"' },
   plugins: [
     {
       name: 'viewmd-compiled-runtime',

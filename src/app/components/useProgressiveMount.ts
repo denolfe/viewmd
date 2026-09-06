@@ -43,7 +43,13 @@ export function useProgressiveMount(params: {
     return () => clearTimeout(tid)
   }, [fullyMounted, mountedCount, nodes])
 
-  const mountedNodes = fullyMounted ? nodes : nodes.slice(0, mountedCount)
+  // Memoized so the slice keeps its identity across shell re-renders (status
+  // line, overlay, sidebar): NodeList is memo'd on it, and a fresh array per
+  // render would re-reconcile every mounted block on every App render.
+  const mountedNodes = useMemo(
+    () => (fullyMounted ? nodes : nodes.slice(0, mountedCount)),
+    [fullyMounted, nodes, mountedCount],
+  )
   // Spacer stands in for unmounted content so scrollbar/G read ~right.
   const estimatedRemaining = useMemo(
     () => (fullyMounted ? 0 : estimateTotalRows(nodes.slice(mountedCount), contentWidth)),

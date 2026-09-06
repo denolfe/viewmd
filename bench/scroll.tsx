@@ -51,20 +51,43 @@ for (const file of files) {
   )
   // Progressive mount grows one chunk per setTimeout(0) task; renderOnce alone
   // never drains that queue, so a bench without this measures a partial tree.
-  for (let i = 0; i < 60; i++) {
+  // A fixed iteration count under-drains big docs, so loop until the
+  // renderable count stops growing.
+  const mountStart = performance.now()
+  let stableFor = 0
+  let lastCount = -1
+  for (let i = 0; i < 3000 && stableFor < 5; i++) {
     await setup.flush()
-    await sleep(5)
+    await sleep(1)
     await setup.renderOnce()
+    const count = countTree(setup.renderer.root)
+    stableFor = count === lastCount ? stableFor + 1 : 0
+    lastCount = count
+  }
+  const mountMs = performance.now() - mountStart
+  if (stableFor < 5) {
+    console.error(`${file}: tree never stabilized while draining the progressive mount`)
+    process.exit(1)
   }
   setup.mockInput.pressKey('x') // terminal capability handshake eats the first key
 
-  const steps: number[] = []
-  for (let i = 0; i < 200; i++) {
+  // Every step below is timed the same way: keypress plus one render pass.
+  // Deferred follow-ups (mark rechecks) run in a later task and are drained
+  // between loops, not inside the timed window.
+  const timeStep = async (key: string): Promise<number> => {
     const t0 = performance.now()
-    setup.mockInput.pressKey('j')
+    setup.mockInput.pressKey(key)
     await setup.renderOnce()
-    steps.push(performance.now() - t0)
+    return performance.now() - t0
   }
+  const drain = async () => {
+    await setup.flush()
+    await sleep(0)
+    await setup.renderOnce()
+  }
+
+  const steps: number[] = []
+  for (let i = 0; i < 200; i++) steps.push(await timeStep('j'))
 
   // Match ticks paint over the thumb glyphs as soon as a pattern is typed, so a
   // dense pattern erases every trace of the thumb. Locate the column now, while
@@ -122,35 +145,25 @@ for (const file of files) {
     process.exit(1)
   }
 
-  // The mark recheck runs in a deferred task, so drain it each step — renderOnce
-  // alone returns before it and would report a cost the reader still pays.
-  const lit = performance.now()
+  const litSteps: number[] = []
   for (let i = 0; i < 60; i++) {
-    setup.mockInput.pressKey('j')
-    await setup.renderOnce()
-    await setup.flush()
-    await sleep(0)
-    await setup.renderOnce()
+    litSteps.push(await timeStep('j'))
+    await drain()
   }
-  const litTotal = performance.now() - lit
 
-  const steps2: number[] = []
+  const matchSteps: number[] = []
   for (let i = 0; i < 20; i++) {
-    const t = performance.now()
-    setup.mockInput.pressKey('n')
-    await setup.renderOnce()
-    await setup.flush()
-    await sleep(0)
-    await setup.renderOnce()
-    steps2.push(performance.now() - t)
+    matchSteps.push(await timeStep('n'))
+    await drain()
   }
 
   console.log(
     `${file}\n  nodes=${nodes.length} headings=${headingIds.length}` +
-      ` renderables=${countTree(setup.renderer.root)}` +
+      ` renderables=${countTree(setup.renderer.root)}  full mount=${mountMs.toFixed(0)}ms` +
       `\n  step p50=${pct(steps, 0.5)}ms p95=${pct(steps, 0.95)}ms` +
-      `\n  search matches=${findMatches(nodes, 'e').length}  commit=${commit.toFixed(1)}ms  60 steps under search=${litTotal.toFixed(0)}ms` +
-      `\n  stepMatch(n) p50=${pct(steps2, 0.5)}ms p95=${pct(steps2, 0.95)}ms`,
+      `\n  search matches=${findMatches(nodes, 'e').length}  commit=${commit.toFixed(1)}ms` +
+      `\n  step under search p50=${pct(litSteps, 0.5)}ms p95=${pct(litSteps, 0.95)}ms` +
+      `\n  stepMatch(n) p50=${pct(matchSteps, 0.5)}ms p95=${pct(matchSteps, 0.95)}ms`,
   )
   setup.renderer.destroy()
 }
