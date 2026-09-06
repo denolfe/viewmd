@@ -1,6 +1,15 @@
 import { describe, expect, test } from 'bun:test'
-import type { HyperfineReport } from './bench-compare'
-import { FAIL_RATIO, WARN_RATIO, compare, renderTable } from './bench-compare'
+import type { HyperfineReport, MetricSet } from './bench-compare'
+import {
+  FAIL_RATIO,
+  WARN_RATIO,
+  compare,
+  compareMetrics,
+  overallVerdict,
+  renderMetricTable,
+  renderTable,
+  verdictFor,
+} from './bench-compare'
 
 function report(baselineMean: number, prMean: number): HyperfineReport {
   return {
@@ -71,6 +80,89 @@ describe('renderTable', () => {
       comparison: compare(report(0.5, 0.7)),
       baselineLabel: 'main@abc1234',
     })
+    expect(table).toContain('❌')
+  })
+})
+
+function metricSet(metrics: Record<string, number>): MetricSet {
+  return { metrics }
+}
+
+describe('verdictFor', () => {
+  test('ok / warn / fail at the thresholds', () => {
+    expect(verdictFor(1.0)).toBe('ok')
+    expect(verdictFor(WARN_RATIO)).toBe('warn')
+    expect(verdictFor(FAIL_RATIO)).toBe('fail')
+  })
+
+  test('throws on a non-finite ratio', () => {
+    expect(() => verdictFor(Number.NaN)).toThrow('Non-finite ratio')
+  })
+})
+
+describe('compareMetrics', () => {
+  test('diffs each shared metric and classifies it', () => {
+    const cs = compareMetrics({
+      baseline: metricSet({ step_p50: 10, full_mount: 100 }),
+      pr: metricSet({ step_p50: 13, full_mount: 105 }),
+    })
+    expect(cs).toHaveLength(2)
+    const step = cs.find(c => c.name === 'step_p50')
+    expect(step?.ratio).toBeCloseTo(1.3, 5)
+    expect(step?.verdict).toBe('fail')
+    expect(cs.find(c => c.name === 'full_mount')?.verdict).toBe('ok')
+  })
+
+  test('throws when the baseline has no metrics', () => {
+    expect(() => compareMetrics({ baseline: metricSet({}), pr: metricSet({}) })).toThrow(
+      'no metrics',
+    )
+  })
+
+  test('throws when the PR is missing a baseline metric', () => {
+    expect(() =>
+      compareMetrics({ baseline: metricSet({ step_p50: 10 }), pr: metricSet({ other: 5 }) }),
+    ).toThrow('Missing metric')
+  })
+})
+
+describe('overallVerdict', () => {
+  test('is the worst verdict across comparisons', () => {
+    expect(
+      overallVerdict(
+        compareMetrics({ baseline: metricSet({ a: 10, b: 10 }), pr: metricSet({ a: 10, b: 15 }) }),
+      ),
+    ).toBe('fail')
+    expect(
+      overallVerdict(
+        compareMetrics({
+          baseline: metricSet({ a: 10, b: 10 }),
+          pr: metricSet({ a: 10, b: 11.5 }),
+        }),
+      ),
+    ).toBe('warn')
+    expect(
+      overallVerdict(compareMetrics({ baseline: metricSet({ a: 10 }), pr: metricSet({ a: 9 }) })),
+    ).toBe('ok')
+  })
+})
+
+describe('renderMetricTable', () => {
+  test('renders a titled row per metric with ms, ratio, and emoji', () => {
+    const table = renderMetricTable({
+      title: 'Scroll (large.md)',
+      comparisons: compareMetrics({
+        baseline: metricSet({ step_p50: 10 }),
+        pr: metricSet({ step_p50: 13 }),
+      }),
+      baselineLabel: 'main@abc1234',
+    })
+    expect(table).toContain('### Scroll (large.md)')
+    expect(table).toContain('main@abc1234')
+    expect(table).toContain('step_p50')
+    expect(table).toContain('10.0ms')
+    expect(table).toContain('13.0ms')
+    expect(table).toContain('1.30×')
     expect(table).toContain('❌')
   })
 })
