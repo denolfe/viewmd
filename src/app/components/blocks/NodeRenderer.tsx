@@ -14,7 +14,16 @@ import { Details } from './Details'
 import { HtmlBlock } from './HtmlBlock'
 import { ImageBlock } from './ImageBlock'
 
-export function NodeRenderer({ node, path }: { node: Node; path: number[] }) {
+/**
+ * Memoized on node identity and path value: NodeList renders a fresh `path`
+ * array per element, so a default shallow compare would never bail. Without
+ * this, each progressive-mount chunk re-renders every already-mounted block.
+ */
+export const NodeRenderer = memo(NodeRendererImpl, (prev, next) => {
+  return prev.node === next.node && isSamePath(prev.path, next.path)
+})
+
+function NodeRendererImpl({ node, path }: { node: Node; path: number[] }) {
   const id = blockId(path)
   switch (node.kind) {
     case 'heading':
@@ -43,6 +52,12 @@ export function NodeRenderer({ node, path }: { node: Node; path: number[] }) {
     case 'space':
       return <box height={1} />
   }
+}
+
+function isSamePath(a: number[], b: number[]): boolean {
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false
+  return true
 }
 
 function Hr() {

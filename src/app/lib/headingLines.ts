@@ -1,22 +1,23 @@
-import { marked } from 'marked'
 import type { Tokens } from 'marked'
 import { slugify } from './ast'
 
 /**
  * Maps heading id -> 1-based source line in the original file.
- * `body` is the post-frontmatter markdown (BEFORE mermaid rewriting, so line
- * counts match the file); `offset` is the number of lines the frontmatter block
- * occupied (added back so ids point at real file lines). Ids are produced with
- * the same slugify + document-order dedup as `buildTree`, so they match.
+ * `tokens` is the lexed post-frontmatter body; every token's `raw` must still
+ * be the source fence text (diagram rendering only rewrites `text`/`lang`), so
+ * newline counts match the file. `offset` is the number of lines the
+ * frontmatter block occupied (added back so ids point at real file lines). Ids
+ * are produced with the same slugify + document-order dedup as `buildTree`, so
+ * they match.
  */
 export function computeHeadingLines(params: {
-  body: string
+  tokens: Tokens.Generic[]
   offset: number
 }): Record<string, number> {
-  const { body, offset } = params
+  const { tokens, offset } = params
   const used = new Set<string>()
   const lines: Record<string, number> = {}
-  walk(marked.lexer(body) as Tokens.Generic[], 0)
+  walk(tokens, 0)
   return lines
 
   // `startLine` = 0-based line index (within body) where `tokens[0]` begins.
@@ -49,8 +50,13 @@ export function computeHeadingLines(params: {
   }
 }
 
+/** indexOf-driven: several times faster than a per-character loop on large files. */
 export function countNewlines(s: string): number {
   let count = 0
-  for (const ch of s) if (ch === '\n') count++
+  let i = s.indexOf('\n')
+  while (i !== -1) {
+    count++
+    i = s.indexOf('\n', i + 1)
+  }
   return count
 }
