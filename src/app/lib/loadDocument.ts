@@ -1,10 +1,10 @@
 import { basename, dirname, resolve } from 'node:path'
-import { buildTree } from './ast'
+import { buildTreeFromTokens, lexMarkdown } from './ast'
 import type { Node, TocEntry } from './ast'
 import { FRONTMATTER_ID, parseFrontmatter, splitFrontmatter } from './frontmatter'
 import type { FrontmatterRow } from './frontmatter'
 import { computeHeadingLines, countNewlines } from './headingLines'
-import { replaceDotBlocks, replaceMermaidBlocks } from './preprocess'
+import { renderDiagramBlocks } from './preprocess'
 
 export type LoadedDocument = {
   nodes: Node[]
@@ -23,9 +23,11 @@ export type LoadedDocument = {
 export function buildDocument(md: string, filePath?: string): LoadedDocument {
   const { frontmatter, body } = splitFrontmatter(md)
   const offset = countNewlines(md.slice(0, md.length - body.length))
-  const headingLines = computeHeadingLines({ body, offset })
-  const processed = replaceDotBlocks(replaceMermaidBlocks(body))
-  const { nodes, toc, headingIds } = buildTree(processed)
+  // One lex feeds every pass: heading line numbers read `raw`, diagram
+  // rendering rewrites `text`/`lang`, and the tree is built from the result.
+  const tokens = lexMarkdown(body)
+  const headingLines = computeHeadingLines({ tokens, offset })
+  const { nodes, toc, headingIds } = buildTreeFromTokens(renderDiagramBlocks(tokens))
   const rows: FrontmatterRow[] = frontmatter ? parseFrontmatter(frontmatter) : []
   const absPath = filePath ? resolve(filePath) : undefined
   return {

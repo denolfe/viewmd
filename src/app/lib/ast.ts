@@ -79,8 +79,24 @@ export function buildTree(markdown: string): {
   toc: TocEntry[]
   headingIds: string[]
 } {
+  return buildTreeFromTokens(lexMarkdown(markdown))
+}
+
+/**
+ * The one lexer entry point: the `kbd` extension above must be registered
+ * before any lex, and the block token list is shared by every pass that
+ * needs it (tree building, heading line numbers, diagram rendering).
+ */
+export function lexMarkdown(markdown: string): Tokens.Generic[] {
+  return marked.lexer(markdown)
+}
+
+export function buildTreeFromTokens(tokens: Tokens.Generic[]): {
+  nodes: Node[]
+  toc: TocEntry[]
+  headingIds: string[]
+} {
   const ctx: ParseContext = { usedSlugs: new Set(), tocFlat: [] }
-  const tokens = marked.lexer(markdown)
   const nodes: Node[] = []
 
   for (const t of tokens) {
