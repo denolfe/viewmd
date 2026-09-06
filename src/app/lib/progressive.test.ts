@@ -3,6 +3,7 @@ import { buildTree } from './ast'
 import { renderAnsi } from './renderAnsi'
 import {
   estimateNodeRows,
+  estimateRowPrefix,
   estimateTotalRows,
   initialMountCount,
   sliceCountForRows,
@@ -112,6 +113,19 @@ describe('low bias against real render', () => {
     const actualRows = out.split('\n').length
     expect(estimateTotalRows(nodes, 100)).toBeLessThanOrEqual(actualRows)
   }, 30000)
+})
+
+describe('estimateRowPrefix', () => {
+  test('tail difference equals estimateTotalRows of the tail slice', () => {
+    const { nodes } = buildTree('# T\n\npara\n\n- a\n- b\n\n```\nx\ny\n```\n\ntail')
+    const prefix = estimateRowPrefix(nodes, WIDTH)
+    expect(prefix).toHaveLength(nodes.length + 1)
+    expect(prefix[0]).toBe(0)
+    for (let count = 0; count <= nodes.length; count++) {
+      const tail = (prefix[nodes.length] ?? 0) - (prefix[count] ?? 0)
+      expect(tail).toBe(estimateTotalRows(nodes.slice(count), WIDTH))
+    }
+  })
 })
 
 describe('sliceCountForRows', () => {

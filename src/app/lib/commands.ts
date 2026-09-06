@@ -117,11 +117,13 @@ export function createCommands(deps: CommandDeps): Commands {
     refreshVisible(height)
   }
 
+  // No resolve here: every scroll path funnels through the scrollbox's watched
+  // `scrollPosition` setter, which notifies `syncFromScroll` synchronously
+  // whenever the position actually changes. A clamped no-op scroll leaves the
+  // geometry, and therefore the heading resolution, untouched.
   const scroll = (fn: (v: ScrollboxHandle) => void): void => {
     const v = viewerRef.current
-    if (!v) return
-    fn(v)
-    resolveHeadings()
+    if (v) fn(v)
   }
 
   return {

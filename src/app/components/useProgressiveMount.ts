@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { CHUNK_SIZE, estimateTotalRows, initialMountCount } from '../lib/progressive'
+import { CHUNK_SIZE, estimateRowPrefix, initialMountCount } from '../lib/progressive'
 import type { Node } from '../lib/ast'
 
 /**
@@ -51,10 +51,10 @@ export function useProgressiveMount(params: {
     [fullyMounted, nodes, mountedCount],
   )
   // Spacer stands in for unmounted content so scrollbar/G read ~right.
-  const estimatedRemaining = useMemo(
-    () => (fullyMounted ? 0 : estimateTotalRows(nodes.slice(mountedCount), contentWidth)),
-    [fullyMounted, nodes, mountedCount, contentWidth],
-  )
+  const rowPrefix = useMemo(() => estimateRowPrefix(nodes, contentWidth), [nodes, contentWidth])
+  const estimatedRemaining = fullyMounted
+    ? 0
+    : (rowPrefix[nodes.length] ?? 0) - (rowPrefix[mountedCount] ?? 0)
 
   return { mountedNodes, estimatedRemaining, fullyMounted }
 }

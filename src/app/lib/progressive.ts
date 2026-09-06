@@ -46,6 +46,20 @@ export function estimateTotalRows(nodes: Node[], contentWidth: number): number {
   return total
 }
 
+/**
+ * Cumulative row estimates: `prefix[i]` is the estimate for the first `i`
+ * nodes, so the tail past any mount count is `prefix[n] - prefix[count]`.
+ * Built once per document so per-chunk spacer math is O(1), not a re-walk.
+ */
+export function estimateRowPrefix(nodes: Node[], contentWidth: number): number[] {
+  const prefix = new Array<number>(nodes.length + 1)
+  prefix[0] = 0
+  for (const [i, n] of nodes.entries()) {
+    prefix[i + 1] = (prefix[i] ?? 0) + estimateNodeRows(n, contentWidth)
+  }
+  return prefix
+}
+
 export function estimateNodeRows(node: Node, contentWidth: number): number {
   switch (node.kind) {
     case 'space':
