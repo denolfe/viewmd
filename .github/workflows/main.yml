@@ -44,15 +44,15 @@ jobs:
       - uses: taiki-e/install-action@43aecc8d72668fbcfe75c31400bc4f890f1c5853 # v2.83.2
         with:
           tool: hyperfine
-      # Large fixtures are generated, not committed; both binaries read the same files.
-      - name: Generate large fixtures
-        run: |
-          bun bench/gen-fixture.ts 200 > bench/large.md
-          bun bench/gen-fixture.ts 1000 > bench/huge.md
+      # The large fixture is generated, not committed; both binaries read the same file.
+      # Uncapped --render lays out at most RENDER_MAX_HEIGHT rows, so a bigger
+      # fixture would measure the same layout plus parse time inside the noise band.
+      - name: Generate large fixture
+        run: bun bench/gen-fixture.ts 200 > bench/large.md
       - name: Benchmark baseline vs PR
         run: |
           hyperfine --warmup 3 --runs 10 --export-json bench.json \
-            -L doc test/exhaustive.md,bench/large.md,bench/huge.md \
+            -L doc test/exhaustive.md,bench/large.md \
             '../baseline/dist/bin/viewmd --render {doc}' \
             'dist/bin/viewmd --render {doc}'
       - name: Compare
