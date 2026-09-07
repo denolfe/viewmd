@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import { useTerminalDimensions } from '@opentui/react'
 import type { Node } from '../../lib/ast'
+import { useAppState } from '../../state'
 import { parseHtmlSegments } from '../../lib/html'
 import { theme } from '../../styles/theme'
 import { blockId } from '../../lib/scroll-marks'
@@ -60,11 +60,17 @@ function isSamePath(a: number[], b: number[]): boolean {
   return true
 }
 
+/**
+ * Spans the Viewer's content column. Reads `contentWidth` from context rather
+ * than `useTerminalDimensions`: that hook subscribes to the renderer's `resize`
+ * event, and one subscription per rule trips Node's 10-listener warning on a
+ * document with a handful of rules — printed to stderr, over the live TUI.
+ */
 function Hr() {
-  const { width } = useTerminalDimensions()
+  const { contentWidth } = useAppState()
   return (
     <box height={1}>
-      <text fg={theme.border}>{'─'.repeat(Math.max(0, width))}</text>
+      <text fg={theme.border}>{'─'.repeat(Math.max(0, contentWidth))}</text>
     </box>
   )
 }
