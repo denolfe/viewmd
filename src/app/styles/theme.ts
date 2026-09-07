@@ -29,7 +29,7 @@ export const theme = {
   searchCurrentBg: '#f59e1f',
   searchBarFg: '#d4d4d4', // matches foreground
   searchBarNoMatchBg: '#f14c4c', // whole-bar tint when the pattern has no matches — reuse red
-  selectionBg: '#3a3d41', // text-selection highlight; fg is left alone so syntax colors survive
+  selectionBg: '#d670d6', // text-selection highlight; fg is left alone so syntax colors survive
   tocCurrent: '#e5e5e5',
   tocFocusBg: '#264f78',
   scrollMarkMatch: '#f5f543', // saturated — reuse searchMatchBg
