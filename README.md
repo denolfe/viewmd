@@ -16,6 +16,7 @@ An interactive terminal markdown viewer
 - **Link following** - open links to other markdown files in place, with a back stack to return.
 - **Editor integration** - press `e` to open the current document in `$EDITOR` at the current position.
 - **Images** appear as a labeled, clickable link.
+- **Copy on select** - drag over text and it lands on your clipboard when you release. Uses the local clipboard command (`pbcopy`, `wl-copy`, `xclip`, `xsel`, `clip.exe`), falling back to OSC 52 over SSH.
 
 ## Install
 

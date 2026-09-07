@@ -7,16 +7,17 @@ import type { SearchState } from '../../state'
 import { useAppState } from '../../state'
 import { classifyHref } from '../../lib/links'
 import { theme } from '../../styles/theme'
+import { PILL_LEFT, PILL_RIGHT } from '../../lib/visible-text'
 
 // Half-block pill: ▐/▌ render as a half-filled edge cell, giving the colored span a half-cell of padding each side.
 export function Pill({ bg, fg, children }: { bg: string; fg?: string; children: ReactNode }) {
   return (
     <>
-      <span fg={bg}>▐</span>
+      <span fg={bg}>{PILL_LEFT}</span>
       <span bg={bg} fg={fg}>
         {children}
       </span>
-      <span fg={bg}>▌</span>
+      <span fg={bg}>{PILL_RIGHT}</span>
     </>
   )
 }

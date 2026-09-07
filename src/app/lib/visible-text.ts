@@ -136,8 +136,9 @@ export function imageLabelText(alt: string, src: string): string {
     .join('')
 }
 
-const PILL_LEFT = '▐'
-const PILL_RIGHT = '▌'
+/** Half-block cells padding a codespan/kbd pill; see `Pill` in InlineRenderer. */
+export const PILL_LEFT = '▐'
+export const PILL_RIGHT = '▌'
 
 function seg(text: string, element: number, searchable = true): Segment {
   return { text, element, searchable }
