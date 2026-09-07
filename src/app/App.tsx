@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { dirname, resolve } from 'node:path'
 import { flushSync, useKeyboard, useRenderer, useTerminalDimensions } from '@opentui/react'
 import { MouseButton } from '@opentui/core'
-import type { MouseEvent } from '@opentui/core'
+import type { MouseEvent, Selection } from '@opentui/core'
 import { AppStateContext, HeadingStateContext } from './state'
 import type { AppState, HeadingState, ScrollboxHandle, Status } from './state'
 import type { Action } from './lib/keys'
@@ -20,6 +20,9 @@ import { Toc } from './components/Toc'
 import { tocVisibleContentWidth } from './lib/toc-util'
 import { FILE_ROW_ID } from './lib/overlay-rows'
 import { createFold } from './lib/fold'
+import { copySelection, copyStatusText, resolveCopyStrategy } from './lib/copy-selection'
+import { hasCommand, spawnClipboardCommand } from './lib/clipboard-runner'
+import { installSelectionColors } from './lib/selection-style'
 import { SearchBar } from './components/SearchBar'
 import { HelpPanel } from './components/HelpPanel'
 import { StickyHeader } from './components/StickyHeader'
@@ -206,6 +209,35 @@ export function App({
     }, 0)
     return () => clearTimeout(tid)
   }, [headingIds, fold])
+
+  useEffect(() => installSelectionColors(theme.selectionBg), [])
+
+  // The renderer emits `selection` once per finished drag (mouse up), so the
+  // selected text lands on the clipboard without a keystroke.
+  useEffect(() => {
+    const strategy = resolveCopyStrategy({
+      env: process.env,
+      platform: process.platform,
+      hasCommand,
+      isOsc52Supported: renderer.isOsc52Supported(),
+    })
+    const onSelection = (selection: Selection) => {
+      void copySelection({
+        text: selection.getSelectedText(),
+        strategy,
+        clipboard: renderer,
+        runCommand: spawnClipboardCommand,
+      }).then(result => {
+        const text = copyStatusText(result)
+        if (!text) return
+        setStatus({ kind: result.kind === 'copied' ? 'info' : 'error', text })
+      })
+    }
+    renderer.on('selection', onSelection)
+    return () => {
+      renderer.off('selection', onSelection)
+    }
+  }, [renderer])
 
   useEffect(() => {
     if (status.kind === 'idle') return
