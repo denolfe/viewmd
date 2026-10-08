@@ -33,7 +33,9 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
   const rawLang = node.lang && node.lang !== 'text' ? node.lang : undefined
   // Unrendered mermaid keeps its 'mermaid' title but skips tree-sitter (no
   // grammar for it) — render the raw source as plain highlighted text.
-  const filetype = rawLang && rawLang !== 'mermaid' ? infoStringToFiletype(rawLang) : undefined
+  const highlightLang = rawLang ?? node.inferredLang
+  const filetype =
+    highlightLang && highlightLang !== 'mermaid' ? infoStringToFiletype(highlightLang) : undefined
   const title = rawLang ? ` ${rawLang} ` : undefined
 
   const lines = node.value.split('\n')
