@@ -3,8 +3,13 @@ import { dlopen, suffix } from 'bun:ffi'
 import { getTreeSitterClient } from '@opentui/core'
 import { buildTree } from './ast'
 import { renderAnsi } from './renderAnsi'
+import { theme } from '../styles/theme'
 
 const stripAnsi = (s: string): string => s.replace(/\x1b\[[0-9;]*m/g, '')
+const fg = (hex: string): string => {
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16))
+  return `38;2;${r};${g};${b}m`
+}
 
 describe('renderAnsi', () => {
   test('renders heading and paragraph text', async () => {
@@ -75,6 +80,16 @@ describe('renderAnsi', () => {
     })
     const escCount = (s: string) => (s.match(/\x1b\[[0-9;]*m/g) ?? []).length
     expect(escCount(highlighted)).toBeGreaterThan(escCount(plain))
+  })
+
+  test.each(['diff', 'patch'])('colors %s fence lines, markers included', async lang => {
+    const out = await renderAnsi({
+      nodes: buildTree(`\`\`\`${lang}\n@@ -1 +1 @@\n-old\n+new\n\`\`\`\n`).nodes,
+      width: 80,
+      maxHeight: 200,
+    })
+    expect(out).toContain(`${fg(theme.red)}-old`)
+    expect(out).toContain(`${fg(theme.green)}+new`)
   })
 
   test.skipIf(process.platform === 'win32')(

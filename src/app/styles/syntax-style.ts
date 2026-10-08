@@ -1,4 +1,5 @@
 import { SyntaxStyle } from '@opentui/core'
+import { theme } from './theme'
 
 // VS Code Dark+ inspired token colors keyed by tree-sitter scope names.
 export const syntaxStyle = SyntaxStyle.fromStyles({
@@ -30,4 +31,7 @@ export const syntaxStyle = SyntaxStyle.fromStyles({
   attribute: { fg: '#9cdcfe' },
   escape: { fg: '#d7ba7d' },
   label: { fg: '#c8c8c8' },
+  'diff.plus': { fg: theme.green },
+  'diff.minus': { fg: theme.red },
+  'diff.delta': { fg: theme.yellow },
 })
