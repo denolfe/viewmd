@@ -113,6 +113,20 @@ opentui = "*"
 }
 ```
 
+## Diff
+
+```diff
+diff --git a/src/greet.ts b/src/greet.ts
+index 3350e91..a9f836e 100644
+--- a/src/greet.ts
++++ b/src/greet.ts
+@@ -1,3 +1,3 @@ export function greet()
+ export function greet(name: string) {
+-  return 'Hello, ' + name
++  return `Hello, ${name}!`
+ }
+```
+
 ## Zig
 
 ```zig

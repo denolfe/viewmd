@@ -20,6 +20,8 @@ import htmlWasm from '../../assets/parsers/html/tree-sitter-html.wasm' with { ty
 import htmlHighlights from '../../assets/parsers/html/highlights.scm' with { type: 'file' }
 import cssWasm from '../../assets/parsers/css/tree-sitter-css.wasm' with { type: 'file' }
 import cssHighlights from '../../assets/parsers/css/highlights.scm' with { type: 'file' }
+import diffWasm from '../../assets/parsers/diff/tree-sitter-diff.wasm' with { type: 'file' }
+import diffHighlights from '../../assets/parsers/diff/highlights.scm' with { type: 'file' }
 
 export const extraParsers: FiletypeParserOptions[] = [
   parser('bash', bashWasm, bashHighlights, ['sh', 'shell', 'zsh']),
@@ -31,6 +33,7 @@ export const extraParsers: FiletypeParserOptions[] = [
   parser('toml', tomlWasm, tomlHighlights),
   parser('html', htmlWasm, htmlHighlights, ['htm']),
   parser('css', cssWasm, cssHighlights),
+  parser('diff', diffWasm, diffHighlights, ['patch']),
 ]
 
 function parser(

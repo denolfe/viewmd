@@ -85,6 +85,14 @@
           "https://raw.githubusercontent.com/nvim-treesitter/nvim-treesitter/master/queries/css/highlights.scm"
         ]
       }
+    },
+    {
+      "filetype": "diff",
+      "aliases": ["patch"],
+      "wasm": "https://github.com/tree-sitter-grammars/tree-sitter-diff/releases/download/v0.2.0/tree-sitter-diff.wasm",
+      "queries": {
+        "highlights": ["./assets/parsers/diff/highlights.scm"]
+      }
     }
   ]
 }
