@@ -249,7 +249,9 @@ async function preloadParsersForNodes(nodes: Node[]): Promise<void> {
 
 function collectLangs(nodes: Node[], out: Set<string>): void {
   for (const node of nodes) {
-    if (node.kind === 'code' && node.lang) out.add(node.lang)
+    if (node.kind !== 'code') continue
+    const lang = node.lang ?? node.inferredLang
+    if (lang) out.add(lang)
   }
 }
 

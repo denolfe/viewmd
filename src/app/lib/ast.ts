@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import type { Tokens } from 'marked'
+import { detectLang } from './detect-lang'
 import { htmlContainsBlockMarkdown, htmlToMarkdown, stripHtml } from './html'
 
 marked.use({
@@ -37,7 +38,13 @@ export type InlineNode =
 export type Node =
   | { kind: 'heading'; level: 1 | 2 | 3 | 4 | 5 | 6; id: string; text: InlineNode[] }
   | { kind: 'paragraph'; inline: InlineNode[] }
-  | { kind: 'code'; lang?: string; value: string }
+  | {
+      kind: 'code'
+      lang?: string
+      value: string
+      /** Guessed by `detectLang` when the fence has no info string; drives highlighting only, never the title. */
+      inferredLang?: string
+    }
   | { kind: 'list'; ordered: boolean; start?: number; items: ListItem[] }
   | { kind: 'blockquote'; children: Node[] }
   | { kind: 'table'; header: InlineNode[][]; rows: InlineNode[][][] }
@@ -261,7 +268,13 @@ function blockToNode(t: Tokens.Generic, ctx: ParseContext): Node | null {
     }
     case 'code': {
       const c = t as Tokens.Code
-      return { kind: 'code', lang: c.lang || undefined, value: c.text }
+      const lang = c.lang || undefined
+      return {
+        kind: 'code',
+        lang,
+        value: c.text,
+        inferredLang: lang ? undefined : detectLang(c.text),
+      }
     }
     case 'list': {
       const l = t as Tokens.List

@@ -94,6 +94,16 @@ describe('buildTree', () => {
     const { nodes } = buildTree('```js\nx\n```')
     expect(nodes[0]).toMatchObject({ kind: 'code', lang: 'js', value: 'x' })
   })
+
+  test('untagged code block carries an inferred lang', () => {
+    const { nodes } = buildTree('```\n$ bun test\n```')
+    expect(nodes[0]).toMatchObject({ kind: 'code', lang: undefined, inferredLang: 'bash' })
+  })
+
+  test('tagged code block skips inference', () => {
+    const { nodes } = buildTree('```text\n$ bun test\n```')
+    expect(nodes[0]).toMatchObject({ kind: 'code', lang: 'text', inferredLang: undefined })
+  })
 })
 
 describe('buildTree — details wrapping', () => {
