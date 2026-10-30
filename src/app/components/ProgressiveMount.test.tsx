@@ -160,7 +160,7 @@ test('jumpToMatch to an unmounted block completes once its chunk mounts', async 
   const { nodes, setup, settle, viewerRef } = await mountViewerOnly(bigFixture(), () => {
     scrolls++
   })
-  const matches = findMatches(nodes, 'THE-FINAL-LINE')
+  const matches = findMatches({ nodes: nodes, pattern: 'THE-FINAL-LINE', contentWidth: 80 })
   const match = matches[0]
   if (!match) throw new Error('fixture must contain the search target')
   // The match's block is still behind the spacer — jumpToMatch must record it.

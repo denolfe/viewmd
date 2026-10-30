@@ -292,6 +292,7 @@ export function App({
         doc: { nodes, toc, headingIds, fileLabel },
         fold,
         viewportHeight: renderer.height,
+        contentWidth,
         stateRef,
         actions,
         historyDepth: nav.historyDepth,
@@ -315,6 +316,7 @@ export function App({
       // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the
       // new page size instead of the pre-resize one.
       renderer.height,
+      contentWidth,
       nav.historyDepth,
       nav.follow,
       nav.back,
@@ -330,6 +332,11 @@ export function App({
     setCovering(false)
     commands.syncFromScroll()
   }, [commands])
+
+  // A width change can re-fit a diagram, which moves the match offsets inside it.
+  useEffect(() => {
+    commands.refreshSearch()
+  }, [contentWidth])
 
   const headingState = useMemo<HeadingState>(
     () => ({

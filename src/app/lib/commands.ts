@@ -12,6 +12,8 @@ export type CommandDeps = {
   doc: { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
   fold: Fold
   viewportHeight: number
+  /** The Viewer's content width; search projects diagrams at it. */
+  contentWidth: number
   stateRef: RefObject<ViewState>
   actions: ViewActions
   historyDepth: number
@@ -39,6 +41,8 @@ export type Commands = {
   toggleHelp(): void
   startSearch(): void
   applySearchPattern(p: { pattern: string; commit: boolean }): void
+  /** Re-run the current search against the current content width; keeps the match index. */
+  refreshSearch(): void
   stepMatch(dir: 1 | -1): void
   clearSearch(): void
   followLink(href: string): void
@@ -60,6 +64,7 @@ export function createCommands(deps: CommandDeps): Commands {
     doc,
     fold,
     viewportHeight,
+    contentWidth,
     stateRef,
     actions,
     historyDepth,
@@ -205,10 +210,16 @@ export function createCommands(deps: CommandDeps): Commands {
     applySearchPattern: ({ pattern, commit }) => {
       const s = stateRef.current.search
       if (!s) return
-      const matches = findMatches(doc.nodes, pattern)
+      const matches = findMatches({ nodes: doc.nodes, pattern, contentWidth })
       const index = matches.length ? (viewerRef.current?.seedMatchIndex({ matches }) ?? 0) : -1
       actions.search({ ...s, pattern, matches, index, committed: commit })
       if (commit) actions.focus('viewer')
+    },
+    refreshSearch: () => {
+      const s = stateRef.current.search
+      if (!s?.pattern) return
+      const matches = findMatches({ nodes: doc.nodes, pattern: s.pattern, contentWidth })
+      actions.search({ ...s, matches, index: Math.min(s.index, matches.length - 1) })
     },
     stepMatch: dir => {
       const s = stateRef.current.search
@@ -290,6 +301,7 @@ export function createNoopCommands(): Commands {
     toggleHelp: noop,
     startSearch: noop,
     applySearchPattern: noop,
+    refreshSearch: noop,
     stepMatch: noop,
     clearSearch: noop,
     followLink: noop,

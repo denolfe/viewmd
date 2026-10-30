@@ -5,6 +5,7 @@ import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
 import { MERMAID_ASCII_LANG } from '../../lib/preprocess'
+import { codeText, DIAGRAM_MARGIN_X } from '../../lib/diagram-fit'
 import type { Node } from '../../lib/ast'
 import type { AppState } from '../../state'
 
@@ -19,11 +20,12 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
   // Unrendered mermaid source keeps lang 'mermaid' and falls through as a
   // normal framed code block below.
   if (node.lang === MERMAID_ASCII_LANG) {
+    const ascii = codeText({ node, contentWidth })
     return (
-      <box id={id} marginX={MARGIN_X}>
+      <box id={id} marginX={DIAGRAM_MARGIN_X}>
         <text wrapMode="none">
-          <RunScope blockId={id} text={node.value}>
-            <HighlightedText value={node.value} />
+          <RunScope blockId={id} text={ascii}>
+            <HighlightedText value={ascii} />
           </RunScope>
         </text>
       </box>

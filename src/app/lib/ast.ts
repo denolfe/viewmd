@@ -2,6 +2,7 @@ import { marked } from 'marked'
 import type { Tokens } from 'marked'
 import { detectLang } from './detect-lang'
 import { htmlContainsBlockMarkdown, htmlToMarkdown, stripHtml } from './html'
+import type { DiagramCode } from './preprocess'
 
 marked.use({
   extensions: [
@@ -44,6 +45,8 @@ export type Node =
       value: string
       /** Guessed by `detectLang` when the fence has no info string; drives highlighting only, never the title. */
       inferredLang?: string
+      /** Mermaid source of a rendered diagram; `codeText` re-renders it tighter when `value` overflows. */
+      diagramSource?: string
     }
   | { kind: 'list'; ordered: boolean; start?: number; items: ListItem[] }
   | { kind: 'blockquote'; children: Node[] }
@@ -267,13 +270,14 @@ function blockToNode(t: Tokens.Generic, ctx: ParseContext): Node | null {
       return { kind: 'paragraph', inline: (p.tokens ?? []).flatMap(inlineToNode) }
     }
     case 'code': {
-      const c = t as Tokens.Code
+      const c = t as DiagramCode
       const lang = c.lang || undefined
       return {
         kind: 'code',
         lang,
         value: c.text,
         inferredLang: lang ? undefined : detectLang(c.text),
+        diagramSource: c.diagramSource,
       }
     }
     case 'list': {

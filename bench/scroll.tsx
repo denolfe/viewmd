@@ -162,7 +162,7 @@ for (const file of files) {
   }
 
   const renderables = countTree(setup.renderer.root)
-  const matches = findMatches(nodes, 'e').length
+  const matches = findMatches({ nodes: nodes, pattern: 'e', contentWidth: 80 }).length
   if (asJson) {
     console.log(
       JSON.stringify({

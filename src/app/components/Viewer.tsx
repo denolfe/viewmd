@@ -42,7 +42,7 @@ export function Viewer({
    */
   docKey: string
 }) {
-  const { viewerRef, contentWidth, contentMaxWidth } = useAppState()
+  const { viewerRef, contentWidth } = useAppState()
   const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
@@ -59,7 +59,9 @@ export function Viewer({
   const docKeyRef = useLatest(docKey)
 
   // Ref'd so the once-mounted seam effect always reads the current map.
-  const projectionsRef = useLatest(useMemo(() => projectionMap(nodes), [nodes]))
+  const projectionsRef = useLatest(
+    useMemo(() => projectionMap(nodes, contentWidth), [nodes, contentWidth]),
+  )
 
   const { mountedNodes, estimatedRemaining, fullyMounted } = useProgressiveMount({
     nodes,
@@ -121,7 +123,7 @@ export function Viewer({
           },
         }}
       >
-        <box key={docKey} maxWidth={contentMaxWidth} paddingRight={1} flexDirection="column">
+        <box key={docKey} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
           <NodeList nodes={mountedNodes} />
           {!fullyMounted && <box height={estimatedRemaining} />}

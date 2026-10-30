@@ -22,6 +22,7 @@ function makeCommands(): Commands {
     toggleHelp: mock(),
     startSearch: mock(),
     applySearchPattern: mock(),
+    refreshSearch: mock(),
     stepMatch: mock(),
     clearSearch: mock(),
     followLink: mock(),
