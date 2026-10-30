@@ -32,7 +32,6 @@
     "test": "FORCE_COLOR=3 bun test",
     "typecheck": "tsc --noEmit",
     "prepare": "husky",
-    "release": "bun run scripts/release.ts",
     "build:bin": "bun run scripts/build-bin.ts",
     "build:npm": "bun run scripts/build-npm.ts",
     "stage:prebuilt": "bun run scripts/stage-prebuilt-npm.ts",
@@ -46,11 +45,9 @@
   "devDependencies": {
     "@types/bun": "latest",
     "@types/react": "^19.2.17",
-    "@types/semver": "^7.7.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "prettier": "^3.8.1",
-    "semver": "^7.8.5"
+    "prettier": "^3.8.1"
   },
   "dependencies": {
     "@opentui/core": "^0.4.1",
