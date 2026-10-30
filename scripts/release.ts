@@ -9,9 +9,9 @@ import semver from 'semver'
 // (0.1.x -> 0.2.0). An explicit version like 0.2.0 is also accepted. CI derives
 // the npm dist-tag from the version itself: prerelease versions publish under
 // `beta`, stable versions under `latest`.
-// Pulls (fast-forward only), bumps package.json, then commits, tags, and pushes. A changelog of commits
-// since the last tag is generated once and reused as the commit body and the
-// annotated tag message.
+// Pulls (fast-forward only), bumps package.json, then commits, tags, and
+// pushes. A changelog of commits since the last tag is generated once and
+// reused as the commit body and the annotated tag message.
 
 const PREID = 'beta'
 
@@ -53,7 +53,8 @@ await bumpVersion(version)
 
 await $`git commit -am ${`chore(release): ${tag}\n\n${changelog}`}`
 await $`git tag -a ${tag} -m ${`${tag}\n\n${changelog}`}`
-await $`git push --follow-tags`
+// Atomic: a rejected branch push also drops the tag, so CI never publishes an orphan release.
+await $`git push --atomic origin HEAD ${tag}`
 
 console.log(`Released ${tag} (was v${current})`)
 
