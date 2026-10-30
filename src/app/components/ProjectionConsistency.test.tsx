@@ -6,8 +6,10 @@ import { createRoot } from '@opentui/react'
 import { App } from '../App'
 import { collectTextBearers } from '../lib/renderable-tree'
 import { isRuleBearer } from '../lib/viewport-geometry'
-import { buildTree } from '../lib/ast'
+import { buildTreeFromTokens, lexMarkdown } from '../lib/ast'
+import { renderDiagramBlocks } from '../lib/preprocess'
 import { alignOffset, projectDocument, runElementCount } from '../lib/visible-text'
+import { VIEWER_OVERHEAD } from '../styles/layout'
 
 // Kitchen-sink doc: every projected block kind, with a table wide enough to
 // wrap at the narrow renderer width. Locks projection ⇄ rendered text: if a
@@ -67,6 +69,12 @@ const FIXTURE = [
   '</p>',
   '',
   '<img alt="Logo" src="https://example.com/logo.png" />',
+  '',
+  // Wider than the column at default spacing, so it renders a tighter layout.
+  '```mermaid',
+  'graph LR',
+  '  A[zebra one] --> B[zebra two] --> C[zebra three] --> D[zebra four]',
+  '```',
 ].join('\n')
 
 const findScrollbox = (node: Renderable): ScrollBoxRenderable | null => {
@@ -81,7 +89,7 @@ const findScrollbox = (node: Renderable): ScrollBoxRenderable | null => {
 const normalize = (s: string) => s.replace(/\s+/g, ' ').trim()
 
 test('every projected run aligns into its block’s rendered text', async () => {
-  const { nodes, toc, headingIds } = buildTree(FIXTURE)
+  const { nodes, toc, headingIds } = buildTreeFromTokens(renderDiagramBlocks(lexMarkdown(FIXTURE)))
   const { renderer, flush, renderOnce } = await createTestRenderer({ width: 60, height: 80 })
   const settle = async () => {
     await flush({ maxPasses: 20 })
@@ -104,7 +112,9 @@ test('every projected run aligns into its block’s rendered text', async () => 
   const box = findScrollbox(renderer.root)
   if (!box) throw new Error('scrollbox not found')
 
-  const projections = projectDocument(nodes)
+  // The Viewer column is the breakout width plus its scrollbar overhead.
+  const breakoutWidth = box.width - VIEWER_OVERHEAD
+  const projections = projectDocument(nodes, breakoutWidth)
   expect(projections.length).toBeGreaterThan(15)
   for (const p of projections) {
     const blockBox = box.content.findDescendantById(p.blockElementId)

@@ -100,6 +100,7 @@ function makeDeps(
       projections: () => new Map(),
       isFullyMounted: () => false,
       contentWidth: () => 80,
+      breakoutWidth: () => 80,
       mountedCount: () => 1,
       docKey: () => 'doc.md',
       ...over.live,

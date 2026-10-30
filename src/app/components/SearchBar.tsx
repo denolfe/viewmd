@@ -10,7 +10,7 @@ import type { TocEntry } from '../lib/ast'
 const BAR_WIDTH = 28
 
 export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: string }) {
-  const { search, focus, contentWidth, commands } = useAppState()
+  const { search, focus, breakoutWidth, commands } = useAppState()
   const { currentHeadingId, visibleHeadingIds } = useHeadingState()
 
   const onInput = (pattern: string) => commands.applySearchPattern({ pattern, commit: false })
@@ -43,10 +43,10 @@ export function SearchBar({ toc, fileLabel }: { toc: TocEntry[]; fileLabel?: str
   // Muted counter reads fine on the dark surfaces; on the red miss bar it
   // would be illegible, so fall back to the regular bar fg there.
   const counterFg = isMiss ? theme.searchBarFg : theme.foregroundMuted
-  // Right-align the bar with the overlay's right edge (contentWidth + 1),
+  // Right-align the bar with the overlay's right edge (breakoutWidth + 1),
   // leaving the scrollbar column uncovered.
-  const barWidth = Math.min(BAR_WIDTH, contentWidth + 1)
-  const barLeft = Math.max(0, contentWidth + 1 - barWidth)
+  const barWidth = Math.min(BAR_WIDTH, breakoutWidth + 1)
+  const barLeft = Math.max(0, breakoutWidth + 1 - barWidth)
   // Counter right-aligned inside the bar; hidden when the pattern would run
   // under it (paddingX + label + pattern + cursor cell + one gap cell).
   const counterLeft = barWidth - 1 - counter.length

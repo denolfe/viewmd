@@ -1,6 +1,9 @@
 import { describe, expect, test, mock } from 'bun:test'
 import { createCommands, createNoopCommands } from './commands'
 import { createFold } from './fold'
+import { buildTreeFromTokens, lexMarkdown } from './ast'
+import { codeText } from './diagram-fit'
+import { renderDiagramBlocks } from './preprocess'
 import type { CommandDeps } from './commands'
 import type { ViewActions, ViewState } from './view-state'
 import type { ScrollboxHandle } from '../state'
@@ -112,6 +115,7 @@ function makeDeps(
     doc,
     fold: createFold({ toc: doc.toc, fileLabel: doc.fileLabel }),
     viewportHeight: 24,
+    breakoutWidth: 80,
     stateRef: { current: viewState },
     actions,
     historyDepth: 0,
@@ -359,6 +363,50 @@ describe('createCommands.applySearchPattern', () => {
   test('no-op when there is no active search', () => {
     const { deps, actions } = makeDeps({ state: { search: null } })
     createCommands(deps).applySearchPattern({ pattern: 'x', commit: false })
+    expect(actions.search).not.toHaveBeenCalled()
+  })
+})
+
+describe('createCommands.refreshSearch', () => {
+  const diagramNodes = buildTreeFromTokens(
+    renderDiagramBlocks(
+      lexMarkdown(
+        '```mermaid\ngraph LR\n  A[Start here] --> B[Parse markdown] --> C[Done all]\n```',
+      ),
+    ),
+  ).nodes
+
+  test('re-finds matches at the current content width, keeping the index', () => {
+    const breakoutWidth = 30
+    const { deps, actions } = makeDeps({
+      doc: { nodes: diagramNodes },
+      state: { search: { pattern: 'done', matches: [m()], index: 0, committed: true } },
+    })
+    createCommands({ ...deps, breakoutWidth }).refreshSearch()
+
+    const [code] = diagramNodes
+    if (code?.kind !== 'code') throw new Error('fixture must parse to a code node')
+    const start = codeText({ node: code, breakoutWidth }).toLowerCase().indexOf('done')
+    expect(start).not.toBe(code.value.toLowerCase().indexOf('done'))
+    expect(actions.search).toHaveBeenCalledWith(
+      expect.objectContaining({ index: 0, matches: [expect.objectContaining({ start })] }),
+    )
+  })
+
+  test('clamps the index when fewer matches remain', () => {
+    const { deps, actions } = makeDeps({
+      doc: { nodes: diagramNodes },
+      state: { search: { pattern: 'done', matches: [m(), m()], index: 1, committed: true } },
+    })
+    createCommands(deps).refreshSearch()
+    expect(actions.search).toHaveBeenCalledWith(expect.objectContaining({ index: 0 }))
+  })
+
+  test('no-op without a search pattern', () => {
+    const { deps, actions } = makeDeps({
+      state: { search: { pattern: '', matches: [], index: -1, committed: false } },
+    })
+    createCommands(deps).refreshSearch()
     expect(actions.search).not.toHaveBeenCalled()
   })
 })

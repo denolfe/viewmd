@@ -40,6 +40,8 @@ export type ScrollboxHandleDeps = {
     projections(): Map<string, BlockProjection>
     isFullyMounted(): boolean
     contentWidth(): number
+    /** Diagrams re-fit to this, so a change moves layout like a `contentWidth` rewrap. */
+    breakoutWidth(): number
     /** Top-level nodes mounted so far; grows once per progressive-mount chunk. */
     mountedCount(): number
     docKey(): string
@@ -68,10 +70,11 @@ export function createScrollboxHandle(deps: ScrollboxHandleDeps): ScrollboxSeam 
   const geom = createBoxGeometry(box)
   const scrollListeners = new Set<() => void>()
   // Marks are document-space, so only a rewrap or newly mounted content can move
-  // one: width rewraps, each mounted chunk grows the content, and navigating swaps
+  // one: width rewraps or re-fits, each mounted chunk grows the content, and navigating swaps
   // the document. A reload keeps the same key and is caught instead by the cache's
   // `matches` identity check, since its doc reset clears the search.
-  const renderKey = (): string => `${live.docKey()}:${live.contentWidth()}:${live.mountedCount()}`
+  const renderKey = (): string =>
+    `${live.docKey()}:${live.contentWidth()}:${live.breakoutWidth()}:${live.mountedCount()}`
   // Latched in `onFrame`, not read live: these update a render before the matching
   // renderables have geometry, so a read-time key would cache marks resolved against
   // the previous layout and then never invalidate them.

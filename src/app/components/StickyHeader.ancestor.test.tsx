@@ -21,6 +21,7 @@ function makeStub(overrides: Partial<Stub> = {}): Stub {
     search: null,
     visibleHeadingIds: new Set<string>(),
     contentWidth: 80,
+    breakoutWidth: 80,
     dir: undefined,
     commands: createNoopCommands(),
     historyDepth: 0,

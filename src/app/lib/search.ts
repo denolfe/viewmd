@@ -18,11 +18,20 @@ export type Match = {
   length: number
 }
 
-export function findMatches(nodes: Node[], pattern: string): Match[] {
+/** `breakoutWidth` must be the Viewer's: diagram text, and so match offsets, depends on it. */
+export function findMatches({
+  nodes,
+  pattern,
+  breakoutWidth,
+}: {
+  nodes: Node[]
+  pattern: string
+  breakoutWidth: number
+}): Match[] {
   if (!pattern) return []
   const re = new RegExp(escapeRegex(pattern), 'gi')
   const out: Match[] = []
-  for (const proj of projectionMap(nodes).values()) {
+  for (const proj of projectionMap(nodes, breakoutWidth).values()) {
     for (const run of proj.runs) {
       const text = runText(run)
       re.lastIndex = 0

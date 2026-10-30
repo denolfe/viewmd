@@ -10,7 +10,7 @@ import {
 } from './visible-text'
 
 function projectMd(md: string) {
-  return projectDocument(buildTree(md).nodes)
+  return projectDocument(buildTree(md).nodes, 80)
 }
 function texts(md: string): string[] {
   return projectMd(md).flatMap(p => p.runs.map(runText))
@@ -103,7 +103,7 @@ describe('projectDocument', () => {
     const list = nodes[0]
     expect(list?.kind).toBe('list')
     if (list?.kind !== 'list') return
-    const projs = projectDocument(nodes)
+    const projs = projectDocument(nodes, 80)
     list.items.forEach((item, i) => {
       const run = projs[i]?.runs[0]
       expect(run && runText(run)).toBe(

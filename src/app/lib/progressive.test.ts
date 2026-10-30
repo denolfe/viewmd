@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { buildTree } from './ast'
+import { buildTree, buildTreeFromTokens, lexMarkdown } from './ast'
 import { renderAnsi } from './renderAnsi'
 import {
   estimateNodeRows,
@@ -8,7 +8,7 @@ import {
   initialMountCount,
   sliceCountForRows,
 } from './progressive'
-import { MERMAID_ASCII_LANG } from './preprocess'
+import { MERMAID_ASCII_LANG, renderDiagramBlocks } from './preprocess'
 import type { Node } from './ast'
 
 const WIDTH = 80
@@ -44,6 +44,15 @@ describe('estimateNodeRows', () => {
   test('rendered mermaid ascii is raw line count (rendered bare)', () => {
     const n: Node = { kind: 'code', lang: MERMAID_ASCII_LANG, value: 'a\nb\nc' }
     expect(estimateNodeRows(n, WIDTH)).toBe(3)
+  })
+
+  test('an overflowing diagram counts the lines of its fitted render', () => {
+    const md = '```mermaid\ngraph LR\n  A[Start here] --> B[Parse markdown] --> C[Done all]\n```'
+    const n = buildTreeFromTokens(renderDiagramBlocks(lexMarkdown(md))).nodes[0]
+    if (n?.kind !== 'code') throw new Error('fixture must parse to a code node')
+    expect(estimateNodeRows(n, 1000)).toBe(5)
+    // Tight spacing drops the blank rows inside each box.
+    expect(estimateNodeRows(n, 30)).toBe(3)
   })
 
   test('unrendered mermaid source is line count + 4 (framed fallback)', () => {

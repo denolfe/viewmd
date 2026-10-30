@@ -113,7 +113,13 @@ const mountViewerOnly = async (md: string, onScroll?: () => void) => {
   const setup = await createTestRenderer({ width: 80, height: 20 })
   const viewerRef: { current: ScrollboxHandle | null } = { current: null }
   const commands = { followLink: () => {} } as unknown as Commands
-  const state = { viewerRef, contentWidth: 78, search: null, commands } as AppState
+  const state = {
+    viewerRef,
+    contentWidth: 78,
+    breakoutWidth: 78,
+    search: null,
+    commands,
+  } as AppState
   const settle = async () => {
     await setup.flush({ maxPasses: 20 })
     await new Promise(r => setTimeout(r, 30))
@@ -160,7 +166,7 @@ test('jumpToMatch to an unmounted block completes once its chunk mounts', async 
   const { nodes, setup, settle, viewerRef } = await mountViewerOnly(bigFixture(), () => {
     scrolls++
   })
-  const matches = findMatches(nodes, 'THE-FINAL-LINE')
+  const matches = findMatches({ nodes: nodes, pattern: 'THE-FINAL-LINE', breakoutWidth: 80 })
   const match = matches[0]
   if (!match) throw new Error('fixture must contain the search target')
   // The match's block is still behind the spacer — jumpToMatch must record it.
@@ -234,7 +240,13 @@ test('swapping to a longer doc re-expands the initial mounted prefix', async () 
   const setup = await createTestRenderer({ width: 80, height: 20 })
   const viewerRef: { current: ScrollboxHandle | null } = { current: null }
   const commands = { followLink: () => {} } as unknown as Commands
-  const state = { viewerRef, contentWidth: 78, search: null, commands } as AppState
+  const state = {
+    viewerRef,
+    contentWidth: 78,
+    breakoutWidth: 78,
+    search: null,
+    commands,
+  } as AppState
   const controller: { current: ((nodes: Node[]) => void) | null } = { current: null }
 
   createRoot(setup.renderer).render(

@@ -42,7 +42,7 @@ export function Viewer({
    */
   docKey: string
 }) {
-  const { viewerRef, contentWidth, contentMaxWidth } = useAppState()
+  const { viewerRef, contentWidth, breakoutWidth } = useAppState()
   const renderer = useRenderer()
   const { height } = useTerminalDimensions()
   const localRef = useRef<ScrollBoxRenderable | null>(null)
@@ -56,10 +56,13 @@ export function Viewer({
   const onScrollRef = useLatest(onScroll)
   const onRepositionedRef = useLatest(onRepositioned)
   const contentWidthRef = useLatest(contentWidth)
+  const breakoutWidthRef = useLatest(breakoutWidth)
   const docKeyRef = useLatest(docKey)
 
   // Ref'd so the once-mounted seam effect always reads the current map.
-  const projectionsRef = useLatest(useMemo(() => projectionMap(nodes), [nodes]))
+  const projectionsRef = useLatest(
+    useMemo(() => projectionMap(nodes, breakoutWidth), [nodes, breakoutWidth]),
+  )
 
   const { mountedNodes, estimatedRemaining, fullyMounted } = useProgressiveMount({
     nodes,
@@ -79,6 +82,7 @@ export function Viewer({
         projections: () => projectionsRef.current,
         isFullyMounted: () => fullyMountedRef.current,
         contentWidth: () => contentWidthRef.current,
+        breakoutWidth: () => breakoutWidthRef.current,
         mountedCount: () => mountedCountRef.current,
         docKey: () => docKeyRef.current,
       },
@@ -107,7 +111,7 @@ export function Viewer({
   }, [fullyMounted])
 
   return (
-    <box position="relative" width={contentWidth + VIEWER_OVERHEAD} height="100%">
+    <box position="relative" width={breakoutWidth + VIEWER_OVERHEAD} height="100%">
       <scrollbox
         ref={localRef}
         focusable={false}
@@ -121,7 +125,9 @@ export function Viewer({
           },
         }}
       >
-        <box key={docKey} maxWidth={contentMaxWidth} paddingRight={1} flexDirection="column">
+        {/* Prose holds the reading width; diagrams overflow this box into the breakout
+            columns (see `CodeBlock`). */}
+        <box key={docKey} width={contentWidth + 1} paddingRight={1} flexDirection="column">
           <Frontmatter rows={frontmatter} />
           <NodeList nodes={mountedNodes} />
           {!fullyMounted && <box height={estimatedRemaining} />}

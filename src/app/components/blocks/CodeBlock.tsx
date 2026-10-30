@@ -5,6 +5,7 @@ import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
 import { MERMAID_ASCII_LANG } from '../../lib/preprocess'
+import { codeText, DIAGRAM_MARGIN_X, textWidth } from '../../lib/diagram-fit'
 import type { Node } from '../../lib/ast'
 import type { AppState } from '../../state'
 
@@ -13,17 +14,20 @@ const PADDING_X = 2
 const MARGIN_X = 2
 
 export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>; id: string }) {
-  const { contentWidth, search } = useAppState()
+  const { contentWidth, breakoutWidth, search } = useAppState()
 
   // Rendered mermaid ASCII already carries its own frame; render it bare.
   // Unrendered mermaid source keeps lang 'mermaid' and falls through as a
-  // normal framed code block below.
+  // normal framed code block below. `minWidth` lets a diagram wider than the
+  // reading column overflow it into the breakout columns; a `wrapMode="none"`
+  // text clips at its box edge otherwise.
   if (node.lang === MERMAID_ASCII_LANG) {
+    const ascii = codeText({ node, breakoutWidth })
     return (
-      <box id={id} marginX={MARGIN_X}>
+      <box id={id} marginX={DIAGRAM_MARGIN_X} minWidth={textWidth(ascii)}>
         <text wrapMode="none">
-          <RunScope blockId={id} text={node.value}>
-            <HighlightedText value={node.value} />
+          <RunScope blockId={id} text={ascii}>
+            <HighlightedText value={ascii} />
           </RunScope>
         </text>
       </box>

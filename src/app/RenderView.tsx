@@ -39,6 +39,7 @@ export function RenderView({
       tocCursorId: null,
       search: null,
       contentWidth: Math.min(contentMaxWidth, width),
+      breakoutWidth: Math.min(contentMaxWidth, width),
       contentMaxWidth,
       dir: undefined,
       historyDepth: 0,

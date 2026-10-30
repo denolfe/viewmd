@@ -165,6 +165,9 @@ export function App({
     (isTocShown ? termWidth - tocWidth : termWidth) - VIEWER_OVERHEAD,
   )
   const contentWidth = Math.min(effectiveContentMax, viewerColumnWidth)
+  // With no sidebar on the right, diagrams may break out past the reading cap into
+  // the free columns; prose stays at `contentWidth`.
+  const breakoutWidth = isTocShown ? contentWidth : viewerColumnWidth
 
   // Stable across nav; rebuilt only when the doc (toc/fileLabel) changes.
   const fold = useMemo(() => createFold({ toc, fileLabel }), [toc, fileLabel])
@@ -292,6 +295,7 @@ export function App({
         doc: { nodes, toc, headingIds, fileLabel },
         fold,
         viewportHeight: renderer.height,
+        breakoutWidth,
         stateRef,
         actions,
         historyDepth: nav.historyDepth,
@@ -315,6 +319,7 @@ export function App({
       // resize; depend on the value so `scrollPage`/`scrollHalf` rebuild with the
       // new page size instead of the pre-resize one.
       renderer.height,
+      breakoutWidth,
       nav.historyDepth,
       nav.follow,
       nav.back,
@@ -330,6 +335,11 @@ export function App({
     setCovering(false)
     commands.syncFromScroll()
   }, [commands])
+
+  // A width change can re-fit a diagram, which moves the match offsets inside it.
+  useEffect(() => {
+    commands.refreshSearch()
+  }, [breakoutWidth])
 
   const headingState = useMemo<HeadingState>(
     () => ({
@@ -349,6 +359,7 @@ export function App({
       tocCursorId: view.tocCursorId,
       search: view.search,
       contentWidth,
+      breakoutWidth,
       contentMaxWidth: effectiveContentMax,
       dir: nav.doc.dir,
       historyDepth: nav.historyDepth,
@@ -364,6 +375,7 @@ export function App({
       view.search,
       view.helpVisible,
       contentWidth,
+      breakoutWidth,
       effectiveContentMax,
       nav.doc.dir,
       nav.historyDepth,
@@ -457,7 +469,7 @@ export function App({
                 position="absolute"
                 top={0}
                 left={0}
-                width={contentWidth + VIEWER_OVERHEAD}
+                width={breakoutWidth + VIEWER_OVERHEAD}
                 height="100%"
                 backgroundColor={theme.background}
                 zIndex={20}
