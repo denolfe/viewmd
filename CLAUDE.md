@@ -75,7 +75,7 @@ new keyboard-driven feature:
 
 ## Releasing
 
-`bun run release [beta|patch|minor|<version>]` (see `scripts/release.ts`) bumps the version, then commits, tags, and pushes from the current branch. `beta` (default) bumps the prerelease; `patch` finalizes the prerelease (or bumps patch if already stable); `minor` bumps the minor. The tag push triggers `.github/workflows/release.yml`, which builds binaries, publishes to npm, and creates the GitHub Release with auto-generated notes.
+`bun run release [beta|patch|minor|<version>]` (see `scripts/release.ts`) bumps the version, then commits, tags, and pushes from the current branch. `patch` (default) finalizes the prerelease (or bumps patch if already stable); `beta` bumps the prerelease; `minor` bumps the minor. The new version must be higher than package.json and every existing tag. The tag push triggers `.github/workflows/release.yml`, which builds binaries, publishes to npm, and creates the GitHub Release with auto-generated notes.
 
 CI derives the npm dist-tag from the version string alone: a prerelease (hyphen) publishes under `beta`, otherwise `latest`. The two dist-tags are independent — publishing a beta never moves `latest`.
 

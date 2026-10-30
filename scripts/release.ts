@@ -3,19 +3,20 @@ import { $ } from 'bun'
 import semver from 'semver'
 
 // Usage: bun run release [beta|patch|minor|<version>]  e.g. bun run release minor
-// `beta` (the default) bumps the beta prerelease off the current version.
-// `patch` finalizes the current prerelease (0.1.0-beta.3 -> 0.1.0), or bumps
+// `beta` bumps the beta prerelease off the current version. `patch` (the
+// default) finalizes the current prerelease (0.1.0-beta.3 -> 0.1.0), or bumps
 // the patch if the current version is already stable. `minor` bumps the minor
-// (0.1.x -> 0.2.0). An explicit version like 0.2.0 is also accepted. CI derives
-// the npm dist-tag from the version itself: prerelease versions publish under
-// `beta`, stable versions under `latest`.
+// (0.1.x -> 0.2.0). An explicit version like 0.2.0 is also accepted. The new
+// version must be higher than both package.json and every existing tag. CI
+// derives the npm dist-tag from the version itself: prerelease versions
+// publish under `beta`, stable versions under `latest`.
 // Pulls (fast-forward only), bumps package.json, then commits, tags, and
 // pushes. A changelog of commits since the last tag is generated once and
 // reused as the commit body and the annotated tag message.
 
 const PREID = 'beta'
 
-const arg = process.argv[2] ?? 'beta'
+const arg = process.argv[2] ?? 'patch'
 if (arg.startsWith('v')) {
   console.error(`Pass the version without a leading "v" (got "${arg}").`)
   process.exit(1)
@@ -34,9 +35,11 @@ const current = await readVersion()
 const version = resolveVersion(current, arg)
 const tag = `v${version}`
 
-const existingTag = (await $`git tag --list ${tag}`.text()).trim()
-if (existingTag) {
-  console.error(`Tag ${tag} already exists.`)
+// The highest tag can sit off this branch (a release cut from a stale checkout),
+// so package.json alone is not a safe floor.
+const floor = await highestReleasedVersion(current)
+if (!semver.gt(version, floor)) {
+  console.error(`Version ${version} must be higher than v${floor}.`)
   process.exit(1)
 }
 
@@ -73,6 +76,12 @@ function bump(current: string, release: 'prerelease' | 'patch' | 'minor'): strin
   const next = semver.inc(current, release, PREID)
   if (!next) throw new Error(`Cannot parse current version "${current}".`)
   return next
+}
+
+async function highestReleasedVersion(current: string): Promise<string> {
+  const tags = (await $`git tag --list`.text()).split('\n')
+  const versions = tags.map(tag => semver.valid(tag.trim())).filter(v => v !== null)
+  return semver.rsort([current, ...versions])[0] ?? current
 }
 
 async function readVersion() {
