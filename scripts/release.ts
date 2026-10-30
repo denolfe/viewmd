@@ -9,7 +9,7 @@ import semver from 'semver'
 // (0.1.x -> 0.2.0). An explicit version like 0.2.0 is also accepted. CI derives
 // the npm dist-tag from the version itself: prerelease versions publish under
 // `beta`, stable versions under `latest`.
-// Bumps package.json, then commits, tags, and pushes. A changelog of commits
+// Pulls (fast-forward only), bumps package.json, then commits, tags, and pushes. A changelog of commits
 // since the last tag is generated once and reused as the commit body and the
 // annotated tag message.
 
@@ -21,15 +21,18 @@ if (arg.startsWith('v')) {
   process.exit(1)
 }
 
-const current = await readVersion()
-const version = resolveVersion(current, arg)
-const tag = `v${version}`
-
 const status = (await $`git status --porcelain`.text()).trim()
 if (status) {
   console.error('Working tree is not clean. Commit or stash changes first.')
   process.exit(1)
 }
+
+// Pull before reading the version so the bump and tag check see upstream state.
+await $`git pull --ff-only --tags`
+
+const current = await readVersion()
+const version = resolveVersion(current, arg)
+const tag = `v${version}`
 
 const existingTag = (await $`git tag --list ${tag}`.text()).trim()
 if (existingTag) {
