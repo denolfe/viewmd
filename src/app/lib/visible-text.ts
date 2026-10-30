@@ -21,20 +21,20 @@ export type Run = { key: string; segments: Segment[] }
 
 export type BlockProjection = { blockElementId: string; blockPath: number[]; runs: Run[] }
 
-/** `contentWidth` picks which render of each diagram is projected (see `codeText`). */
-export function projectDocument(nodes: Node[], contentWidth: number): BlockProjection[] {
+/** `breakoutWidth` picks which render of each diagram is projected (see `codeText`). */
+export function projectDocument(nodes: Node[], breakoutWidth: number): BlockProjection[] {
   const out: BlockProjection[] = []
-  walkBlocks(nodes, [], out, contentWidth)
+  walkBlocks(nodes, [], out, breakoutWidth)
   return out
 }
 
 /** Per-document projection lookup, cached on the nodes array identity for the latest width. */
-const mapCache = new WeakMap<Node[], { contentWidth: number; map: Map<string, BlockProjection> }>()
-export function projectionMap(nodes: Node[], contentWidth: number): Map<string, BlockProjection> {
+const mapCache = new WeakMap<Node[], { breakoutWidth: number; map: Map<string, BlockProjection> }>()
+export function projectionMap(nodes: Node[], breakoutWidth: number): Map<string, BlockProjection> {
   const cached = mapCache.get(nodes)
-  if (cached?.contentWidth === contentWidth) return cached.map
-  const map = new Map(projectDocument(nodes, contentWidth).map(p => [p.blockElementId, p]))
-  mapCache.set(nodes, { contentWidth, map })
+  if (cached && cached.breakoutWidth === breakoutWidth) return cached.map
+  const map = new Map(projectDocument(nodes, breakoutWidth).map(p => [p.blockElementId, p]))
+  mapCache.set(nodes, { breakoutWidth, map })
   return map
 }
 
@@ -149,15 +149,15 @@ function walkBlocks(
   nodes: Node[],
   path: number[],
   out: BlockProjection[],
-  contentWidth: number,
+  breakoutWidth: number,
 ): void {
   for (let i = 0; i < nodes.length; i++) {
     const n = nodes[i]
-    if (n) walkChild(n, [...path, i], out, contentWidth)
+    if (n) walkChild(n, [...path, i], out, breakoutWidth)
   }
 }
 
-function walkChild(n: Node, p: number[], out: BlockProjection[], contentWidth: number): void {
+function walkChild(n: Node, p: number[], out: BlockProjection[], breakoutWidth: number): void {
   switch (n.kind) {
     case 'heading': {
       const segs = [seg(headingPrefixText(n.level), 0), ...inlineSegments(n.text, 0)]
@@ -176,14 +176,14 @@ function walkChild(n: Node, p: number[], out: BlockProjection[], contentWidth: n
       out.push({
         blockElementId: blockId(p),
         blockPath: p,
-        runs: [{ key: 'main', segments: [seg(codeText({ node: n, contentWidth }), 0)] }],
+        runs: [{ key: 'main', segments: [seg(codeText({ node: n, breakoutWidth }), 0)] }],
       })
       break
     case 'list':
-      projectListItems(n.ordered, n.start, n.items, p, out, contentWidth)
+      projectListItems(n.ordered, n.start, n.items, p, out, breakoutWidth)
       break
     case 'blockquote':
-      walkBlocks(n.children, p, out, contentWidth)
+      walkBlocks(n.children, p, out, breakoutWidth)
       break
     case 'table': {
       const runs: Run[] = [
@@ -217,7 +217,7 @@ function walkChild(n: Node, p: number[], out: BlockProjection[], contentWidth: n
           { key: 'summary', segments: [seg('▾ ', 0, false), ...inlineSegments(n.summary, 0)] },
         ],
       })
-      walkBlocks(n.children, p, out, contentWidth)
+      walkBlocks(n.children, p, out, breakoutWidth)
       break
   }
 }
@@ -228,7 +228,7 @@ function projectListItems(
   items: ListItem[],
   listPath: number[],
   out: BlockProjection[],
-  contentWidth: number,
+  breakoutWidth: number,
 ): void {
   for (let j = 0; j < items.length; j++) {
     const item = items[j]
@@ -247,7 +247,7 @@ function projectListItems(
     const restBase = isFirstParagraph ? 1 : 0
     for (let k = 0; k < restNodes.length; k++) {
       const child = restNodes[k]
-      if (child) walkChild(child, [...itemPath, restBase + k], out, contentWidth)
+      if (child) walkChild(child, [...itemPath, restBase + k], out, breakoutWidth)
     }
   }
 }

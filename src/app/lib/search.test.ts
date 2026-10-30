@@ -4,17 +4,17 @@ import { blockId } from './scroll-marks'
 import { findMatches } from './search'
 
 const count = (md: string, q: string) =>
-  findMatches({ nodes: buildTree(md).nodes, pattern: q, contentWidth: 80 }).length
+  findMatches({ nodes: buildTree(md).nodes, pattern: q, breakoutWidth: 80 }).length
 
 describe('findMatches', () => {
   test('empty pattern returns empty', () => {
     const { nodes } = buildTree('hello world')
-    expect(findMatches({ nodes: nodes, pattern: '', contentWidth: 80 })).toEqual([])
+    expect(findMatches({ nodes: nodes, pattern: '', breakoutWidth: 80 })).toEqual([])
   })
 
   test('finds case-insensitive match in paragraph', () => {
     const { nodes } = buildTree('Hello World')
-    const m = findMatches({ nodes: nodes, pattern: 'hello', contentWidth: 80 })
+    const m = findMatches({ nodes: nodes, pattern: 'hello', breakoutWidth: 80 })
     expect(m.length).toBe(1)
     expect(m[0]?.start).toBe(0)
     expect(m[0]?.length).toBe(5)
@@ -22,23 +22,23 @@ describe('findMatches', () => {
 
   test('finds multiple matches', () => {
     const { nodes } = buildTree('foo bar foo')
-    const m = findMatches({ nodes: nodes, pattern: 'foo', contentWidth: 80 })
+    const m = findMatches({ nodes: nodes, pattern: 'foo', breakoutWidth: 80 })
     expect(m.length).toBe(2)
   })
 
   test('searches inside strong', () => {
     const { nodes } = buildTree('**bold target** trailing')
-    expect(findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 }).length).toBe(1)
+    expect(findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 }).length).toBe(1)
   })
 
   test('searches code blocks', () => {
     const { nodes } = buildTree('```\nfoo target\n```')
-    expect(findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 }).length).toBe(1)
+    expect(findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 }).length).toBe(1)
   })
 
   test('searches inside blockquote and extends path', () => {
     const { nodes } = buildTree('> target text')
-    const m = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const m = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     expect(m.length).toBe(1)
     // Path should include both blockquote index and child paragraph index.
     expect(m[0]?.blockPath.length).toBeGreaterThan(1)
@@ -46,13 +46,13 @@ describe('findMatches', () => {
 
   test('searches inside list items', () => {
     const { nodes } = buildTree('- alpha\n- target item\n- gamma')
-    const m = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const m = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     expect(m.length).toBe(1)
   })
 
   test('matches alt text on image blocks', () => {
     const { nodes } = buildTree('![cat picture](cat.png)')
-    expect(findMatches({ nodes: nodes, pattern: 'cat', contentWidth: 80 }).length).toBeGreaterThan(
+    expect(findMatches({ nodes: nodes, pattern: 'cat', breakoutWidth: 80 }).length).toBeGreaterThan(
       0,
     )
   })
@@ -60,15 +60,15 @@ describe('findMatches', () => {
   test('matches alt text on inline images inside paragraphs', () => {
     const { nodes } = buildTree('See ![the cat](cat.png) in action')
     expect(
-      findMatches({ nodes: nodes, pattern: 'the cat', contentWidth: 80 }).length,
+      findMatches({ nodes: nodes, pattern: 'the cat', breakoutWidth: 80 }).length,
     ).toBeGreaterThan(0)
   })
 
   test('searches inside table header and body with run keys', () => {
     const md = '| H1 | H2 |\n|---|---|\n| body target | x |'
     const { nodes } = buildTree(md)
-    const headerMatch = findMatches({ nodes: nodes, pattern: 'H1', contentWidth: 80 })
-    const bodyMatch = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const headerMatch = findMatches({ nodes: nodes, pattern: 'H1', breakoutWidth: 80 })
+    const bodyMatch = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     expect(headerMatch.length).toBe(1)
     expect(headerMatch[0]?.runKey).toBe('h0') // first header cell
     expect(bodyMatch.length).toBe(1)
@@ -77,7 +77,7 @@ describe('findMatches', () => {
 
   test('stamps blockElementId: heading slug for headings, blockId otherwise', () => {
     const { nodes } = buildTree('# Alpha bravo\n\nalpha bravo\n')
-    const matches = findMatches({ nodes: nodes, pattern: 'bravo', contentWidth: 80 })
+    const matches = findMatches({ nodes: nodes, pattern: 'bravo', breakoutWidth: 80 })
     const heading = nodes[0]
     expect(heading?.kind).toBe('heading')
     expect(matches[0]?.blockElementId).toBe(heading?.kind === 'heading' ? heading.id : '')
@@ -129,7 +129,7 @@ describe('visible-text matching', () => {
     const [m] = findMatches({
       nodes: buildTree('1. first item').nodes,
       pattern: '1. first',
-      contentWidth: 80,
+      breakoutWidth: 80,
     })
     expect(m).toMatchObject({ runKey: 'main', start: 0, length: 8 })
     expect(m?.blockElementId).toBe('itm-0-0')

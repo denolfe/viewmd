@@ -16,7 +16,7 @@ export function StickyHeader({
   fileLabel?: string
   onAncestorClick: (id: string) => void
 }) {
-  const { contentWidth, historyDepth, trailLabels, commands } = useAppState()
+  const { contentWidth, breakoutWidth, historyDepth, trailLabels, commands } = useAppState()
   const { currentHeadingId, visibleHeadingIds } = useHeadingState()
 
   const hasH1 = documentHasH1(toc)
@@ -48,8 +48,8 @@ export function StickyHeader({
       top={0}
       left={0}
       // Span the viewer's paddingRight gutter too so the background reaches the
-      // scrollbar (Viewer width is contentWidth + scrollbar(1) + paddingRight(1)).
-      width={contentWidth + 1}
+      // scrollbar (Viewer width is breakoutWidth + scrollbar(1) + paddingRight(1)).
+      width={breakoutWidth + 1}
       flexDirection="column"
       backgroundColor={theme.stickyBg}
       paddingX={2}

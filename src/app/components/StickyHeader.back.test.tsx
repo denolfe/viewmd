@@ -20,6 +20,7 @@ function makeStub(overrides: Partial<Stub> = {}): Stub {
     search: null,
     visibleHeadingIds: new Set<string>(),
     contentWidth: 80,
+    breakoutWidth: 80,
     dir: undefined,
     // Real Commands surface with an assertable goToDocument for the trail click tests.
     commands: { ...createNoopCommands(), goToDocument: mock() },

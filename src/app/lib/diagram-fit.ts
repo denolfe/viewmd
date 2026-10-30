@@ -20,16 +20,27 @@ const COMPACT_STEPS: DiagramSpacing[] = [
 ]
 
 /**
- * The text a code block prints at `contentWidth`. A diagram wider than the
- * column re-renders at the loosest spacing that fits; when none fits, the
- * tightest render wins so the least is clipped. `CodeBlock`, the search
+ * The text a code block prints when diagrams may span `breakoutWidth`. A diagram
+ * wider than that re-renders at the loosest spacing that fits; when none fits,
+ * the tightest render wins so the least is clipped. `CodeBlock`, the search
  * Projection, and row estimates all read through here so they agree.
  */
-export function codeText({ node, contentWidth }: { node: CodeNode; contentWidth: number }): string {
-  const available = contentWidth - 2 * DIAGRAM_MARGIN_X
+export function codeText({
+  node,
+  breakoutWidth,
+}: {
+  node: CodeNode
+  breakoutWidth: number
+}): string {
+  const available = breakoutWidth - 2 * DIAGRAM_MARGIN_X
   if (node.diagramSource === undefined || textWidth(node.value) <= available) return node.value
   const renders = compactRenders(node, node.diagramSource)
   return renders.find(r => textWidth(r) <= available) ?? renders.at(-1) ?? node.value
+}
+
+/** Widest line, in columns. */
+export function textWidth(text: string): number {
+  return text.split('\n').reduce((max, l) => Math.max(max, l.length), 0)
 }
 
 // Keyed on the node so renders live and die with their Document.
@@ -43,8 +54,4 @@ function compactRenders(node: CodeNode, source: string): string[] {
   )
   compactCache.set(node, renders)
   return renders
-}
-
-function textWidth(text: string): number {
-  return text.split('\n').reduce((max, l) => Math.max(max, l.length), 0)
 }

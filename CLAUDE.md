@@ -96,23 +96,24 @@ CI derives the npm dist-tag from the version string alone: a prerelease (hyphen)
 
 ### Viewer & scroll
 
-| Term                | Definition                                                                                             |
-| ------------------- | ------------------------------------------------------------------------------------------------------ |
-| Viewer              | The scrollable content area (`<scrollbox>`)                                                            |
-| Viewport            | The currently visible region of the Viewer (`box.viewport.{y,height}`)                                 |
-| Geometry            | `BoxGeometry` — the narrow structural port over the scrollbox that all pure scroll math reads          |
-| Overlay             | The sticky region painted over the top of the Viewport (Trail row + Ancestor rows)                     |
-| Fold                | Line `topOffset + PIN_TOP_OFFSET` below the viewport top that decides which heading is current         |
-| Fold offset         | Rows the Overlay occludes for a given heading; `Fold.offsetFor` / `aboveOffsetFor`                     |
-| Pin                 | A scroll that parks a heading at the Fold (`scrollChildToTop`, `pinHeadingPostLayout`)                 |
-| Pending target      | Queued scroll (heading / top / match) retried each post-layout frame until reached; `pendingReducer`   |
-| Swap reposition     | A Pending target flagged `isSwap`; resolving it fires `onRepositioned`, which drops the Cover          |
-| Cover               | Opaque box masking the Viewer while a Doc swap repositions, so the reader never sees the top-then-jump |
-| Progressive mount   | Mounting top-level nodes in chunks (`CHUNK_SIZE`) after a viewport-sized first paint                   |
-| Scrollbox tail      | Empty `<box height={tailSpace}>` after content so the last heading can scroll to the Fold              |
-| Tail reserve        | Fold offset withheld from the tail so the last heading pins correctly                                  |
-| Real content height | `scrollHeight` minus the tail — the height used for scrollability and thumb-size math                  |
-| Scroll marks        | Search matches resolved to document-space `y` and painted onto scrollbar track rows (`TrackCell`)      |
+| Term                | Definition                                                                                              |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| Viewer              | The scrollable content area (`<scrollbox>`)                                                             |
+| Viewport            | The currently visible region of the Viewer (`box.viewport.{y,height}`)                                  |
+| Breakout width      | Columns a rendered diagram may span: `contentWidth` with the TOC shown, the whole column with it hidden |
+| Geometry            | `BoxGeometry` — the narrow structural port over the scrollbox that all pure scroll math reads           |
+| Overlay             | The sticky region painted over the top of the Viewport (Trail row + Ancestor rows)                      |
+| Fold                | Line `topOffset + PIN_TOP_OFFSET` below the viewport top that decides which heading is current          |
+| Fold offset         | Rows the Overlay occludes for a given heading; `Fold.offsetFor` / `aboveOffsetFor`                      |
+| Pin                 | A scroll that parks a heading at the Fold (`scrollChildToTop`, `pinHeadingPostLayout`)                  |
+| Pending target      | Queued scroll (heading / top / match) retried each post-layout frame until reached; `pendingReducer`    |
+| Swap reposition     | A Pending target flagged `isSwap`; resolving it fires `onRepositioned`, which drops the Cover           |
+| Cover               | Opaque box masking the Viewer while a Doc swap repositions, so the reader never sees the top-then-jump  |
+| Progressive mount   | Mounting top-level nodes in chunks (`CHUNK_SIZE`) after a viewport-sized first paint                    |
+| Scrollbox tail      | Empty `<box height={tailSpace}>` after content so the last heading can scroll to the Fold               |
+| Tail reserve        | Fold offset withheld from the tail so the last heading pins correctly                                   |
+| Real content height | `scrollHeight` minus the tail — the height used for scrollability and thumb-size math                   |
+| Scroll marks        | Search matches resolved to document-space `y` and painted onto scrollbar track rows (`TrackCell`)       |
 
 ### Headings & overlay
 

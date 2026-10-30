@@ -1,13 +1,14 @@
 # Mermaid Width Fitting
 
-Manual check for diagram width fitting. A rendered diagram wider than the
-content column re-renders with tighter spacing (smaller gaps between nodes,
-then no blank rows inside boxes) until it fits. If no spacing fits, the
-tightest render shows and the right side clips.
+Manual check for diagram width fitting. A rendered diagram wider than its
+column re-renders with tighter spacing (smaller gaps between nodes, then no
+blank rows inside boxes) until it fits. If no spacing fits, the tightest
+render shows and the right side clips.
 
-Widths below are in columns. "Fits at" is the content width needed (diagram
-width + 4 for the side margins). The default content cap is 100; hiding the
-TOC (`t`) adds the sidebar width to it.
+Widths below are in columns; a diagram needs its width + 4 for the side
+margins. With the TOC shown, diagrams stop at the content cap (default 100).
+With the TOC hidden (`t`), prose grows only by the sidebar width, but diagrams
+break out across the whole terminal, and the scrollbar moves to its right edge.
 
 | Diagram        | Default | Tightest | Expected at the 100 cap       |
 | -------------- | ------- | -------- | ----------------------------- |
@@ -26,10 +27,15 @@ Things to check:
    matches its "Expected" column.
 2. Narrow the terminal (or drag the TOC seam left): diagrams step down to
    tighter spacing one by one, and the Medium chain starts to compact.
-3. Toggle the TOC with `t`: diagrams widen back to looser spacing.
-4. Search `/zebra` and press Enter: the match highlights inside the Wide
-   chain. Resize or toggle the TOC; the highlight stays on the label.
-5. Diagrams nested in a list and a blockquote fit the same way.
+3. Hide the TOC with `t` at a terminal of 186+ columns: every diagram,
+   including the Huge chain, shows whole at default spacing, while prose still
+   wraps near column 100 plus the sidebar width.
+4. Scroll a diagram up under the sticky header: no part of it shows to the
+   right of the header.
+5. Search `/zebra` and press Enter: the match highlights inside the Wide
+   chain, and the search bar sits at the right edge. Resize or toggle the TOC;
+   the highlight stays on the label.
+6. Diagrams nested in a list and a blockquote fit the same way.
 
 ## Small chain
 
@@ -79,8 +85,9 @@ digraph G {
 
 ## Huge chain
 
-Too wide for any spacing at the default cap: the tightest render shows and
-the right side clips. Set `width` in the config higher to see it whole.
+Too wide for any spacing at the default cap: with the TOC shown, the tightest
+render shows and the right side clips. Hide the TOC on a wide terminal to see
+it whole.
 
 ```mermaid
 graph LR

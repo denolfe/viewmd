@@ -117,6 +117,12 @@ export type AppState = {
   /** Width (in cols) of the Viewer's content area, after TOC, scrollbar and padding. Capped to CONTENT_MAX_WIDTH. */
   contentWidth: number
 
+  /**
+   * Columns a rendered diagram may span. Equals `contentWidth` while the TOC is
+   * shown; with no sidebar it is the whole Viewer column, past the reading cap.
+   */
+  breakoutWidth: number
+
   /** Directory of the active document; base dir for resolving relative links. Undefined for stdin. */
   dir?: string
   /** Number of entries on the back stack (drives the back affordance). */

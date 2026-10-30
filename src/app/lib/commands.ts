@@ -12,8 +12,8 @@ export type CommandDeps = {
   doc: { nodes: Node[]; toc: TocEntry[]; headingIds: string[]; fileLabel?: string }
   fold: Fold
   viewportHeight: number
-  /** The Viewer's content width; search projects diagrams at it. */
-  contentWidth: number
+  /** Columns a diagram may span; search projects diagrams at it. */
+  breakoutWidth: number
   stateRef: RefObject<ViewState>
   actions: ViewActions
   historyDepth: number
@@ -64,7 +64,7 @@ export function createCommands(deps: CommandDeps): Commands {
     doc,
     fold,
     viewportHeight,
-    contentWidth,
+    breakoutWidth,
     stateRef,
     actions,
     historyDepth,
@@ -210,7 +210,7 @@ export function createCommands(deps: CommandDeps): Commands {
     applySearchPattern: ({ pattern, commit }) => {
       const s = stateRef.current.search
       if (!s) return
-      const matches = findMatches({ nodes: doc.nodes, pattern, contentWidth })
+      const matches = findMatches({ nodes: doc.nodes, pattern, breakoutWidth })
       const index = matches.length ? (viewerRef.current?.seedMatchIndex({ matches }) ?? 0) : -1
       actions.search({ ...s, pattern, matches, index, committed: commit })
       if (commit) actions.focus('viewer')
@@ -218,7 +218,7 @@ export function createCommands(deps: CommandDeps): Commands {
     refreshSearch: () => {
       const s = stateRef.current.search
       if (!s?.pattern) return
-      const matches = findMatches({ nodes: doc.nodes, pattern: s.pattern, contentWidth })
+      const matches = findMatches({ nodes: doc.nodes, pattern: s.pattern, breakoutWidth })
       actions.search({ ...s, matches, index: Math.min(s.index, matches.length - 1) })
     },
     stepMatch: dir => {

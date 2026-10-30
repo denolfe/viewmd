@@ -8,12 +8,20 @@ import { renderDiagramBlocks } from '../lib/preprocess'
 const mermaid = (chain: string) =>
   ['# Diagram', '', '```mermaid', 'graph LR', `  ${chain}`, '```'].join('\n')
 
+// 180 cols at default spacing, 136 at the tightest.
+const HUGE_CHAIN = mermaid(
+  'A[Keyboard event] --> B[mapKey pure] --> C[Action value] --> D[dispatch pure] --> E[Commands effectful] --> F[ViewActions write] --> G[React rerender] --> H[Terminal frame]',
+)
+
 // At 160 cols the content column sits at the 100-col reading cap, leaving 96
 // for a diagram between its margins.
-async function renderFrame(md: string): Promise<string> {
+async function renderFrame(
+  md: string,
+  { width = 160, hideToc = false }: { width?: number; hideToc?: boolean } = {},
+): Promise<string> {
   const { nodes, toc, headingIds } = buildTreeFromTokens(renderDiagramBlocks(lexMarkdown(md)))
   const { renderer, mockInput, flush, renderOnce, captureCharFrame } = await createTestRenderer({
-    width: 160,
+    width,
     height: 20,
   })
   const settle = async () => {
@@ -35,6 +43,10 @@ async function renderFrame(md: string): Promise<string> {
   // The very first key is consumed by the terminal capability handshake.
   await mockInput.typeText('x')
   await settle()
+  if (hideToc) {
+    await mockInput.typeText('t')
+    await settle()
+  }
   return captureCharFrame()
 }
 
@@ -57,4 +69,25 @@ test('a diagram exactly as wide as the column shows whole at default spacing', a
     ),
   )
   expect(frame).toContain('│ Mount viewer │')
+})
+
+test('with the TOC shown, a diagram stops at the reading cap', async () => {
+  const frame = await renderFrame(HUGE_CHAIN, { width: 200 })
+  expect(frame).not.toContain('Terminal frame')
+})
+
+test('with the TOC hidden, a diagram breaks out past the reading cap', async () => {
+  const frame = await renderFrame(HUGE_CHAIN, { width: 200, hideToc: true })
+  expect(frame).toContain('│ Terminal frame │')
+})
+
+test('with the TOC hidden, prose keeps the reading width', async () => {
+  const prose = `# Diagram\n\n${'word '.repeat(60)}`
+  const shown = await renderFrame(prose, { width: 200 })
+  const hidden = await renderFrame(prose, { width: 200, hideToc: true })
+  const longestProse = (frame: string) =>
+    Math.max(...frame.split('\n').map(l => l.match(/^.*word/)?.[0].length ?? 0))
+  // Hiding the TOC hands prose the sidebar's columns, not the whole terminal.
+  expect(longestProse(hidden)).toBeGreaterThan(longestProse(shown))
+  expect(longestProse(hidden)).toBeLessThan(150)
 })

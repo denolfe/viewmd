@@ -115,7 +115,7 @@ function makeDeps(
     doc,
     fold: createFold({ toc: doc.toc, fileLabel: doc.fileLabel }),
     viewportHeight: 24,
-    contentWidth: 80,
+    breakoutWidth: 80,
     stateRef: { current: viewState },
     actions,
     historyDepth: 0,
@@ -377,16 +377,16 @@ describe('createCommands.refreshSearch', () => {
   ).nodes
 
   test('re-finds matches at the current content width, keeping the index', () => {
-    const contentWidth = 30
+    const breakoutWidth = 30
     const { deps, actions } = makeDeps({
       doc: { nodes: diagramNodes },
       state: { search: { pattern: 'done', matches: [m()], index: 0, committed: true } },
     })
-    createCommands({ ...deps, contentWidth }).refreshSearch()
+    createCommands({ ...deps, breakoutWidth }).refreshSearch()
 
     const [code] = diagramNodes
     if (code?.kind !== 'code') throw new Error('fixture must parse to a code node')
-    const start = codeText({ node: code, contentWidth }).toLowerCase().indexOf('done')
+    const start = codeText({ node: code, breakoutWidth }).toLowerCase().indexOf('done')
     expect(start).not.toBe(code.value.toLowerCase().indexOf('done'))
     expect(actions.search).toHaveBeenCalledWith(
       expect.objectContaining({ index: 0, matches: [expect.objectContaining({ start })] }),

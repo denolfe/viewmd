@@ -112,9 +112,9 @@ test('every projected run aligns into its block’s rendered text', async () => 
   const box = findScrollbox(renderer.root)
   if (!box) throw new Error('scrollbox not found')
 
-  // The Viewer column is the content width plus its scrollbar overhead.
-  const contentWidth = box.width - VIEWER_OVERHEAD
-  const projections = projectDocument(nodes, contentWidth)
+  // The Viewer column is the breakout width plus its scrollbar overhead.
+  const breakoutWidth = box.width - VIEWER_OVERHEAD
+  const projections = projectDocument(nodes, breakoutWidth)
   expect(projections.length).toBeGreaterThan(15)
   for (const p of projections) {
     const blockBox = box.content.findDescendantById(p.blockElementId)

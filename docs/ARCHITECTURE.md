@@ -75,7 +75,8 @@ Heading nodes carry an `id` (slug). The renderer for `Heading` emits a `<box id=
   - `tocWidth = clamp(16, contentWidth + 3, floor(termWidth * 0.4))` (3 cols for the inner scrollbox's paddingX + a buffer). The TOC always auto-sizes to its visible content.
   - `effectiveContentMax = contentWidthOverride ?? contentMaxWidth` — a session-only `contentWidthOverride` (set by dragging the content/TOC seam, see §9 TOC) lifts the configured cap when non-null; it is not persisted.
   - `viewerColumnWidth = (hasToc ? termWidth - tocWidth : termWidth) - 2` (2 cols for the viewer scrollbar + paddingRight).
-  - `contentWidth = min(effectiveContentMax, viewerColumnWidth)` — exposed via context so block renderers can size to it. `effectiveContentMax` also flows to context as `contentMaxWidth`, so the Viewer's inner cap lifts with the drag.
+  - `contentWidth = min(effectiveContentMax, viewerColumnWidth)` — the reading width, exposed via context so block renderers can size to it. The Viewer's inner box is exactly `contentWidth + 1` (its paddingRight), so prose wraps at it.
+  - `breakoutWidth = isTocShown ? contentWidth : viewerColumnWidth` — the columns a rendered diagram may span. With no sidebar on the right, the Viewer (and the Overlay, Cover, and search bar with it) spans the whole terminal; prose stays at `contentWidth` and diagrams overflow the inner box into the free columns (`CodeBlock`'s `minWidth`).
 - Memoises an `AppState` object into `AppStateContext` so descendants read state via `useAppState()`.
 - Wires `useKeyboard` → `mapKey(ev, focus, { searchActive, helpOpen })` → `dispatch(action, commands)`. When `focus === 'search'`, `App` skips dispatch entirely — `SearchInput` owns its own `useKeyboard`.
 - Runs two effects:
@@ -88,7 +89,7 @@ Layout (rendered tree):
 <box flexDirection=column height=100%>
   <box flexDirection=row flexGrow=1 overflow=hidden position=relative>
     <StickyHeader />                ← absolute overlay; top/left 0; zIndex 10
-    <Viewer />                      ← scrollbox, contentWidth + overhead
+    <Viewer />                      ← scrollbox, breakoutWidth + overhead
     {hasToc && <box width=tocWidth position=relative><Toc /><ResizeHandle /></box>}
     {isResizing && <box absolute full-screen zIndex 1000/>}   ← drag shield
   </box>
@@ -115,6 +116,7 @@ Both are measured against **the content below the sticky overlay**, not the raw 
 - `search: SearchState | null` — `{ pattern, matches, index, dir }`.
 - `viewerRef: RefObject<ScrollboxHandle>` — imperative scroll API.
 - `contentWidth: number` — Viewer's inner content width after subtracting TOC, scrollbar, and padding; capped to `CONTENT_MAX_WIDTH` (100).
+- `breakoutWidth: number` — columns a rendered diagram may span: `contentWidth` while the TOC is shown, the whole Viewer column otherwise. Diagram fitting (`codeText` in `src/app/lib/diagram-fit.ts`), the search Projection, and the seam's reflow key all read it.
 
 `ScrollboxHandle` is the only place mutation crosses the React boundary. See [Imperative scroll](#imperative-scroll).
 
@@ -149,7 +151,7 @@ Pure key mapping, an effectful command layer, and a pure dispatcher between them
 
 The viewer is a `<scrollbox>` wrapping `<NodeList>` plus a trailing `<box height={tailSpace}>` so the _last_ heading can still scroll to the top of the viewport (`tailSpace = max(0, termHeight - 1 - tailReserve)`, where `tailReserve` is the last heading's overlay height).
 
-On mount it calls `createScrollboxHandle` (`src/app/lib/scrollbox-handle.ts`) with the raw `ScrollBoxRenderable` ref plus a `live` bag of getters (`tail`, `projections`, `isFullyMounted`, `contentWidth`, `mountedCount`, `docKey`); the seam owns the geometry port, the pending protocol and the scrollbar patches, and hands back `{ handle, onFrame, requestNotify, dispose }`. The main handle methods:
+On mount it calls `createScrollboxHandle` (`src/app/lib/scrollbox-handle.ts`) with the raw `ScrollBoxRenderable` ref plus a `live` bag of getters (`tail`, `projections`, `isFullyMounted`, `contentWidth`, `breakoutWidth`, `mountedCount`, `docKey`); the seam owns the geometry port, the pending protocol and the scrollbar patches, and hands back `{ handle, onFrame, requestNotify, dispose }`. The main handle methods:
 
 | Method                            | Implementation                                                                                                                                     |
 | --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -201,11 +203,11 @@ The scrollbox is wrapped in a `position=relative` box; `ScrollIndicators` render
 
 Block boxes carry a stable id via `blockId(path)` (`src/app/lib/scroll-marks.ts`), keyed by the block's index path through the AST — the same convention headings already use via their slug `id`. `Match.blockElementId` (stamped during search) joins a match back to its block box, so `getScrollMarks` can resolve the block through the `BoxGeometry` port — `findChildren` / `collectTextBearersFor`, both one `collectById` walk over the renderable tree — and then locate the exact visual line within it via `plainText`/`lineInfo` (falling back to the block's own `y` if no text-bearing descendant is found).
 
-`computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`round(y / scrollHeight * viewportHeight)`), independent of scroll position. It maps over the **full `scrollHeight`** (tail included) — the exact scale OpenTUI positions the thumb with (`thumbTop = scrollPosition / scrollHeight * trackHeight`), so a mark for a match lands inside the thumb once you navigate to it; `realContentHeight` (scrollHeight minus tail) is used only to suppress the overlay when the whole document already fits the viewport. Marks resolve on **reflow**, not on every scroll tick: `createMarkCache` (`src/app/lib/mark-cache.ts`) re-resolves when the seam's reflow key (`docKey:contentWidth:mountedCount`) changes — latched in `onFrame` so it always describes the laid-out state rather than the pending render — or when the search mints a new `matches` array, which the cache detects by identity. A key change also fires a notify, so `ScrollIndicators` re-reads on a resize or TOC toggle without waiting for a scroll. It reads the current layout off `viewerRef`, on a `setTimeout(…, 0)` after mount/search changes and on every scroll notification. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match`), painted with `theme.scrollMarkActive` / `scrollMarkMatch`. With no active search or on a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
+`computeTrackCells` (pure, in `scroll-marks.ts`) maps each resolved mark's document-space `y` onto a track row proportionally (`round(y / scrollHeight * viewportHeight)`), independent of scroll position. It maps over the **full `scrollHeight`** (tail included) — the exact scale OpenTUI positions the thumb with (`thumbTop = scrollPosition / scrollHeight * trackHeight`), so a mark for a match lands inside the thumb once you navigate to it; `realContentHeight` (scrollHeight minus tail) is used only to suppress the overlay when the whole document already fits the viewport. Marks resolve on **reflow**, not on every scroll tick: `createMarkCache` (`src/app/lib/mark-cache.ts`) re-resolves when the seam's reflow key (`docKey:contentWidth:breakoutWidth:mountedCount`) changes — latched in `onFrame` so it always describes the laid-out state rather than the pending render — or when the search mints a new `matches` array, which the cache detects by identity. A key change also fires a notify, so `ScrollIndicators` re-reads on a resize or TOC toggle without waiting for a scroll. It reads the current layout off `viewerRef`, on a `setTimeout(…, 0)` after mount/search changes and on every scroll notification. When several marks land on the same row, the highest-priority kind wins (`activeMatch > match`), painted with `theme.scrollMarkActive` / `scrollMarkMatch`. With no active search or on a non-scrollable document (`contentHeight <= trackHeight`), `computeTrackCells` returns no cells and the overlay renders nothing.
 
 ## 8. Sticky overlay (`src/app/components/StickyHeader.tsx`)
 
-An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `contentWidth`, `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — the rows paint _over_ the top content lines rather than pushing content down, so the overlay can grow from zero without the content region reflowing.
+An **absolute overlay** over the top of the viewer (VS Code "sticky scroll" model), not a chrome row. The box is `position=absolute` at `top/left 0` of the viewer's `position=relative` row container, sized to `breakoutWidth + 1` (reaching the scrollbar), `zIndex 10`, on `theme.stickyBg`. Being out of Yoga's flow, it never changes the viewer's height — the rows paint _over_ the top content lines rather than pushing content down, so the overlay can grow from zero without the content region reflowing.
 
 Content is `ancestorRows({ chain, visibleHeadingIds, hasH1, fileLabel })` (in `overlay-rows.ts`), where `chain = ancestorChain(toc, currentHeadingId)` is the root→current lineage:
 

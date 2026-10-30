@@ -13,7 +13,7 @@ describe('nearestPrecedingHeadingId', () => {
   test('returns id of heading just before match', () => {
     const md = '# A\n\nfoo target\n\n# B\n\nbar'
     const { nodes } = buildTree(md)
-    const [m] = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const [m] = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     if (!m) throw new Error('expected a match')
     expect(nearestPrecedingHeadingId(nodes, m)).toBe('a')
   })
@@ -21,7 +21,7 @@ describe('nearestPrecedingHeadingId', () => {
   test('returns null when no heading precedes the match', () => {
     const md = 'target text\n\n# H'
     const { nodes } = buildTree(md)
-    const [m] = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const [m] = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     if (!m) throw new Error('expected a match')
     expect(nearestPrecedingHeadingId(nodes, m)).toBe(null)
   })
@@ -74,7 +74,7 @@ describe('matchScrollTarget', () => {
   test('offset reserves the overlay height so the match lands below the overlay', () => {
     const md = '# A\n\n## B\n\nfoo target\n\n# C'
     const { nodes, toc } = buildTree(md)
-    const [m] = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const [m] = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     if (!m) throw new Error('expected a match')
     // Match sits under `## B`; after the jump both `# A` and the offscreen
     // `## B` render as ancestor rows — two overlay rows the scroll must clear.
@@ -87,7 +87,7 @@ describe('matchScrollTarget', () => {
   test('returns null when no heading precedes the match', () => {
     const md = 'target text\n\n# H'
     const { nodes, toc } = buildTree(md)
-    const [m] = findMatches({ nodes: nodes, pattern: 'target', contentWidth: 80 })
+    const [m] = findMatches({ nodes: nodes, pattern: 'target', breakoutWidth: 80 })
     if (!m) throw new Error('expected a match')
     expect(matchScrollTarget({ nodes, match: m, fold: createFold({ toc }) })).toBe(null)
   })
