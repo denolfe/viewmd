@@ -14,7 +14,7 @@ jobs:
       matrix:
         include:
           - id: darwin-arm64
-            runs-on: macos-14
+            runs-on: macos-15
           - id: darwin-x64
             runs-on: macos-15-intel
           - id: linux-x64
