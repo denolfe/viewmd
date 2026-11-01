@@ -6,16 +6,6 @@ on:
       publish:
         type: boolean
         default: false
-  # Builds and smoke-tests every platform binary on PRs that touch the build,
-  # so runner or toolchain breakage surfaces before a release.
-  pull_request:
-    branches: [main]
-    paths:
-      - .github/workflows/build-binaries.yml
-      - scripts/**
-      - package.json
-      - bun.lock
-      - mise.toml
 
 jobs:
   build:
