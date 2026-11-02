@@ -36,6 +36,12 @@ export const theme = {
   scrollMarkActive: '#f59e1f', // brightest — reuse searchCurrentBg
   scrollbarThumb: '#585858', // thumb color; marker cells inside the thumb use it as bg
   scrollbarTrack: '#252527', // track bg (OpenTUI default, pinned); marker cells outside the thumb use it as bg
+  // Node hues, assigned in order: cyan, green, magenta, codespanFg, blue. Yellow would read as a
+  // search match (searchMatchBg) and red as an error, so neither is a node hue.
+  diagramNodes: ['#11a8cd', '#23d18b', '#bc3fbc', '#ce9178', '#2472c8'],
+  diagramLine: '#666666', // matches border; edges recede so nodes carry the color
+  diagramArrow: '#9d9d9d', // matches foregroundMuted; brighter than lines so direction reads
+  diagramText: '#d4d4d4', // matches foreground
 } as const
 
 export type Theme = typeof theme
