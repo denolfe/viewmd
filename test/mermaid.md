@@ -126,6 +126,9 @@ stateDiagram-v2
 
 ### Notes
 
+`beautiful-mermaid` parses notes only in sequence diagrams; it drops this
+state note silently, so only `[*] --> A` renders.
+
 ```mermaid
 stateDiagram-v2
   [*] --> A
@@ -203,6 +206,16 @@ sequenceDiagram
 sequenceDiagram
   A->>B: hi
   Note right of B: processing
+```
+
+### Notes: left, over one, over a span
+
+```mermaid
+sequenceDiagram
+  A->>B: hi
+  Note left of A: before
+  Note over B: waiting
+  Note over A,B: shared
 ```
 
 ## Class Diagrams

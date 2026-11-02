@@ -1,11 +1,13 @@
 import { RGBA, infoStringToFiletype } from '@opentui/core'
 import type { TextChunk } from '@opentui/core'
+import { useMemo } from 'react'
 import { HighlightedText, RunScope, matchRangesForRun } from './InlineRenderer'
 import { theme } from '../../styles/theme'
 import { syntaxStyle } from '../../styles/syntax-style'
 import { useAppState } from '../../state'
 import { MERMAID_ASCII_LANG } from '../../lib/preprocess'
 import { codeText, DIAGRAM_MARGIN_X, textWidth } from '../../lib/diagram-fit'
+import { paintDiagram } from '../../lib/diagram-paint'
 import type { Node } from '../../lib/ast'
 import type { AppState } from '../../state'
 
@@ -22,16 +24,7 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
   // reading column overflow it into the breakout columns; a `wrapMode="none"`
   // text clips at its box edge otherwise.
   if (node.lang === MERMAID_ASCII_LANG) {
-    const ascii = codeText({ node, breakoutWidth })
-    return (
-      <box id={id} marginX={DIAGRAM_MARGIN_X} minWidth={textWidth(ascii)}>
-        <text wrapMode="none">
-          <RunScope blockId={id} text={ascii}>
-            <HighlightedText value={ascii} />
-          </RunScope>
-        </text>
-      </box>
-    )
+    return <DiagramBlock ascii={codeText({ node, breakoutWidth })} id={id} />
   }
 
   const rawLang = node.lang && node.lang !== 'text' ? node.lang : undefined
@@ -73,6 +66,27 @@ export function CodeBlock({ node, id }: { node: Extract<Node, { kind: 'code' }>;
           </RunScope>
         </text>
       )}
+    </box>
+  )
+}
+
+/**
+ * Runs concatenate back to `ascii`, so each `HighlightedText` piece advances the RunScope cursor
+ * in step with the projection and match spans paint over the run colors.
+ */
+function DiagramBlock({ ascii, id }: { ascii: string; id: string }) {
+  const runs = useMemo(() => paintDiagram(ascii), [ascii])
+  return (
+    <box id={id} marginX={DIAGRAM_MARGIN_X} minWidth={textWidth(ascii)}>
+      <text wrapMode="none">
+        <RunScope blockId={id} text={ascii}>
+          {runs.map((run, i) => (
+            <span key={i} fg={run.fg}>
+              <HighlightedText value={run.text} />
+            </span>
+          ))}
+        </RunScope>
+      </text>
     </box>
   )
 }
